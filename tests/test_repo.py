@@ -1,10 +1,10 @@
 """Checks that the experts and the bench cases agree with each other."""
 
-import re
 import tomllib
 import unittest
 from pathlib import Path
 
+from bench.prompt import body, sections, without
 from bench.scorer.load import load_case, load_run
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -19,11 +19,7 @@ def manifest(expert: Path) -> dict:
 
 
 def headings(prompt: str) -> set[str]:
-    """The prompt's "## " headings, plus "" when text precedes the first one."""
-    body = re.sub(r"\A---\n.*?\n---\n", "", prompt, flags=re.S)
-    found = set(re.findall(r"^## (.+?)\s*$", body, flags=re.M))
-    preamble = body.split("\n## ", 1)[0] if not body.startswith("## ") else ""
-    return found | ({""} if preamble.strip() else set())
+    return set(sections(prompt))
 
 
 class ExpertsTest(unittest.TestCase):
@@ -83,10 +79,25 @@ class RunsTest(unittest.TestCase):
             load_run(path, load_case(CASES / case_id))
 
 
-class HeadingsTest(unittest.TestCase):
+class PromptTest(unittest.TestCase):
     def test_frontmatter_is_not_a_preamble(self) -> None:
         self.assertEqual(headings("---\nname: x\n---\n## A\nbody\n"), {"A"})
         self.assertEqual(headings("Intro.\n\n## A\n"), {"", "A"})
+
+    def test_without_drops_only_the_named_sections(self) -> None:
+        prompt = "---\nname: x\n---\nIntro.\n## A\na\n## B\nb\n"
+        self.assertEqual(without(prompt, frozenset()), "Intro.\n## A\na\n## B\nb\n")
+        self.assertEqual(without(prompt, frozenset({"A"})), "Intro.\n## B\nb\n")
+        self.assertEqual(without(prompt, frozenset({""})), "## A\na\n## B\nb\n")
+
+    def test_without_refuses_an_unknown_section(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no such"):
+            without("## A\n", frozenset({"Z"}))
+
+    def test_dropping_nothing_keeps_every_real_prompt_whole(self) -> None:
+        for path in EXPERTS.glob("*/*.md"):
+            text = path.read_text()
+            self.assertEqual(without(text, frozenset()), body(text), str(path))
 
 
 if __name__ == "__main__":

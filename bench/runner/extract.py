@@ -1,0 +1,57 @@
+"""Split a promptfoo results file into one report per run, ready for grading."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass(frozen=True)
+class RunOutput:
+    case: str
+    variant: str
+    prompt_sha: str
+    run: int
+    report: str
+    recall_by_key: dict[str, float]  # the rubric grader's scores, not a graded run
+    latency_ms: int
+    cost_usd: float | None
+    tokens: int | None
+
+
+def run_outputs(results: dict[str, Any]) -> list[RunOutput]:
+    """One RunOutput per result, numbered per case in the order promptfoo wrote them."""
+    counts: dict[str, int] = {}
+    outputs = []
+    for r in results["results"]["results"]:
+        v = r["vars"]
+        counts[v["case"]] = counts.get(v["case"], 0) + 1
+        outputs.append(RunOutput(
+            case=v["case"],
+            variant=r["provider"].get("label") or r["provider"]["id"],
+            prompt_sha=v["prompt_sha"],
+            run=counts[v["case"]],
+            report=str(r["response"].get("output") or ""),
+            recall_by_key=dict(r.get("namedScores") or {}),
+            latency_ms=int(r.get("latencyMs") or 0),
+            cost_usd=r.get("cost"),
+            tokens=(r.get("tokenUsage") or {}).get("total"),
+        ))
+    return outputs
+
+
+def report_md(o: RunOutput) -> str:
+    """The reviewer's report with a header naming the run and its cost."""
+    keys = ", ".join(f"{k} {v:g}" for k, v in sorted(o.recall_by_key.items())) or "none"
+    cost = f"${o.cost_usd:.2f}" if o.cost_usd is not None else "unknown"
+    return (f"<!-- {o.case} run {o.run}, variant {o.variant}, prompt {o.prompt_sha}; "
+            f"{o.latency_ms / 1000:.0f} s, {o.tokens or 'unknown'} tokens, {cost}; "
+            f"rubric recall: {keys} -->\n\n{o.report}\n")
+
+
+def run_skeleton(o: RunOutput) -> str:
+    """A graded-run file for the grader to complete with one [[finding]] per finding."""
+    return (f'# Grade {o.case.split("/")[1]}-{o.run}-report.md into [[finding]] tables; '
+            "see bench/README.md.\n"
+            f'case = "{o.case}"\nvariant = "{o.variant}"\nprompt_sha = "{o.prompt_sha}"\n'
+            f"run = {o.run}\n")
