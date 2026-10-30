@@ -1,0 +1,44 @@
+# Dottius's review of the head, and the commit that fixed each finding.
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1246#pullrequestreview-5706594467"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Cooked echo bypasses output backpressure"
+files = ["crates/libs/ui/rusty_conhost/src/console/read.rs"]
+fix = "8ec54b85a08dc6e0a57e2bafde91952c839dcf18"
+summary = """
+Cooked reads build an unbounded echo and push it without the write budget. 60 waiting
+cooked reads prefilled with 8,192 units, cleared by win32 Escape plus CR in one slice,
+queue 1,474,680 bytes against a documented 144 KiB maximum.
+"""
+caught_if = "Names echo (not only input admission) as able to exceed the output budget in one handle call."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "A trailing ESC at an input-slice boundary is decided as the Escape key"
+files = ["crates/libs/ui/rusty_conhost/src/input.rs"]
+fix = "8ec54b85a08dc6e0a57e2bafde91952c839dcf18"
+summary = """
+The engine cuts the byte queue into 16 KiB slices without key or write boundaries. A
+sequence split right after ESC becomes Escape plus literal bytes; in cooked input that
+can clear the line.
+"""
+caught_if = "Names the slice or read boundary right after ESC turning a sequence into Escape plus text."
+
+[[finding]]
+id = "K3"
+severity = "P2"
+title = "UTF-16 surrogate pairs are converted one unit at a time"
+files = [
+  "crates/libs/ui/rusty_conhost/src/cooked.rs",
+  "crates/libs/ui/rusty_conhost/src/console/read.rs",
+  "crates/libs/ui/rusty_conhost/src/input.rs",
+]
+fix = "8ec54b85a08dc6e0a57e2bafde91952c839dcf18"
+summary = """
+Cooked echo, raw ANSI reads, ANSI records and win32-input-mode to VT each convert one
+unit at a time, so U+1F600 becomes two U+FFFD even when both halves arrive together.
+"""
+caught_if = "Names the per-unit conversion in at least two of the three paths (echo, ANSI reads, vt_for); one path is partial."

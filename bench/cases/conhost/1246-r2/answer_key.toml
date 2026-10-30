@@ -1,0 +1,32 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1246#issuecomment-6511941426"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "All full read replies are built before any is completed"
+files = [
+  "crates/libs/ui/rusty_conhost/src/console/read.rs",
+  "crates/libs/ui/rusty_conhost/src/runtime.rs",
+]
+fix = "615e082460958ae36fbe19aaf705bc6898e70f5c"
+summary = """
+serve_reads appends every reply to one effects vector, freed only when Console::handle
+returns. 64 raw ReadConsoleW calls declaring 1 MiB each, fed one 10,260-byte slice of
+repeat-65535 win32 records, hold about 64 MiB at once against design §7.4's one 1 MiB reply.
+"""
+caught_if = "Names reply buffers accumulating across reads within one handle call beyond the §7.4 reply budget."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "Write boundaries are lost when completed writes coalesce"
+files = [
+  "crates/libs/ui/rusty_conhost/src/runtime.rs",
+  "crates/libs/ui/rusty_conhost/src/input.rs",
+]
+fix = "615e082460958ae36fbe19aaf705bc6898e70f5c"
+summary = """
+take_input's end flag is true only when the lane empties. write(ESC) then write(x), both
+done before a drain, decode as Alt+x; drained between, as Escape then x.
+"""
+caught_if = "Names two completed writes coalescing so a lone-ESC write is decoded differently by scheduling."

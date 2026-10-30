@@ -1,0 +1,8 @@
+expert = "conhost"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1246
+title = "rusty_conhost host PR 3: console input (#1222)"
+round = 1
+base = "66f4bc38c8181fd669c58f8e34df385a6afa895e"
+head = "197fae02607fa8c4428614aef7a4e7ac1b5bca7f"
+# Blind: the reviewer gets a worktree at head and the prompt, nothing later.

@@ -1,0 +1,27 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1251#issuecomment-6517662295"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "An idle resumed client's takeover token is never confirmed"
+files = ["crates/apps/rusty_mux/crates/server/src/state.rs"]
+fix = "70559a8578efe21396761f1d38c5f7c2ef899ff2"
+summary = """
+state.rs:158-162 keeps only the old confirmed token. A confirmed; takeover issues B; the
+idle client sends nothing; the next takeover presents B and gets C, whose Welcome is
+lost; the retry with B is refused because the stored tokens are C and A.
+"""
+caught_if = "Names the presented-but-unconfirmed token and a lost Welcome leaving the retry refused."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "The TUI keeps a hidden block's lease through the orphan grace"
+files = ["crates/apps/rusty_mux/crates/tui/src/main.rs"]
+fix = "70559a8578efe21396761f1d38c5f7c2ef899ff2"
+summary = """
+sync() drops panes that leave the visible set with hang_up alone, so the server keeps
+the client and its lease for the 30 s grace. After another client zooms away and back,
+the block's fresh client conflicts with its own orphan's lease.
+"""
+caught_if = "Names a pane hidden by layout or zoom keeping its lease through the grace."

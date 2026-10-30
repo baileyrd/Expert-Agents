@@ -1,0 +1,8 @@
+expert = "conhost"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1246
+title = "rusty_conhost host PR 3: console input (#1222)"
+round = 4
+base = "66f4bc38c8181fd669c58f8e34df385a6afa895e"
+head = "2dfc3a6cd2136d98065b031cf0f65601568dcbd7"
+prior = "1246-r3"

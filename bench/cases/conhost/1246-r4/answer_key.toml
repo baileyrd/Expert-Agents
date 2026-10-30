@@ -1,0 +1,14 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1246#issuecomment-6512675431"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "Driver admission is not rearmed when input frees capacity"
+files = ["crates/libs/ui/rusty_conhost/src/runtime.rs"]
+fix = "b5b1dda46240683f4821084cd2daa47fb2c4a547"
+summary = """
+submit_read comes from the pre-event view. At MAX_WAITING with no READ_IO in flight, a
+slice that completes the reads reopens admission, but must_poll is false and the engine
+blocks without arming READ_IO, so later client requests cannot wake it.
+"""
+caught_if = "Names admission reopening during the turn without READ_IO being armed before the wait."

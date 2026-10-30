@@ -1,0 +1,9 @@
+expert = "conhost"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1246
+title = "rusty_conhost host PR 3: console input (#1222)"
+round = 2
+base = "66f4bc38c8181fd669c58f8e34df385a6afa895e"
+head = "8ec54b85a08dc6e0a57e2bafde91952c839dcf18"
+# A re-review: the reviewer gets round 1's key findings as its prior findings.
+prior = "1246-r1"

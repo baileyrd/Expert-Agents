@@ -1,0 +1,7 @@
+expert = "mux"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1251
+title = "rusty_mux: keep a reconnecting client through a lost handshake"
+round = 1
+base = "d05170b8cc082cffaf6c348411e82bea84b9632d"
+head = "55d4bbf92e2d5f8f1b12aa0ffeddf57775fe0375"
