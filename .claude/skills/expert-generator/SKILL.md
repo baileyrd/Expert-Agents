@@ -94,7 +94,7 @@ python3 -m unittest
 
 `check` refuses leftover TODOs, sections that differ from `expert.toml`, a Codex
 prompt without its placeholders, and any held-out PR number or commit in either prompt
-(`--target` checks every commit of a held-out PR, not only its endpoints).
+(`--target` is required once the expert has cases, so every commit of a held-out PR is checked).
 
 ## 5. Bench
 

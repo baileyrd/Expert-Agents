@@ -78,14 +78,15 @@ def check(args: argparse.Namespace) -> int:
     expert = checks.Expert(dir_name=expert_dir.name, manifest=manifest,
                            subagent=by_kind.get("claude-subagent", ""), codex=by_kind.get("codex", ""))
     cases = _cases(args.cases) if args.cases else _cases_if_any(CASES / expert_dir.name)
+    if cases and not args.target:
+        raise ValueError("--target <clone> is required when the expert has cases: without it "
+                         "commits inside a held-out PR go unchecked")
     held = mining.held_out(args.target, cases) if args.target else frozenset()
     found = checks.problems(expert, cases, held)
     for line in found:
         print(f"problem: {line}")
     for line in checks.notes(cases):
         print(f"note: {line}")
-    if cases and not args.target:
-        print("note: only case endpoints checked for leaks; --target checks every held-out commit")
     print(f"{len(found)} problem(s), {len(cases)} case(s)")
     return 1 if found else 0
 
@@ -130,7 +131,7 @@ def _parser() -> argparse.ArgumentParser:
     c.add_argument("expert", type=Path, help="experts/<name>, or a variant directory")
     c.add_argument("--cases", type=Path, help="default bench/cases/<dir name>")
     c.add_argument("--target", type=Path,
-                   help="a local clone of the target: check every held-out commit, not only endpoints")
+                   help="a local clone of the target; required when there are cases")
     return p
 
 

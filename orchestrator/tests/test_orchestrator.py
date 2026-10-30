@@ -173,6 +173,12 @@ class CliTest(unittest.TestCase):
                 self.assertEqual(main(argv), 1)
             self.assertIn("no cases directory", err.getvalue())
 
+    def test_check_with_cases_requires_a_target(self) -> None:
+        from orchestrator.__main__ import main
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(main(["check", str(EXAMPLES / "conhost")]), 1)
+        self.assertIn("--target <clone> is required", err.getvalue())
+
 
 class ExampleTest(unittest.TestCase):
     def test_every_worked_example_is_ready_to_bench_on_its_cases(self) -> None:
