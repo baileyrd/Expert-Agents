@@ -14,8 +14,10 @@ from typing import Any
 from bench.scorer.model import Case, KeyFinding
 
 PROVIDER = "anthropic:claude-agent-sdk"
-LOCAL_TOOLS = ("Read", "Grep", "Glob", "Bash")
-NETWORK_TOOLS = ("WebFetch", "WebSearch")
+TOOLS = ("Read", "Grep", "Glob", "Bash")
+# Always off: the sandbox's domain allowlist covers Bash only, not these, and any web
+# access reaches the live review on github.com.
+WEB_TOOLS = ("WebFetch", "WebSearch")
 TASK = (
     "Review PR {{pr}} of {{repo}} against base {{base}} at head {{head}}. "
     # No "/" here: promptfoo reads a prompt that looks like a path as a prompt file.
@@ -37,9 +39,10 @@ Wording does not matter; the defect does."""
 class Boundary:
     """What the reviewer may touch.
 
-    `hidden` are paths it must not read (this repo, with every answer key, and the target
-    clone, with the fix commits). `domains` is its network allowlist; empty means no network
-    and no web tools, since any github.com access reaches the live review.
+    `hidden` are paths it must not read: this repo, with every answer key; the target clone,
+    with the fix commits; and the work directory's grade dir, where results and rubrics go.
+    `domains` is Bash's network allowlist inside the sandbox; empty means no network. The
+    web tools stay off whatever it holds.
     """
 
     checkout: Path
@@ -51,11 +54,10 @@ class Boundary:
 def review(case: Case, prior: Case | None, system_prompt: str, variant: str, prompt_sha: str,
            boundary: Boundary, model: str | None) -> dict[str, Any]:
     """The reviewer's config: the case's task and prompt in a sandbox, with no answer key."""
-    tools = LOCAL_TOOLS + (NETWORK_TOOLS if boundary.domains else ())
     config: dict[str, Any] = {
         "working_dir": str(boundary.checkout),
         "custom_system_prompt": system_prompt,
-        "custom_allowed_tools": list(tools),
+        "custom_allowed_tools": list(TOOLS),
         "disallowed_tools": _disallowed(boundary),
         "sandbox": _sandbox(boundary),
         "persist_session": False,
@@ -86,10 +88,8 @@ def rubric(case: Case, reports: list[tuple[str, str]], grader: str) -> dict[str,
 
 
 def _disallowed(boundary: Boundary) -> list[str]:
-    rules = ["Edit", "Write", "NotebookEdit"]
+    rules = ["Edit", "Write", "NotebookEdit", *WEB_TOOLS]
     rules += [f"Read(/{p}/**)" for p in boundary.hidden]  # "//abs" is an absolute path rule
-    if not boundary.domains:
-        rules += list(NETWORK_TOOLS)
     return rules
 
 

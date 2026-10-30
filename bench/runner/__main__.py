@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 EXPERTS = ROOT / "experts"
 CASES = ROOT / "bench" / "cases"
 GRADER = "anthropic:messages:claude-sonnet-5-5"
+GRADE = "grade"  # in a work directory: results and rubrics, denied to the reviewer
 EVAL = "npx --prefix bench/runner promptfoo eval --no-cache"
 
 
@@ -47,14 +48,16 @@ def prepare(args: argparse.Namespace) -> int:
     out, target = args.out.resolve(), args.target.resolve()
     _outside(out, (ROOT, target))
     name = case.id.replace("/", "-")
+    grade = out / GRADE
     boundary = Boundary(checkout=out / "review" / name, scratch=out / "scratch",
-                        hidden=(ROOT, target), domains=tuple(args.allow_domain))
+                        hidden=(ROOT, target, grade), domains=tuple(args.allow_domain))
     blind_checkout(case, target, boundary.checkout)
     boundary.scratch.mkdir(parents=True, exist_ok=True)
+    grade.mkdir(exist_ok=True)
     config = review(case, prior, prompt, args.variant, _prompt_sha(), boundary, args.model)
     path = out / f"{name}.review.yaml"
     path.write_text(json.dumps(config, indent=2) + "\n")  # JSON is valid YAML
-    print(f"{EVAL} -c {path} --repeat {args.repeat} -o {out / 'results.json'}")
+    print(f"{EVAL} -c {path} --repeat {args.repeat} -o {grade / 'results.json'}")
     return 0
 
 
@@ -66,7 +69,9 @@ def extract(args: argparse.Namespace) -> int:
     skeleton, so it is never scored as a review with no findings; it makes the exit
     status 1. The rubric config is written beside the results, for the successful runs.
     """
-    results: Path = args.results
+    results: Path = args.results.resolve()
+    _require_grade_dir(results)
+    _require_hidden(args.out.resolve(), (ROOT, results.parent))
     outputs = run_outputs(json.loads(results.read_text()))
     _refuse_collisions(args.out, outputs)
     args.out.mkdir(parents=True, exist_ok=True)
@@ -87,6 +92,25 @@ def _write_rubrics(where: Path, outputs: list[RunOutput], grader: str) -> None:
         path = where / f"{case_id.replace('/', '-')}.rubric.yaml"
         path.write_text(json.dumps(rubric(load_case(CASES / case_id), reports, grader), indent=2))
         print(f"{EVAL} -c {path} -o {where / (path.stem + '.results.json')}")
+
+
+def _require_grade_dir(results: Path) -> None:
+    """Results, and the rubrics written beside them, stay in the grade dir `prepare` made.
+
+    Every review config `prepare` writes denies that dir to the reviewer, so a later run of
+    the review cannot read the rubrics.
+    """
+    work = results.parent.parent
+    if results.parent.name != GRADE or not (work / "review").is_dir():
+        raise ValueError(f"{results} is not in a prepared work directory's {GRADE}/; "
+                         "use the -o path prepare printed")
+
+
+def _require_hidden(out: Path, hidden: tuple[Path, ...]) -> None:
+    """Graded runs name key findings, so they go only where every review is denied."""
+    if not any(out == h or h in out.parents for h in hidden):
+        raise ValueError(f"--out {out} is outside this repo and the grade dir; graded runs "
+                         "there would be readable by a later review")
 
 
 def _refuse_collisions(out: Path, outputs: list[RunOutput]) -> None:
@@ -157,11 +181,11 @@ def _parser() -> argparse.ArgumentParser:
     prep.add_argument("--repeat", type=int, default=3, help="runs per case")
     prep.add_argument("--model", help="reviewer model; default is the SDK's")
     prep.add_argument("--allow-domain", action="append", default=[], metavar="DOMAIN",
-                      help="let the reviewer reach DOMAIN (repeatable); github.com exposes the "
-                           "live review, so a run using it is not blind")
+                      help="let sandboxed Bash reach DOMAIN (repeatable); the web tools stay "
+                           "off. github.com exposes the live review, so a run using it is not blind")
     ext = sub.add_parser("extract", help="per-run reports, skeletons and the rubric config")
     ext.set_defaults(command=extract)
-    ext.add_argument("results", type=Path, help="promptfoo results.json from the review")
+    ext.add_argument("results", type=Path, help="<work>/grade/results.json from the review")
     ext.add_argument("--out", type=Path, required=True, help="reports/<expert>/<date>-<variant>/")
     ext.add_argument("--grader", default=GRADER, help="promptfoo provider grading recall")
     return p

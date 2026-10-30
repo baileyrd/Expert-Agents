@@ -71,11 +71,13 @@ class ReviewConfigTest(unittest.TestCase):
     def test_network_is_off_unless_domains_are_allowed(self) -> None:
         off = self.config()["providers"][0]["config"]
         self.assertEqual(off["sandbox"]["network"]["allowedDomains"], [])
+
+    def test_a_narrow_allowed_domain_never_enables_the_web_tools(self) -> None:
         on = self.config(boundary=Boundary(BOUNDARY.checkout, BOUNDARY.scratch, BOUNDARY.hidden,
                                            ("crates.io",)))["providers"][0]["config"]
-        self.assertIn("WebFetch", on["custom_allowed_tools"])
-        self.assertNotIn("WebFetch", on["disallowed_tools"])
         self.assertEqual(on["sandbox"]["network"]["allowedDomains"], ["crates.io"])
+        self.assertFalse({"WebFetch", "WebSearch"} & set(on["custom_allowed_tools"]))
+        self.assertTrue({"WebFetch", "WebSearch"} <= set(on["disallowed_tools"]))
 
     def test_no_prompt_text_looks_like_a_file_path(self) -> None:
         for prompt in (self.config()["prompts"][0]["raw"], self.config(prior=case())["prompts"][0]["raw"]):
@@ -131,8 +133,8 @@ class ExtractTest(unittest.TestCase):
     def test_extract_writes_good_runs_and_exits_1_on_a_failed_one(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             status, _ = extract_into(Path(tmp), [ok_result(), failed_result()])
-            written = sorted(p.name for p in (Path(tmp) / "out").iterdir())
-            rubric_cfg = json.loads((Path(tmp) / "mux-1251-r1.rubric.yaml").read_text())
+            written = sorted(p.name for p in (Path(tmp) / "grade" / "out").iterdir())
+            rubric_cfg = json.loads((Path(tmp) / "grade" / "mux-1251-r1.rubric.yaml").read_text())
         self.assertEqual(status, 1)
         self.assertEqual(written, ["1251-r1-1-report.md", "1251-r1-1.toml", "1251-r1-2-report.md"])
         self.assertEqual([t["description"] for t in rubric_cfg["tests"]], ["1251-r1-1"])
@@ -140,11 +142,12 @@ class ExtractTest(unittest.TestCase):
     def test_extract_refuses_to_overwrite_an_earlier_extract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(extract_into(Path(tmp), [ok_result()])[0], 0)
-            graded = Path(tmp) / "out" / "1251-r1-1.toml"
+            out = Path(tmp) / "grade" / "out"
+            graded = out / "1251-r1-1.toml"
             graded.write_text(graded.read_text() + "# graded by hand\n")
-            before = {p.name: p.read_text() for p in (Path(tmp) / "out").iterdir()}
+            before = {p.name: p.read_text() for p in out.iterdir()}
             status, err = extract_into(Path(tmp), [failed_result()])
-            after = {p.name: p.read_text() for p in (Path(tmp) / "out").iterdir()}
+            after = {p.name: p.read_text() for p in out.iterdir()}
         self.assertEqual(status, 1)
         self.assertIn("already has 1251-r1-1-report.md, 1251-r1-1.toml", err)
         self.assertEqual(before, after)
@@ -165,19 +168,73 @@ def failed_result() -> dict:
             "error": "boom"}
 
 
-def extract_into(tmp: Path, results: list[dict]) -> tuple[int, str]:
-    """Run `extract` on these results into tmp/out; returns the status and stderr."""
+def extract_into(tmp: Path, results: list[dict], out: Path | None = None) -> tuple[int, str]:
+    """Run `extract` on results in a prepared-looking tmp/grade into tmp/grade/out."""
+    (tmp / "review").mkdir(exist_ok=True)
+    (tmp / "grade").mkdir(exist_ok=True)
+    path = tmp / "grade" / "results.json"
+    path.write_text(json.dumps({"results": {"results": results}}))
+    return run_main(["extract", str(path), "--out", str(out or tmp / "grade" / "out")])
+
+
+def run_main(argv: list[str]) -> tuple[int, str]:
     from contextlib import redirect_stderr, redirect_stdout
     from bench.runner.__main__ import main
-    path = tmp / "results.json"
-    path.write_text(json.dumps({"results": {"results": results}}))
     err = io.StringIO()
     with redirect_stdout(io.StringIO()), redirect_stderr(err):
-        status = main(["extract", str(path), "--out", str(tmp / "out")])
+        status = main(argv)
     return status, err.getvalue()
 
 
 class PrepareTest(unittest.TestCase):
+    def test_review_then_extract_then_review_again_never_reaches_grading_files(self) -> None:
+        """The work directory's grade files sit under a path every review config denies."""
+        from bench.runner.__main__ import ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            src = tmp / "src"
+            git(None, "init", "-q", str(src))
+            base, head = commit(src, "base"), commit(src, "head")
+            case_dir = tmp / "cases" / "mux" / "9-r1"
+            case_dir.mkdir(parents=True)
+            (case_dir / "pr.toml").write_text(
+                f'expert = "mux"\nrepo = "o/r"\npr = 9\ntitle = "t"\nround = 1\n'
+                f'base = "{base}"\nhead = "{head}"\n')
+            (case_dir / "answer_key.toml").write_text((ROOT / "bench/cases/mux/1251-r1/answer_key.toml").read_text())
+            work = tmp / "work"
+            self.assertEqual(run_main(["prepare", str(case_dir), "--target", str(src),
+                                       "--out", str(work)])[0], 0)
+            config = json.loads((work / "mux-9-r1.review.yaml").read_text())
+            (work / "grade" / "results.json").write_text(json.dumps({"results": {"results": [
+                {**ok_result(), "vars": {"case": "mux/1251-r1", "prompt_sha": SHA}}]}}))
+            self.assertEqual(run_main(["extract", str(work / "grade" / "results.json"),
+                                       "--out", str(work / "grade" / "reports")])[0], 0)
+            grading = [p for p in (work / "grade").rglob("*") if p.is_file()]
+            self.assertTrue(any(p.name.endswith(".rubric.yaml") for p in grading))
+            # The same review config, run again now, denies every grading file to both
+            # Bash (sandbox) and the file tools.
+            cfg = config["providers"][0]["config"]
+            denied = [Path(p) for p in cfg["sandbox"]["filesystem"]["denyRead"]]
+            for f in grading:
+                self.assertTrue(any(d in f.parents for d in denied), str(f))
+                self.assertTrue(any(f"Read(/{d}/**)" in cfg["disallowed_tools"]
+                                    for d in denied if d in f.parents), str(f))
+            self.assertNotIn(work / "grade", Path(cfg["working_dir"]).parents)
+
+    def test_extract_refuses_results_outside_a_prepared_grade_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "results.json"
+            path.write_text(json.dumps({"results": {"results": [ok_result()]}}))
+            status, err = run_main(["extract", str(path), "--out", str(Path(tmp) / "out")])
+        self.assertEqual(status, 1)
+        self.assertIn("not in a prepared work directory", err)
+
+    def test_extract_refuses_graded_runs_where_a_review_could_read_them(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            status, err = extract_into(Path(tmp), [ok_result()], out=Path(tmp) / "elsewhere")
+        self.assertEqual(status, 1)
+        self.assertIn("readable by a later review", err)
+
     def test_a_work_directory_the_reviewer_may_not_read_is_refused(self) -> None:
         from contextlib import redirect_stderr
         from bench.runner.__main__ import ROOT, main
