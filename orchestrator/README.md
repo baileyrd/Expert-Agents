@@ -1,6 +1,19 @@
 # Orchestrator
 
-How a new expert is generated, then grounded and measured.
+How a new expert is generated, then grounded and measured. The
+[expert-generator skill](../.claude/skills/expert-generator/SKILL.md) runs the whole
+procedure in Claude Code; the commands below are its deterministic parts.
+
+```
+python3 -m orchestrator new <name> --target-repo OWNER/REPO --axes N   # skeleton
+python3 -m orchestrator mine --target <clone> --cases bench/cases/<name> -- <paths>
+python3 -m orchestrator codex experts/<name>    # codex.md from prompt.md
+python3 -m orchestrator check experts/<name>    # TODOs, sections, held-out leaks
+```
+
+[examples/conhost/](examples/conhost/) is a worked example: the conhost reviewer
+regenerated from its interview answer, grounded with conhost PR 1246 held out, so it
+can be benched against the hand-written prompt on the same cases.
 
 ## Interview
 

@@ -1,0 +1,70 @@
+# Source of truth for the conhost reviewer. Target repos receive copies (see sync/).
+name = "conhost"
+version = 1
+source = "orchestrator worked example: interview.md, grounded on rusty_mill main at ebb92e28 with conhost PR 1246 held out"
+
+[[prompt]]
+file = "prompt.md"
+kind = "claude-subagent"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = ".claude/agents/conhost-expert.md"
+
+[[prompt]]
+file = "codex.md"
+kind = "codex"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = "docs/agents/reviewers/conhost-expert-codex.md"
+
+# Sections by their "## " heading; "" is the text before the first heading.
+# A required section is never ablated: it carries authority, pinning or the
+# output contract the scorer depends on.
+
+[[section]]
+heading = ""
+role = "persona"
+required = false
+
+[[section]]
+heading = "Authority"
+role = "authority"
+required = true
+
+[[section]]
+heading = "Pin the review"
+role = "pinning"
+required = true
+
+[[section]]
+heading = "What to read"
+role = "reading"
+required = false
+
+[[section]]
+heading = "Three axes"
+role = "defect-classes"
+required = false
+
+[[section]]
+heading = "Evidence, strongest first"
+role = "oracles"
+required = false
+
+[[section]]
+heading = "Steps"
+role = "steps"
+required = false
+
+[[section]]
+heading = "Findings"
+role = "findings"
+required = false
+
+[[section]]
+heading = "Checks"
+role = "checks"
+required = false
+
+[[section]]
+heading = "Return"
+role = "return"
+required = true
