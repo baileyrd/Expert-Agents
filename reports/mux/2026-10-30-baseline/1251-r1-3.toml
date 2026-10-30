@@ -1,0 +1,40 @@
+# Grade 1251-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "mux/1251-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Retry backoff reaches the 30 s grace, so a late lost handshake still drops the client"
+triage = "real"
+reason = "source trace: main.rs:1260-1262 waits 30 s once tries>=5, a Welcome timeout is Missed::Retry (main.rs:211,806) after the server took over, discard() orphans it for ORPHAN_GRACE=30 s (state.rs:46); next Hello lands past the grace; on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A pane the TUI hides is hung up without Detach, so its lease is held 30 s"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Over --ssh the exit Detach races ssh being killed"
+triage = "real"
+reason = "source trace: main.rs:508-516 writes Detach and shuts the socket, then drop(app) -> Forward::drop SIGKILLs ssh (ssh.rs:165) with no wait for Done; same race as the select! probe, worse over ssh; on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Docs say a detached client leaves at once, but it is kept 30 s"
+triage = "real"
+reason = "mismatches exist: main.rs:505 vs state.rs:238-241 (detached token client is orphaned 30 s), main.rs:178-179 Missed::Broken, DECISIONS.md:37/39 not superseded, fragment limits; on main (main.rs:518, :189)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The TUI exit Detach has no test that goes red without it"
+triage = "real"
+reason = "no TUI test checks the lease after exit; takeover.rs:155 a_client_that_detached_before_leaving_holds_no_lease waits for Done, so it passes at base; tui/tests/lifecycle.rs has no lease check; on main"

@@ -1,0 +1,33 @@
+# Grade 1251-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "mux/1251-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A token the client holds stops working after a second takeover with a lost Welcome"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A pane leaving the layout is hung up without Detach, so its lease is held 30 s"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Docs and comments the PR makes false"
+triage = "real"
+reason = "mismatches exist: main.rs:505 vs state.rs:238-241 (detached token client is orphaned 30 s), main.rs:178-179 Missed::Broken, DECISIONS.md:37/39 not superseded, fragment limits; on main (main.rs:518, :189)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Changed behaviour with no test that goes red without it"
+triage = "real"
+reason = "no TUI test checks the lease after exit; takeover.rs:155 a_client_that_detached_before_leaving_holds_no_lease waits for Done, so it passes at base; tui/tests/lifecycle.rs has no lease check; on main"

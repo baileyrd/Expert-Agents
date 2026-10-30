@@ -1,0 +1,47 @@
+# Grade 1238-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1238-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Two boards on one rusty_tick hand out the same number"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P0"
+title = "A number is reused while its trashed or untagged card still exists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Numbering race with another writer fails card_add/import with 'card is already numbered'"
+triage = "fixed_since"
+reason = "real at head (board.rs:338, domain.rs:522-524); fixed on main by 22a35d8f0, Card::numbered returns the card unchanged (domain.rs:521-530)"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "Scoped credentials can enumerate out-of-scope project names via #n"
+triage = "real"
+reason = "api.rs:340-346 card_ref resolves #n over the unscoped store.list() (board.rs:297-302), then card_get returns OutOfScope(project) (api.rs:487, domain.rs:393) vs 'no card has that number' for gaps; same on main api.rs:348-355, 514-516"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "README still lists the old reserved tags and storage mapping"
+triage = "real"
+reason = "README.md:30-32 and :73 omit number: while domain.rs:203-209 reserves it; unchanged on main"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "No concurrency tests; tests/numbers.rs drives one board"
+triage = "fixed_since"
+reason = "true at head (tests/numbers.rs single-board only); main adds two-board and trash tests (tests/numbers.rs:128-199)"

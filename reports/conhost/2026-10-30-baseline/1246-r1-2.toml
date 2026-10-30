@@ -1,0 +1,61 @@
+# Grade 1246-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Cooked-read echo can exceed the 144 KiB output cap"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Read replies have no 1 MiB cap; repeat counts inflate them"
+triage = "fixed_since"
+reason = "executed at head: raw ReadConsoleW, 16 MiB buffer, 16 Rc=65535 records -> one 2,097,120 B reply (read.rs:357 capacity unclamped); main caps it, READ_REPLY_CAP read.rs:35 (615e0824)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "An Esc at the end of a 16 KiB input slice becomes the Escape key"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "Focus reports reach VT-input clients that never asked for them"
+triage = "real"
+reason = "executed at head: VT-input client reads ESC[I (read.rs:100-104 passes raw); conhost forwards only if the client set ?1004 (inputBuffer.cpp:585-600, terminalInput.cpp:420-427); §5.5 silent on focus; unchanged on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Surrogate pairs become two U+FFFD for VT-input clients (vt_for)"
+match = "K3"
+quality = "partial"  # one path (vt_for) only
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "A second cooked read overwrites the first read's leftover text"
+triage = "real"
+reason = "executed at head: keep_pending (read.rs:649-653) replaces the handle's rest; unchanged on main. This exact non-empty-rest trace matches conhost SavePendingInput, but the empty-rest wipe (readDataCooked.cpp:813 saves only when non-empty) does not"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Design doc disagrees with code on Ctrl+C and Ctrl+Break queuing"
+triage = "real"
+reason = "design.md:403/405 say nothing queued; read.rs:141-157 intercepts key-downs only so key-ups queue (test ctrl_c_goes_to_every_client_and_ends_cooked_reads); unchanged on main"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "Required tests are missing"
+triage = "real"
+reason = "design.md:634 cooked-echo stalled-reader test absent at head; design.md:574 Peek/Read input-event loop absent from tests/own_pty.rs; conhost_probe.rs has no input subcommands"

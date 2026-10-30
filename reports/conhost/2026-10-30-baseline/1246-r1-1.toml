@@ -1,0 +1,40 @@
+# Grade 1246-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Cooked-read echo (Esc over initial data) breaks the 144 KiB output cap"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A key split at the engine's 16 KiB input slice becomes Escape plus typed text"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "ANSI raw reads (and GetConsoleInputA records) turn non-BMP characters into U+FFFD"
+match = "K3"
+quality = "partial"  # one path (ANSI reads); says the cooked path is correct, which holds for the reply but not the echo
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Design §5.5 says Ctrl+C queues nothing; the code and test queue the key-up"
+triage = "real"
+reason = "design.md:403 'Nothing is queued' vs read.rs:146-150 (intercepts key-down only) and test ctrl_c_goes_to_every_client_and_ends_cooked_reads; unchanged on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Tests the design requires for PR 3 are missing"
+triage = "real"
+reason = "design.md:634 cooked-echo stalled-reader test absent (only console.rs:1736 write test); design.md:574 Peek/Read loop and hang_up-with-pending-ReadConsole absent from tests/own_pty.rs; conhost_probe.rs has no input subcommands"

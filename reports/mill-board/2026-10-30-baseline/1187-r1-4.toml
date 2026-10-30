@@ -1,0 +1,30 @@
+# Grade 1187-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1187-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A grant's authority comes from the non-unique actor name"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Constant-time doc comment sits on the wrong function"
+triage = "real"
+reason = "identities.rs:272-273 (head) put identify's constant-time doc on by_actor, a short-circuiting find; still at origin/main identities.rs:272-273"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "No test covers the new startup wiring (oauth() path, issuer host)"
+triage = "real"
+reason = "head: tests/web.rs start_oauth builds hosts by hand, no process test uses --issuer, main.rs has no tests; main added default_oauth_state test (1ebd8a89) but main.rs:349 allowed_hosts.extend(issuer_hosts) is still unexercised"
+
+# Optional improvements names K2 (IPv6 issuer host unbracketed vs host_ok) but calls it harmless: not scored.
+# "Failure classes checked" rules K3 out ("oauth.json ... defaults to that board's settings dir"), missing
+# the beside---identities fallback at main.rs:172-177.

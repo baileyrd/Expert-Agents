@@ -1,0 +1,42 @@
+# Grade 1187-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1187-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A grant acts as whichever credential is listed first for the actor name"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A shared-token grant acts as an agent named shared after a switch to --identities"
+triage = "real"
+reason = "web.rs:136 Subject(\"shared\") vs web.rs:144 actor subject, compared bare at web.rs:199-205; valid_actor (identities.rs:71-76) accepts shared; probe-executed in frozen1; still on main (web.rs:157,229). Needs explicit --oauth-state (main.rs:93,98 conflicts_with auth_token), so P2 not P1"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "An IPv6 issuer's host never passes the board's Host check"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "No test covers the issuer's Host being accepted"
+triage = "real"
+reason = "head: tests/web.rs start_oauth builds hosts by hand, no process test uses --issuer, main.rs has no tests; main added default_oauth_state test (1ebd8a89) but main.rs:349 allowed_hosts.extend(issuer_hosts) is still unexercised"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Doc comment attached to the wrong function"
+triage = "real"
+reason = "identities.rs:272-273 (head) put identify's constant-time doc on by_actor, a short-circuiting find; still at origin/main identities.rs:272-273"
+
+# Scope note says oauth.json "is per board": implicitly misses K3.
