@@ -16,8 +16,11 @@ this log tracks commits against `main`.
   the Skills API and `package_skill.py`; it is a skill_pack-only convention.
 - **Added:** a copyable step checklist; the reasons behind repo-grounded defect classes
   and held-out PRs; a fix-and-rerun loop on `check` before benching.
+- **Added:** regenerating an expert needs its interview answer: use `interview.md` or
+  ask, never infer one from the current prompt.
 - **Added:** step 8, a read-only wrap-up retro via `skill-retro`, grounded in this
-  skill's own steps. Applying findings stays a separate PR.
+  skill's own steps, with a fallback to a `## Retro` section when `skill-retro` (from
+  baileyrd/skill_pack) is not installed. Applying findings stays a separate PR.
 - **Added:** `evals/evals.json` with three prompts: a new expert (crdt), a variant
   (mux), and a casual ask (rusty_tick).
 

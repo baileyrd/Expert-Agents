@@ -17,7 +17,8 @@ metadata:
 compatibility: >-
   Run from an Expert-Agents checkout. Needs python3, git, a local clone of
   the target repo, and gh or the GitHub MCP tools. Benching also needs Node
-  and a signed-in Claude Code login.
+  and a signed-in Claude Code login. The wrap-up retro uses the skill-retro
+  skill from baileyrd/skill_pack when installed.
 ---
 
 # Expert generator
@@ -51,7 +52,10 @@ Copy this checklist and tick it off; each step says what "done" means.
 ## 1. Record the interview
 
 Ask for the name (kebab-case; the subagent becomes `<name>-expert`), the target repo and
-the clone path if the request does not give them. Write `interview.md`: the question,
+the clone path if the request does not give them. The answer itself is the one input
+you cannot reconstruct: to regenerate an expert, use its `interview.md` if it has one,
+otherwise ask for the answer. Never write one from the existing prompt, since axes
+inferred from the prompt only reproduce it. Write `interview.md`: the question,
 the answer verbatim, then a **Profile**:
 
 - **Scope**: the paths in the target that make up the domain.
@@ -186,4 +190,7 @@ once the defect classes were mined, did `mine` surface enough review fixes or di
 classes rest on one commit each, did `check` catch something the steps should have
 prevented, and did the bench handoff or grading need a command these steps lack. This
 runs unattended and only reports; apply what it finds in a separate, approved PR, never
-in the expert's PR.
+in the expert's PR. `skill-retro` lives in
+[baileyrd/skill_pack](https://github.com/baileyrd/skill_pack/tree/main/meta/skill-retro);
+if it is not installed, answer the same questions in a short `## Retro` section of the
+PR body or handoff instead.

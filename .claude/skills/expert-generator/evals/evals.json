@@ -10,7 +10,7 @@
     {
       "id": 2,
       "prompt": "Regenerate the mux expert from its interview and see if it beats the current prompt.",
-      "expected_output": "Treated as a variant: written under --out scratch, current prompt benched on any missing cases first, variant benched in a separate unpushed worktree, experts/mux replaced only if it wins without regressing a case; otherwise only the report lands.",
+      "expected_output": "Finds that experts/mux has no interview.md and asks for the interview answer instead of inferring one from the current prompt; records what it would do next as a variant (written under --out scratch, current prompt benched on missing cases first, variant benched in an unpushed worktree, experts/mux replaced only on a win without regressions).",
       "files": []
     },
     {
