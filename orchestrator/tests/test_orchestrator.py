@@ -1,5 +1,7 @@
 """The generator's skeleton, grounding and checks."""
 
+import contextlib
+import io
 import subprocess
 import tempfile
 import tomllib
@@ -93,7 +95,15 @@ class CheckTest(unittest.TestCase):
         e = filled()
         leaky = check.Expert(e.dir_name, e.manifest, e.subagent, e.codex + "\nSee ccccccc.\n")
         self.assertEqual(check.problems(leaky, [case()]),
-                         ["codex.md names held-out commit cccccccccc (x/1246-r1)"])
+                         ["codex.md names held-out commit cccccccccc"])
+
+    def test_any_held_out_commit_is_a_leak_not_only_endpoints(self) -> None:
+        e = filled()
+        mid = "d" * 40
+        leaky = check.Expert(e.dir_name, e.manifest, e.subagent + f"\nSee {mid}.\n", e.codex)
+        self.assertEqual(check.problems(leaky, [case()]), [])
+        self.assertEqual(check.problems(leaky, [case()], frozenset({mid})),
+                         ["prompt.md names held-out commit dddddddddd"])
 
     def test_a_longer_number_is_not_the_pr(self) -> None:
         e = filled()
@@ -152,6 +162,16 @@ class MineTest(unittest.TestCase):
             pr = Case("x/1-r1", "x", "o/r", 1, 1, shas[0], shas[1], "t", None, "", (key,))
             held = mine.held_out(repo, [pr])
         self.assertEqual(held, frozenset(shas[1:3]))
+
+
+class CliTest(unittest.TestCase):
+    def test_a_named_cases_dir_that_does_not_exist_is_refused(self) -> None:
+        from orchestrator.__main__ import main
+        for argv in (["check", str(EXAMPLES / "conhost"), "--cases", "bench/cases/nope"],
+                     ["mine", "--target", str(ROOT), "--cases", "bench/cases/nope", "--", "x"]):
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                self.assertEqual(main(argv), 1)
+            self.assertIn("no cases directory", err.getvalue())
 
 
 class ExampleTest(unittest.TestCase):

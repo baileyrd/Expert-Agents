@@ -88,12 +88,13 @@ KB. Then:
 
 ```
 python3 -m orchestrator codex <expert dir>      # codex.md from prompt.md
-python3 -m orchestrator check <expert dir>      # must report 0 problems
+python3 -m orchestrator check <expert dir> --target <clone>   # must report 0 problems
 python3 -m unittest
 ```
 
 `check` refuses leftover TODOs, sections that differ from `expert.toml`, a Codex
-prompt without its placeholders, and any held-out PR number or SHA in either prompt.
+prompt without its placeholders, and any held-out PR number or commit in either prompt
+(`--target` checks every commit of a held-out PR, not only its endpoints).
 
 ## 5. Bench
 

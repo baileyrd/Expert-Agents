@@ -6,7 +6,7 @@
       List the commits that answered reviews under <path>, held-out cases removed.
   python -m orchestrator codex <expert-dir>
       Rewrite codex.md from the finished prompt.md.
-  python -m orchestrator check <expert-dir> [--cases DIR]
+  python -m orchestrator check <expert-dir> [--cases DIR] [--target <clone>]
       Refuse an expert with TODOs, mismatched sections or a leaked answer-key PR.
 """
 
@@ -65,7 +65,7 @@ def mine(args: argparse.Namespace) -> int:
     paths = tuple(args.paths)
     if not paths:
         raise ValueError("name at least one path to mine after --")
-    cases = _cases(args.cases)
+    cases = _cases(args.cases) if args.cases else []
     held = mining.held_out(args.target, cases)
     print(mining.grounding_md(mining.review_fixes(args.target, paths), held, paths), end="")
     return 0
@@ -77,20 +77,29 @@ def check(args: argparse.Namespace) -> int:
     by_kind = {p["kind"]: (expert_dir / p["file"]).read_text() for p in manifest.get("prompt", [])}
     expert = checks.Expert(dir_name=expert_dir.name, manifest=manifest,
                            subagent=by_kind.get("claude-subagent", ""), codex=by_kind.get("codex", ""))
-    cases = _cases(args.cases or CASES / expert_dir.name)
-    found = checks.problems(expert, cases)
+    cases = _cases(args.cases) if args.cases else _cases_if_any(CASES / expert_dir.name)
+    held = mining.held_out(args.target, cases) if args.target else frozenset()
+    found = checks.problems(expert, cases, held)
     for line in found:
         print(f"problem: {line}")
     for line in checks.notes(cases):
         print(f"note: {line}")
+    if cases and not args.target:
+        print("note: only case endpoints checked for leaks; --target checks every held-out commit")
     print(f"{len(found)} problem(s), {len(cases)} case(s)")
     return 1 if found else 0
 
 
-def _cases(cases_dir: Path | None) -> list[Case]:
-    if cases_dir is None or not cases_dir.is_dir():
-        return []
+def _cases(cases_dir: Path) -> list[Case]:
+    """The cases in a directory someone named: a missing one would silently hold out nothing."""
+    if not cases_dir.is_dir():
+        raise ValueError(f"no cases directory {cases_dir}")
     return [load_case(d) for d in sorted(cases_dir.iterdir()) if (d / "pr.toml").is_file()]
+
+
+def _cases_if_any(cases_dir: Path) -> list[Case]:
+    """The default bench/cases/<name>: a new expert may have none yet."""
+    return _cases(cases_dir) if cases_dir.is_dir() else []
 
 
 def _toml(path: Path) -> dict:
@@ -120,6 +129,8 @@ def _parser() -> argparse.ArgumentParser:
     c.set_defaults(command=check)
     c.add_argument("expert", type=Path, help="experts/<name>, or a variant directory")
     c.add_argument("--cases", type=Path, help="default bench/cases/<dir name>")
+    c.add_argument("--target", type=Path,
+                   help="a local clone of the target: check every held-out commit, not only endpoints")
     return p
 
 

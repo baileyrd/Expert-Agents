@@ -29,10 +29,14 @@ class Expert:
     codex: str
 
 
-def problems(expert: Expert, cases: list[Case]) -> list[str]:
-    """Everything that keeps this expert off the bench, most fundamental first."""
+def problems(expert: Expert, cases: list[Case], held: frozenset[str] = frozenset()) -> list[str]:
+    """Everything that keeps this expert off the bench, most fundamental first.
+
+    `held` is every commit the cases rest on (`mine.held_out`); without it only each case's
+    base, head and fixes are checked.
+    """
     return [*_manifest(expert), *_frontmatter(expert), *_sections(expert), *_codex(expert),
-            *_todos(expert), *_leaks(expert, cases)]
+            *_todos(expert), *_leaks(expert, cases, held)]
 
 
 def notes(cases: list[Case]) -> list[str]:
@@ -82,15 +86,20 @@ def _todos(e: Expert) -> list[str]:
     return [f"{label} still has {TODO} markers" for label, text in texts if TODO in text]
 
 
-def _leaks(e: Expert, cases: list[Case]) -> list[str]:
-    """A held-out PR's number or any of its SHAs, in either prompt."""
+def _leaks(e: Expert, cases: list[Case], held: frozenset[str]) -> list[str]:
+    """A held-out PR's number or any of its commits, in either prompt."""
     out = []
+    shas = set(held)
     for c in cases:
         pr = re.compile(rf"(#|\bPR\s*|/pull/){c.pr}\b", re.I)
-        shas = {c.base, c.head, *(k.fix for k in c.key)}
-        for label, text in (("prompt.md", e.subagent), ("codex.md", e.codex)):
-            if pr.search(text):
-                out.append(f"{label} names held-out PR {c.pr} ({c.id})")
-            out += [f"{label} names held-out commit {s[:10]} ({c.id})"
-                    for s in sorted(shas) if s[:_SHA_PREFIX] in text]
+        shas |= {c.base, c.head, *(k.fix for k in c.key)}
+        out += [f"{label} names held-out PR {c.pr} ({c.id})"
+                for label, text in _prompts(e) if pr.search(text)]
+    for label, text in _prompts(e):
+        out += [f"{label} names held-out commit {s[:10]}"
+                for s in sorted(shas) if s[:_SHA_PREFIX] in text]
     return sorted(set(out))
+
+
+def _prompts(e: Expert) -> tuple[tuple[str, str], ...]:
+    return (("prompt.md", e.subagent), ("codex.md", e.codex))

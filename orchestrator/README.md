@@ -8,7 +8,7 @@ procedure in Claude Code; the commands below are its deterministic parts.
 python3 -m orchestrator new <name> --target-repo OWNER/REPO --axes N   # skeleton
 python3 -m orchestrator mine --target <clone> --cases bench/cases/<name> -- <paths>
 python3 -m orchestrator codex experts/<name>    # codex.md from prompt.md
-python3 -m orchestrator check experts/<name>    # TODOs, sections, held-out leaks
+python3 -m orchestrator check experts/<name> --target <clone>   # TODOs, sections, leaks
 ```
 
 [examples/conhost/](examples/conhost/) is a worked example: the conhost reviewer
