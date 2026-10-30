@@ -1,0 +1,163 @@
+diff -ru '--exclude=target' -N a/crates/libs/ui/rusty_conhost/src/console/read.rs b/crates/libs/ui/rusty_conhost/src/console/read.rs
+--- a/crates/libs/ui/rusty_conhost/src/console/read.rs	2026-10-29 23:05:45.000000000 +0000
++++ b/crates/libs/ui/rusty_conhost/src/console/read.rs	2026-10-30 14:12:44.693751569 +0000
+@@ -805,6 +805,159 @@
+         r.status == i32::MIN
+     }
+ 
++
++    #[test]
++    fn probe_echo_amplification() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        let r = read_w(&mut h, input, 64);
++        assert!(held(&r));
++        let mut bytes = Vec::new();
++        while bytes.len() + 36 <= crate::sched::INPUT_SLICE {
++            bytes.extend_from_slice(b"\x1b[65;0;97;1;0;65535_");
++            bytes.extend_from_slice(b"\x1b[27;0;27;1;0;1_");
++        }
++        let before = h.vt.len();
++        h.ev(Event::Input(&bytes));
++        eprintln!("PROBE echo: input {} B -> echo {} B", bytes.len(), h.vt.len() - before);
++        // plain bytes, no repeat count
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        read_w(&mut h, input, 64);
++        let mut bytes = Vec::new();
++        while bytes.len() + 8192 + 16 <= crate::sched::INPUT_SLICE {
++            bytes.extend(std::iter::repeat(b'a').take(8192));
++            bytes.extend_from_slice(b"\x1b[27;0;27;1;0;1_");
++        }
++        h.ev(Event::Input(&bytes));
++        eprintln!("PROBE echo plain: input {} B -> echo {} B", bytes.len(), h.vt.len());
++    }
++
++    #[test]
++    fn probe_paste_drop() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        let r = read_w(&mut h, input, 20000);
++        assert!(held(&r));
++        let mut bytes = vec![b'a'; 5000];
++        bytes.push(b'\r');
++        let fx = h.ev(Event::Input(&bytes));
++        let done = completes(&fx);
++        eprintln!("PROBE paste: {} chars + CR -> read returned {} units", 5000, wide(done[0]).encode_utf16().count());
++    }
++
++    #[test]
++    fn probe_esc_split() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        let r = read_w(&mut h, input, 512);
++        assert!(held(&r));
++        h.ev(Event::Input(b"\x1b[65;30;97;1;0;1_\x1b[65;30;97;0;0;1_"));
++        h.ev(Event::Input(b"\x1b"));
++        let fx = h.ev(Event::Input(b"[66;48;98;1;0;1_\x1b[13;28;13;1;0;1_"));
++        let done = completes(&fx);
++        eprintln!("PROBE esc split: line = {:?}", wide(done[0]));
++    }
++
++    #[test]
++    fn probe_focus_vt() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.set_mode(input, RAW | mode::VIRTUAL_TERMINAL_INPUT);
++        h.ev(Event::Input(b"\x1b[I"));
++        let r = read_w(&mut h, input, 128);
++        eprintln!("PROBE focus vt: {:?}", wide(&r));
++    }
++
++    #[test]
++    fn probe_control_echo() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        read_w(&mut h, input, 512);
++        h.ev(Event::Input(b"a\x0c\x0e\x07"));
++        h.ev(Event::Input(b"\x1b[0;0;27;1;0;1_]0;pwn\x07"));
++        eprintln!("PROBE control echo: {:?}", String::from_utf8_lossy(&h.vt));
++    }
++
++    #[test]
++    fn probe_two_cooked_reads_one_handle() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        let r1 = read_w(&mut h, input, 4);
++        let r2 = read_w(&mut h, input, 512);
++        let fx = h.ev(Event::Input(b"abcdef\r"));
++        for d in completes(&fx) { eprintln!("PROBE two reads: {:?} -> {:?}", d.id == r1.id, wide(d)); }
++        let fx = h.ev(Event::Input(b"xy\r"));
++        for d in completes(&fx) { eprintln!("PROBE two reads 2: r2? {:?} -> {:?}", d.id == r2.id, wide(d)); }
++        let r3 = read_w(&mut h, input, 512);
++        eprintln!("PROBE two reads 3: held {} {:?}", held(&r3), wide(&r3));
++    }
++
++    #[test]
++    fn probe_cpr_row1() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.ev(Event::Input(b"\x1b[1;5R"));
++        let r = get_input(&mut h, input, READ_NOWAIT, true, 8);
++        eprintln!("PROBE cpr: n={:?} {:02x?}", msg::u32_at(&r.write_back, 0), &r.output.get(..20));
++    }
++
++    #[test]
++    fn probe_surrogate_vt() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.set_mode(input, RAW | mode::VIRTUAL_TERMINAL_INPUT);
++        h.ev(Event::Input(b"\x1b[0;0;55357;1;0;1_\x1b[0;0;56832;1;0;1_"));
++        let r = read_w(&mut h, input, 128);
++        eprintln!("PROBE surrogate vt: {:?}", wide(&r));
++    }
++
++    #[test]
++    fn probe_wide_backspace() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        read_w(&mut h, input, 512);
++        h.ev(Event::Input("中e\u{301}".as_bytes()));
++        h.ev(Event::Input(b"\x7f\x7f"));
++        eprintln!("PROBE wide bs: {:?}", String::from_utf8_lossy(&h.vt));
++    }
++
++    #[test]
++    fn probe_read_reply_cap() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.set_mode(input, RAW);
++        let mut bytes = Vec::new();
++        for _ in 0..64 { bytes.extend_from_slice(b"\x1b[65;0;97;1;0;65535_"); }
++        h.ev(Event::Input(&bytes));
++        let t = std::time::Instant::now();
++        let r = read_w(&mut h, input, 16 * 1024 * 1024);
++        eprintln!("PROBE reply cap: input {} B, reply {} B in {:?}", bytes.len(), r.output.len(), t.elapsed());
++    }
++
++    #[test]
++    fn probe_turn_time() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        read_w(&mut h, input, 64);
++        let mut bytes = Vec::new();
++        while bytes.len() + 20 <= crate::sched::INPUT_SLICE {
++            bytes.extend_from_slice(b"\x1b[65;0;97;1;0;65535_");
++        }
++        let t = std::time::Instant::now();
++        h.ev(Event::Input(&bytes));
++        eprintln!("PROBE turn: {} records, one Input event took {:?}, echo {}", bytes.len()/20, t.elapsed(), h.vt.len());
++    }
++
++    #[test]
++    fn probe_ctrl_fanout() {
++        let mut h = Host::new();
++        for pid in 1..=256 { h.connect(pid, ""); }
++        let bytes = vec![3u8; crate::sched::INPUT_SLICE];
++        let fx = h.ev(Event::Input(&bytes));
++        let n = ctrls(&fx).len();
++        eprintln!("PROBE ctrl fanout: {} effects x {} B = {} B", n, std::mem::size_of::<Effect>(), n * std::mem::size_of::<Effect>());
++    }
+     #[test]
+     fn text_becomes_records_and_drives_the_input_event() {
+         let mut h = Host::new();
