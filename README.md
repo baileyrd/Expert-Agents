@@ -23,7 +23,7 @@ bench/cases/         frozen cases: pr.toml pins a PR head; answer_key.toml lists
 bench/runner/        runs a prompt variant N times per case (not built yet)
 bench/scorer/        recall, precision and severity agreement against the key
 reports/<expert>/    committed results, <date>-<variant>.md, graded runs beside them
-orchestrator/        how a new expert is generated
+orchestrator/        generates a new expert from an interview answer (skill: .claude/skills/expert-generator)
 sync/                how approved prompts reach target repos
 docs/                Codex dispatch procedure
 ```
