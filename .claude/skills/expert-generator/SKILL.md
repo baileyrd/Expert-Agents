@@ -103,11 +103,13 @@ the target clone, Node and the sandbox (`bench/runner/README.md`). If this sessi
 not on such a machine, stop here: commit, push, and hand the person the commands below
 as a paste-ready prompt.
 
-For a variant, first commit its `prompt.md`, `codex.md` and `expert.toml` over the
-expert's on a local branch that is never pushed: the runner reads the committed
-`experts/<name>/prompt.md`, and `check` fails if the headings differ from the manifest.
-Then make sure the current prompt has runs on every case the variant will run; bench it
-on any case its latest report lacks, the same way, so the comparison is like for like.
+For a variant, first make sure the current prompt has runs on every case the variant
+will run: bench it, as committed on `main`, on any case its latest report lacks, so the
+comparison is like for like. Do this before installing the variant: the runner reads the
+prompt from the worktree's `experts/`, and `--variant` is only a label. Then, in a
+separate worktree on a local branch that is never pushed, commit the variant's
+`prompt.md`, `codex.md` and `expert.toml` over the expert's (`check` fails if the
+headings differ from the manifest) and bench it there.
 
 ```
 npm ci --prefix bench/runner

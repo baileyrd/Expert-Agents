@@ -3,8 +3,12 @@
 The generated prompt is `orchestrator/examples/conhost/` (prompt.md, codex.md, expert.toml) as merged in
 PR #3. The bench copied it over `experts/conhost/` in a local commit, `127573c5`, which was never pushed;
 that commit is the `prompt_sha` in the run files. The hand-written prompt is `experts/conhost/` at
-`6f8b297a`. Its 1246-r1 numbers come from the [baseline](2026-10-30-baseline.md), and its r2 to r4
-numbers come from new runs in [2026-10-30-baseline-r2r4/](2026-10-30-baseline-r2r4/).
+`6f8b297a`. Its r2 to r4 numbers come from new runs in
+[2026-10-30-baseline-r2r4/](2026-10-30-baseline-r2r4/). Its 1246-r1 numbers come from the 2026-10-30
+baseline (`2026-10-30-baseline.md` and its run directory), which is not committed yet: it lands with the
+baseline PR. Until then the hand-written r1 row, the four-case totals, and the generated r1 verdicts
+reused from that baseline's verification cannot be reproduced from this repository. The r2 to r4
+comparison below is complete on its own.
 
 Every case was run the same way:
 - `python3 -m bench.runner`, Agent SDK 0.3.299 and promptfoo 0.124.1, on the Claude Code login with no
@@ -12,6 +16,11 @@ Every case was run the same way:
 - Repeat 5, concurrency 4, target `~/dev/rusty_mill`.
 - No `--allow-domain`, so there was no network. The reviewers could not fetch crates.io or
   microsoft/terminal.
+- The repeats of a case share one checkout and one scratch directory. They are not isolated from
+  each other: generated r1 run 1 reports that another run wrote probe tests into its copy of the head
+  (`2026-10-30-generated/1246-r1-1-report.md`). It discarded that test run and used a private
+  directory, but it had seen the other run's probes. Treat r1 hit rates as from runs that could see
+  each other's scratch work; the runner needs per-repeat scratch before this is ruled out.
 
 Each run was graded by a verifier that saw the report, the key and the code at the head and at the
 rusty_mill main `ebb92e28`, and that probed claims with `#[cfg(test)]` tests where `cargo` could run
@@ -36,8 +45,10 @@ python3 -m bench.scorer bench/cases/conhost/<case> reports/conhost/2026-10-30-ba
 | | hand-written | 0.40 (0–1) | 1.00 | 2 over | 2 key, 13 real | 8m30s, 7.2M |
 | 1246-r4 | generated | 0.00 | 1.00 | — | 2 real | 3m04s, 2.4M |
 | | hand-written | **0.20** (0–1) | 1.00 | 1 over | 1 key, 8 real | 8m03s, 5.4M |
+| **r2 to r4** | generated | 0.20 (mean of cases) | 1.00 | 3 over | 3 key, 21 real | 23m58s, 16.5M |
+| | hand-written | 0.20 | 1.00 | 3 over | 3 key, 32 real | 28m17s, 23.5M |
 | **All 4** | generated | 0.28 (mean of cases) | 1.00 | 3 agree, 8 over | 11 key, 50 real | 38m54s, 36.0M |
-| | hand-written | **0.33** | 1.00 | 7 agree, 8 over | 15 key, 45 real | 57m44s, 48.4M |
+| | hand-written | **0.33** (r1 from the uncommitted baseline) | 1.00 | 7 agree, 8 over | 15 key, 45 real | 57m44s, 48.4M |
 
 Wall is the promptfoo eval duration for 5 runs at concurrency 4. Neither variant had a false positive.
 "Over" means the reviewer rated a key finding above the key's grade, almost always P1 against P2.
@@ -54,12 +65,16 @@ Wall is the promptfoo eval duration for 5 runs at concurrency 4. Neither variant
 | r3 | K1 wait uses a poll plan made before the events (P2) | 0.60 | 0.40 |
 | r3 | K1 also as the `reads_ready` case | 0 of 3 hits | 0 of 2 hits |
 | r4 | K1 admission not rearmed when input frees capacity (P2) | **0.00** | 0.20 |
-| | Key findings with any hit | 4 of 8 | 5 of 8 |
+| | Key findings with any hit | 3 of 7 | 5 of 7 |
+
+The keys hold 7 findings: 3 in r1, 2 in r2, 1 in r3, 1 in r4. The `reads_ready` row is a second
+trigger of r3 K1, not another finding.
 
 ## Reading
 
-- **The generated prompt is close to the hand-written one, but not equal.** Summed over the 8 key
-  findings it catches 2.2 of them against the hand-written prompt's 2.8. Precision is the same (1.00),
+- **The generated prompt is close to the hand-written one, but not equal.** Summed over the 7 key
+  findings it catches 2.2 of them against the hand-written prompt's 2.8; on the committed r2 to r4
+  cases alone the two are level (0.20 each). Precision is the same (1.00),
   and it costs about 25% fewer tokens and 33% less wall time.
 - **It loses mostly on round 1 and on the narrow round-4 key.**
   - **r1, K3:** no generated run raised the per-unit surrogate conversion as blocking. Two came close
