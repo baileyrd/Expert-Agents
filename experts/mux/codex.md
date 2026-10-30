@@ -82,7 +82,7 @@ ported from either is a finding. tmux is ISC.
      takeover never arrives. The client still holds a token the server accepts, and
      the lease comes back.
    - **Stale connection**: a message or end from a connection the client already
-     replaced is ignored, and a hidden or detached block releases what it holds.
+     replaced is ignored.
    - **Split stream**: a sequence cut at every byte across reads (CSI, SS3, DEC mode
      sets, UTF-8), with C0 controls in the middle. Filters hold the unfinished part
      instead of appending or dropping bytes.
