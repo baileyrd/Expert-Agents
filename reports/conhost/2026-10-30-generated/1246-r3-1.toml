@@ -1,0 +1,22 @@
+# Grade 1246-r3-1-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r3"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "The new esc_ends store has no cap in §7.4"
+triage = "real"
+reason = "source trace at 615e0824: Lanes::esc_ends (runtime.rs:101-107) gets one u64 per ESC-ending write (runtime.rs:171-176), up to one per lane byte (64 Ki x 8 B = 512 KiB), and VecDeque keeps its capacity; design.md:600-621 neither lists it nor counts it, against :632 \"Any store a later PR adds names its cap\"; unchanged on main ebb92e28 (runtime.rs:101-107, design.md:628/639)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "§7.2's loop and fairness text no longer match the engine"
+triage = "real"
+reason = "source trace at 615e0824: design.md:534-546 (normative §7.2 loop) has no ServeReads step, step 4 takes input whenever output <= 80 KiB, and until=now only for steps 2-4, while sched.rs:85-98 skips input on reads_ready and polls on it and runtime.rs:549-551 handles ServeReads; the loop text is unchanged on main ebb92e28 (design.md:540-552)"
+# Not graded: design question on Flush/Peek/count while reads_cut is set, and an optional
+# note that serve_reads compares built + declared capacity (the same mechanism as run 5's F1).
+# Neither touches K1.

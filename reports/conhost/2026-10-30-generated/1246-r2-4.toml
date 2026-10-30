@@ -1,0 +1,23 @@
+# Grade 1246-r2-4-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r2"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "An ANSI raw read takes a key out of the queue into held_unit and hides it"
+triage = "real"
+reason = "executed at head and main: raw mode, win32 lone high 55357 then a, ReadConsoleA 3 bytes returns EF BF BD; then held_unit = a, input_available false, GetNumberOfInputEvents 0, peek 0, a waiting ReadConsoleInputW completes with the later y; next_text pops the next unit into held_unit (read.rs:565-580) which sync_input_available (console.rs:551-552), get_number_of_input_events (read.rs:262) and read_records ignore; still on main (read.rs:605-623, console.rs:655-661)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "During held echo, the event count and the input event disagree with GetConsoleInput"
+triage = "real"
+reason = "executed at head and main: 4 prefilled cooked reads, Escape+x+CR x4 in one slice: echo_held true, input_available true, GetNumberOfInputEvents 3, PeekConsoleInput NOREMOVE|NOWAIT returns 0; get_console_input empties results while echo_held (read.rs:313) but the count (read.rs:262) and the event (console.rs:552) still report the queue; not recorded in design.md 7.4/5.10; still on main (read.rs:345 reads_behind, count unchanged)"
+
+# K1 and K2 not raised. The design question on a lone ESC at the terminal's write boundary
+# (vs ConPTY's pipe-read boundary) is near K2's area but does not name two completed writes
+# coalescing; design questions are not graded.

@@ -1,0 +1,42 @@
+# Grade 1246-r4-1-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r4"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Alt+[, Alt+Shift+O, Alt+] and Alt+Shift+P typed over plain VT hang or change the user's next keys"
+triage = "real"
+reason = "executed probe (temporary test in console/read.rs) at 2dfc3a6c and main ebb92e28: Input(ESC P) then d,i,r,CR as separate writes completes 0 of a waiting cooked read and echoes nothing; Input(ESC [) then a gives 0 records; Input(ESC O) then A gives VK 38 (Up); escape() returns Incomplete for [/O/]/P whatever end says (input.rs:250-267, string() :275-289); conhost flushes a trailing ESC run (graded real as baseline r2 r5 F2 / generated r1 r2 F9); still on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A paste over 4,096 characters into a waiting cooked read loses its beginning"
+triage = "real"
+reason = "executed probe (temporary test in console/read.rs) at 2dfc3a6c and main ebb92e28: cooked ReadConsoleW waiting with 64 KiB, then one Input of 5,000 a + CR completes with 4,096 units and logs InputDropped; terminal_input stores every piece (read.rs:98-118) before serve_reads (read.rs:120), and Queue::push drops the oldest past MAX_RECORDS (input.rs:681-688); design.md:499/610 caps unread records, but these records had a waiting reader; still on main"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "The §7.4 row for the ANSI read caches says 2 records; it is 3"
+triage = "real"
+reason = "executed probe at 2dfc3a6c and main ebb92e28: ANSI GetConsoleInput count 1 on U+1F600 leaves cached_records.len() == 3 (read.rs:696-700), against design.md:614 (main :620) \"3 bytes, 2 records\"; same claim as baseline r2 r1 F1 / generated r1 F1; still on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The new esc_ends store is missing from the §7.4 tables"
+triage = "real"
+reason = "source trace at 2dfc3a6c: Lanes::esc_ends (runtime.rs:104-107) gets one u64 per ESC-ending write (runtime.rs:171-176), up to one per lane byte (64 Ki x 8 B = 512 KiB); design.md:600-621 neither lists nor counts it, against :632 \"Any store a later PR adds names its cap\"; same claim as r3 baseline/generated, unchanged on main ebb92e28 (runtime.rs:101-107, design.md:628/639)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "K1's regression tests don't exercise Engine::turn"
+triage = "real"
+reason = "source trace at 2dfc3a6c: Engine::turn (runtime.rs:527-530) is called only by run (runtime.rs:518); both new engine tests go through turns_without_another_wake (runtime.rs:934-941), which calls work() then must_poll() itself, the sched test (sched.rs:274-292) checks the pure predicate, and tests/own_pty.rs writes neither an ESC-ended write nor owed large reads, so moving runtime.rs:530 above work() fails no test; same on main ebb92e28 (turn at runtime.rs:581-584; tests that call turn() never check the wait deadline); same claim as generated r2 R1 / r3 F1"
+# No finding touches K1 (READ_IO admission). Design question 1 (pastes into one-record
+# readers) is not graded.

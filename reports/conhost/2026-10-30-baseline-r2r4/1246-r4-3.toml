@@ -1,0 +1,14 @@
+# Grade 1246-r4-3-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r4"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 3
+
+[[finding]]
+id = "R1"
+severity = "P2"
+title = "The §7.2 loop in the design doc omits the step that serves waiting reads, and its poll rule disagrees with the code"
+triage = "real"
+reason = "source trace at 2dfc3a6c: design.md:534-554 (normative §7.2 loop) has no ServeReads step, step 4 takes input whenever output <= 80 KiB, step 6 polls only for steps 2-4, while sched.rs:84-96 skips input on reads_ready and must_poll (sched.rs:102-104) polls on it; 2dfc3a6c touches no doc (git diff --stat 615e0824..2dfc3a6c); same claim graded real in r3 baseline/generated; loop text unchanged on main ebb92e28 (design.md:540-552)"
+# Does not touch K1. Optional improvement (tests bypass turn()) is the claim runs 1/4/5 file
+# as blocking; not graded here.

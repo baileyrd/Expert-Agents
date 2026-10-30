@@ -1,0 +1,9 @@
+# Grade 1246-r4-5-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r4"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 5
+# No blocking findings. The optional improvement (tests bypass turn()) is the same
+# issue runs 2 and 3 file as blocking; not graded here. Not near K1: its "nothing
+# lost before the wait" claim covers waker signals from caller threads, not client
+# requests that need READ_IO armed, which is what K1 is about.

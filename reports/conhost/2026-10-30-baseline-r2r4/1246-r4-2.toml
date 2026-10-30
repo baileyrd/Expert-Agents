@@ -1,0 +1,15 @@
+# Grade 1246-r4-2-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r4"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 2
+
+[[finding]]
+id = "N1"
+severity = "P1"
+title = "READ_IO admission is still decided before the turn's events, and the wait doesn't account for it"
+match = "K1"
+quality = "caught"
+# Names submit_read from the pre-event view (sched.rs:94), a read completing during the turn so
+# admits_read(63, ..) is true while must_poll is false, and wait blocking with no READ_IO in flight
+# (runtime.rs:560/588/606): exactly K1's trigger and mechanism. Fix proposed matches b5b1dda4's shape.

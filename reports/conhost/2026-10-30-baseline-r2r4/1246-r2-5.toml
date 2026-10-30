@@ -1,0 +1,28 @@
+# Grade 1246-r2-5-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r2"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A character held back by an ANSI read is invisible to the input event, count and GetConsoleInput, and is delivered out of order"
+triage = "real"
+reason = "executed at head and main (generated-variant probe_held_unit, same claim as generated r3 N1/r4 F1/r5 N3): raw mode, win32 lone high 55357 then a, ReadConsoleA 3 bytes returns EF BF BD; then held_unit = a, input_available false, GetNumberOfInputEvents 0, peek 0, a waiting ReadConsoleInputW completes with the later key; next_text pops the next unit into held_unit (read.rs:565-580) which sync_input_available (console.rs:551-552), get_number_of_input_events (read.rs:262) and read_records ignore; still on main"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Alt+[ or Alt+Shift+O at the end of a write is held, then merges with the next key"
+triage = "real"
+reason = "executed at head and main: Input(ESC [) then Input(A) yields VK 0x26 (Up) down/up; Input(ESC O) then Input(P) yields VK 0x70 (F1); csi/SS3 return Incomplete regardless of end (input.rs:251-255, 299; main input.rs:309); conhost flushes a trailing <=2-byte ESC run (stateMachine.cpp:2036-2072, per verify-1246-r1 r2 F9, same claim graded real); still on main"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Design doc's ANSI cache cap no longer matches the code"
+triage = "real"
+reason = "executed at head 8ec54b85 and main ebb92e28: ANSI GetConsoleInput count 1 on U+1F600 returns 1 record and leaves cached_records.len() == 3 (record_utf8 puts the pair's 4 UTF-8 bytes on the low half, read.rs:658-676), against design.md:614 (main :620) \"3 bytes, 2 records\"; still on main (same claim as generated r1 F1)"
+
+# K1 and K2 not raised. Design questions (held echo; ESC P / ESC ] swallowing typing) not graded.

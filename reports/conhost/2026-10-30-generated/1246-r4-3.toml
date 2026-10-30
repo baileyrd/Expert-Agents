@@ -1,0 +1,13 @@
+# Grade 1246-r4-3-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r4"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "No test goes red if turn() goes back to deciding its wait before work()"
+triage = "real"
+reason = "source trace at 2dfc3a6c: Engine::turn (runtime.rs:527-530) is called only by run (runtime.rs:518); both new engine tests go through turns_without_another_wake (runtime.rs:934-941), which calls work() then must_poll() itself, the sched test (sched.rs:274-292) checks the pure predicate, and tests/own_pty.rs writes neither an ESC-ended write nor owed large reads, so moving runtime.rs:530 above work() fails no test; same on main ebb92e28 (turn at runtime.rs:581-584; tests that call turn() never check the wait deadline)"
+# Does not touch K1 (r4). The optional note on View.closed is not graded.

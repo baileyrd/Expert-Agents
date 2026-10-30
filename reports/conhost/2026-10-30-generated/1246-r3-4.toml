@@ -1,0 +1,22 @@
+# Grade 1246-r3-4-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r3"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "An ESC cut strands the rest of the lane until something unrelated happens"
+match = "K1"
+quality = "caught"
+# Names the pre-take plan (sched.rs:98, poll = 2 < 2 = false) and until = plan.poll at runtime.rs:574
+# with the auto-reset waker already consumed; the one-ESC-write trigger is valid when both writes land
+# before the previous wait returns.
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "esc_ends isn't counted in §7.4's memory bound"
+triage = "real"
+reason = "source trace at 615e0824: Lanes::esc_ends (runtime.rs:101-107) gets one u64 per ESC-ending write (runtime.rs:171-176), up to one per lane byte (64 Ki x 8 B = 512 KiB), and VecDeque keeps its capacity; design.md:600-621 neither lists it nor counts it, against :632 \"Any store a later PR adds names its cap\"; unchanged on main ebb92e28 (runtime.rs:101-107, design.md:628/639)"

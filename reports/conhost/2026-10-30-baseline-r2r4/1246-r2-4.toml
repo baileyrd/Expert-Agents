@@ -1,0 +1,21 @@
+# Grade 1246-r2-4-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r2"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "With echo off, a lone high surrogate is printed to the terminal as U+FFFD"
+triage = "real"
+reason = "executed at head and main: mode LINE_INPUT|PROCESSED_INPUT (no ECHO), waiting ReadConsoleW, win32 key-down 55357 then CR: terminal VT is ef bf bd 0d 0a instead of 0d 0a; Line::finish flushes utf8 into newline (cooked.rs:143, main :143) and finish_line pushes newline without the echo gate (read.rs:533-536); still on main"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Design 7.4 understates the ANSI record cache, and the new fixed stores aren't listed"
+triage = "real"
+reason = "executed at head 8ec54b85 and main ebb92e28: ANSI GetConsoleInput count 1 on U+1F600 returns 1 record and leaves cached_records.len() == 3 (record_utf8 puts the pair's 4 UTF-8 bytes on the low half, read.rs:658-676), against design.md:614 (main :620) \"3 bytes, 2 records\"; still on main (same claim as generated r1 F1). Also held_unit/record_utf8/vt_utf8 (console.rs:100-106) appear in no 7.4 table though design.md:632 requires it (grep on main design.md finds none)"
+
+# K1 and K2 not raised. Design question (held echo) and optional (shared held_unit) not graded.

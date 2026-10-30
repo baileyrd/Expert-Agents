@@ -1,0 +1,28 @@
+# Grade 1246-r3-5-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r3"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 5
+
+[[finding]]
+id = "B1"
+severity = "P1"
+title = "Input after an ESC cut can sit in the lane indefinitely"
+match = "K1"
+quality = "caught"
+# Names plan input=2, poll=false decided before take_input (sched.rs:98), the cut returning only ESC,
+# and the wait with nothing signalled (runtime.rs:552-574, auto-reset waker): K1's leftover-input case.
+
+[[finding]]
+id = "B2"
+severity = "P1"
+title = "The new esc_ends list grows beyond the 64 KiB lane cap"
+triage = "real"
+reason = "source trace at 615e0824: Lanes::esc_ends (runtime.rs:101-107) gets one u64 per ESC-ending write (runtime.rs:171-176), up to one per lane byte (64 Ki x 8 B = 512 KiB), VecDeque keeps its capacity; design.md:600-621 neither lists nor counts it, against :632 \"Any store a later PR adds names its cap\"; unchanged on main ebb92e28 (runtime.rs:101-107, design.md:628/639); the title's 'no limit' overstates it (the body's own trace bounds it at 512 KiB), graded on the uncounted-store defect"
+
+[[finding]]
+id = "B3"
+severity = "P2"
+title = "The design's engine loop no longer describes the code"
+triage = "real"
+reason = "source trace at 615e0824: design.md:534-554 (normative §7.2 loop and turn bound) has no ServeReads step, step 4 takes input whenever output <= 80 KiB, until=now only for steps 2-4, while sched.rs:85-98 skips input on reads_ready and polls on it and runtime.rs:549-551 handles ServeReads; loop text unchanged on main ebb92e28 (design.md:540-552)"

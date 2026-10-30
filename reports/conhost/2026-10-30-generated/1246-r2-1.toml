@@ -1,0 +1,15 @@
+# Grade 1246-r2-1-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r2"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "The design doc understates the ANSI record cache cap (3 records, not 2)"
+triage = "real"
+reason = "executed at head 8ec54b85 and main ebb92e28: ANSI GetConsoleInput count 1 on U+1F600 returns 1 record and leaves cached_records.len() == 3 (record_utf8 puts the pair's 4 UTF-8 bytes on the low half, read.rs:658-676), against design.md:614 (main :620) \"3 bytes, 2 records\"; still on main"
+
+# K1 (reply buffers accumulating within one handle) and K2 (completed writes coalescing) not raised.
+# Optional 1 (held_unit invisible) is the same defect as r3 N1 / r4 F1 but is not graded here.

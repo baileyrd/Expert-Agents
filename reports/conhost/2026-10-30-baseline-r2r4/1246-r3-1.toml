@@ -1,0 +1,27 @@
+# Grade 1246-r3-1-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r3"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "The design's normative loop in §7.2 doesn't describe the new serve-reads step"
+triage = "real"
+reason = "source trace at 615e0824: design.md:534-554 (normative §7.2 loop and turn bound) has no ServeReads step, step 4 takes input whenever output <= 80 KiB, until=now only for steps 2-4, while sched.rs:85-98 skips input on reads_ready and polls on it and runtime.rs:549-551 handles ServeReads; loop text unchanged on main ebb92e28 (design.md:540-552)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "esc_ends is a new store with no cap in §7.4"
+triage = "real"
+reason = "source trace at 615e0824: Lanes::esc_ends (runtime.rs:101-107) gets one u64 per ESC-ending write (runtime.rs:171-176), up to one per lane byte (64 Ki x 8 B = 512 KiB), VecDeque keeps its capacity; design.md:600-621 neither lists nor counts it, against :632 \"Any store a later PR adds names its cap\"; unchanged on main ebb92e28 (runtime.rs:101-107, design.md:628/639)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Unrecorded divergence: a non-waiting peek returns 0 records while input is queued"
+triage = "real"
+reason = "executed probe (temporary test in console/read.rs tests) at 615e0824 and main ebb92e28: 4 raw 1 MiB ReadConsoleW + 513 repeat-65535 records leave reads_cut set, then GetNumberOfInputEvents=505 while Peek NOWAIT|NOREMOVE=0 (read.rs:271 vs reads_behind() at read.rs:325-326); neither §7.4 row (design.md:615) nor §5.10 records it, same standard as the held-echo version graded real in the generated r2 grading"
+# No finding touches K1 (stale pre-event poll plan).
