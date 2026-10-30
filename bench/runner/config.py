@@ -22,7 +22,7 @@ TASK = (
     "Review PR {{pr}} of {{repo}} against base {{base}} at head {{head}}. "
     # No "/" here: promptfoo reads a prompt that looks like a path as a prompt file.
     "The working directory is a checkout of the head with history up to it, and its origin "
-    "serves only the PR head ref."
+    "serves only the PR head ref.{{oracles}}"
 )
 RUBRIC = """\
 Grade whether this code review reports the following known defect as one of its findings.
@@ -33,6 +33,19 @@ Defect: {title}
 It counts as caught if the review {caught_if} Score 1 if caught, 0.5 if the review
 reports it only in part (for example one of several affected paths), 0 if missed.
 Wording does not matter; the defect does."""
+
+
+@dataclass(frozen=True)
+class Oracle:
+    """A reference source cloned before the run, so a reviewer with no network can read it.
+
+    `path` is a snapshot of `commit` in the work directory, readable and not writable by
+    sandboxed Bash, so the recorded commit is exactly what the reviewer saw.
+    """
+
+    name: str
+    path: Path
+    commit: str
 
 
 @dataclass(frozen=True)
@@ -52,11 +65,13 @@ class Boundary:
 
 
 def review(case: Case, prior: Case | None, system_prompt: str, variant: str, prompt_sha: str,
-           runs: tuple[Boundary, ...], model: str | None) -> dict[str, Any]:
+           runs: tuple[Boundary, ...], model: str,
+           oracles: tuple[Oracle, ...] = ()) -> dict[str, Any]:
     """The reviewer's config: the case's task and prompt in a sandbox, with no answer key.
 
     One provider per run, each with its own checkout and scratch, so concurrent or later
-    runs never see each other's builds, probes or notes.
+    runs never see each other's builds, probes or notes. The model is recorded with every
+    result, and the oracles are named in the task, where they reach the reviewer as a var.
     """
     return {
         "description": f"{case.id} at {case.head[:8]}, variant {variant}",
@@ -65,13 +80,23 @@ def review(case: Case, prior: Case | None, system_prompt: str, variant: str, pro
                        "config": _reviewer(system_prompt, b, model)}
                       for n, b in enumerate(runs, start=1)],
         "tests": [{"description": case.id, "vars": {
-            "case": case.id, "variant": variant, "prompt_sha": prompt_sha, "repo": case.repo,
-            "pr": case.pr, "base": case.base, "head": case.head}}],
+            "case": case.id, "variant": variant, "prompt_sha": prompt_sha, "model": model,
+            "repo": case.repo, "pr": case.pr, "base": case.base, "head": case.head,
+            "oracles": _oracles(oracles)}}],
     }
 
 
-def _reviewer(system_prompt: str, boundary: Boundary, model: str | None) -> dict[str, Any]:
-    config: dict[str, Any] = {
+def _oracles(oracles: tuple[Oracle, ...]) -> str:
+    """The task's note on pre-cloned reference sources; empty when there are none."""
+    if not oracles:
+        return ""
+    listed = "\n".join(f"- {o.name} at {o.commit}: {o.path}" for o in oracles)
+    return ("\n\nReference sources are already cloned, read-only, and there is no network; "
+            f"read them in place instead of cloning:\n{listed}")
+
+
+def _reviewer(system_prompt: str, boundary: Boundary, model: str) -> dict[str, Any]:
+    return {
         "working_dir": str(boundary.checkout),
         "custom_system_prompt": system_prompt,
         "custom_allowed_tools": list(TOOLS),
@@ -79,10 +104,8 @@ def _reviewer(system_prompt: str, boundary: Boundary, model: str | None) -> dict
         "sandbox": _sandbox(boundary),
         "persist_session": False,
         "apiKeyRequired": False,  # use the signed-in Claude Code login
+        "model": model,
     }
-    if model:
-        config["model"] = model
-    return config
 
 
 def rubric(case: Case, reports: list[tuple[str, str]], grader: str) -> dict[str, Any]:

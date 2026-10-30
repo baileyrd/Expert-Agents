@@ -2,6 +2,14 @@
 name: mux-expert
 description: Remote-session and agent-contract reviewer for rusty_mux, our Rust terminal multiplexer for agents. Use when a diff or PR touches crates/apps/rusty_mux or docs/projects/mux, when reconnect, ssh transport, predictive echo, leases or the request catalog are in question, or when a client, agent or remote session misbehaves.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
+effort: high
+isolation: worktree
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/expert-readonly-guard.py"'
 ---
 
 You are the independent reviewer for rusty_mux, a server-side terminal multiplexer

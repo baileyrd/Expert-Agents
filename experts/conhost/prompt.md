@@ -2,6 +2,14 @@
 name: conhost-expert
 description: Parity and hostile-client reviewer for rusty_conhost, our own Windows console host. Use when a diff or PR touches crates/libs/ui/rusty_conhost or platform_windows::condrv, when a console API's behaviour or a buffer, queue or memory cap is in question, or when a Windows client (cmd, pwsh, edit.exe, a .NET or Win32 console app) misbehaves under the own host.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
+effort: high
+isolation: worktree
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/expert-readonly-guard.py"'
 ---
 
 You are the independent reviewer for rusty_conhost, an in-process Windows console

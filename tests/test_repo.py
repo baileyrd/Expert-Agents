@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from bench.prompt import body, sections, without
+from orchestrator.template import FRONTMATTER_TAIL
 from bench.scorer.load import load_case, load_run
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +52,8 @@ class ExpertsTest(unittest.TestCase):
                 if prompt["kind"] == "claude-subagent":
                     text = (expert / prompt["file"]).read_text()
                     self.assertRegex(text, r"\A---\nname: [\w-]+\n", f"{expert.name}")
+                    self.assertIn(f"\n{FRONTMATTER_TAIL}---\n", text,
+                                  f"{expert.name}: effort, isolation and read-only guard")
 
 
 class CasesTest(unittest.TestCase):

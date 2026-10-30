@@ -1,8 +1,10 @@
 For <OWNER/REPOSITORY>, use Codex as the independent PR reviewer, with the
-project's two domain reviewer prompts:
+project's three domain reviewer prompts:
 
 - `conhost-expert-codex.md`: rusty_conhost, our Windows console host.
 - `mux-expert-codex.md`: rusty_mux, our terminal multiplexer for agents.
+- `mill-board-expert-codex.md`: Mill Board, the kanban agents and people share, and the
+  rusty_tick API it stores cards in.
 
 The GitHub review router is disabled and `openai/codex-action` is not allowed by
 repository policy (`docs/agents/review-router.md`), so invoke Codex locally with
@@ -17,7 +19,9 @@ repository policy (`docs/agents/review-router.md`), so invoke Codex locally with
      `crates/platform/rustils/crates/platform-windows/` (`src/condrv*`,
      `src/sys/condrv.rs`, `tests/condrv.rs`) → the conhost reviewer.
    - `crates/apps/rusty_mux/**` or `docs/projects/mux/**` → the mux reviewer.
-   - Both → run both, as two separate reviews.
+   - `crates/apps/rusty_mill_board/**`, `crates/apps/rusty_tick/**` or
+     `docs/adr/0012-one-task-store.md` → the Mill Board reviewer.
+   - More than one → run each, as separate reviews.
    - Neither → the general reviewer prompt (`general-reviewer-codex.md`), which has
      no prior-findings slot; pass prior findings to it as a note after the prompt.
    The chosen reviewer reviews the whole diff, including files outside its domain.
@@ -54,7 +58,7 @@ repository policy (`docs/agents/review-router.md`), so invoke Codex locally with
 ## Tracking
 
 Keep a ledger with one entry per dispatch, keyed by repository, PR number, head SHA
-and reviewer (conhost, mux or general). Each entry records the base SHA, the dispatch
+and reviewer (conhost, mux, mill-board or general). Each entry records the base SHA, the dispatch
 time, the state (dispatched, completed, failed or stale), the verdict and where the
 output is. Before dispatching, check the ledger: an entry for the same key that is
 dispatched or completed means no new dispatch. A failed entry may be retried, and the

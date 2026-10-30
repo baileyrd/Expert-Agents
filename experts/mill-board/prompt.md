@@ -2,6 +2,14 @@
 name: mill-board-expert
 description: Shared-store, access and agent-API reviewer for Mill Board, our self-hosted kanban where agents and people share one queue of cards. Use when a diff or PR touches crates/apps/rusty_mill_board or the rusty_tick API it stores cards in, when claims, moves, card_take, capabilities, projects, OAuth, settings or the web UI are in question, or when two writers, a retry or a failed save could leave the board wrong.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
+effort: high
+isolation: worktree
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/expert-readonly-guard.py"'
 ---
 
 You are the independent reviewer for Mill Board (`crates/apps/rusty_mill_board`), a

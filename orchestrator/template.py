@@ -15,6 +15,20 @@ TODO = "TODO(generator)"
 PLACEHOLDERS = ("<OWNER/REPOSITORY>", "<NUMBER>", "<BASE_SHA>", "<HEAD_SHA>", "<PRIOR_FINDINGS>")
 SUBAGENT_OPENING = "You are the independent reviewer for "
 CODEX_OPENING = "You are the independent PR reviewer for <OWNER/REPOSITORY>, reviewing a change to\n"
+# The read-only guard (guard/readonly.py), synced to this path in each target repo.
+GUARD_COMMAND = 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/expert-readonly-guard.py"'
+# After `tools`: default effort pinned so a changed default never shifts a benched prompt,
+# probes in a throwaway worktree, and the guard before every Bash call.
+FRONTMATTER_TAIL = f"""\
+effort: high
+isolation: worktree
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: '{GUARD_COMMAND}'
+"""
 _COUNT = {2: "Two", 3: "Three", 4: "Four", 5: "Five"}
 
 AUTHORITY = """\
@@ -125,7 +139,8 @@ def _domain(axes: int) -> list[str]:
 def subagent(name: str, axes: int) -> str:
     """A Claude subagent skeleton: frontmatter, the shared sections, TODOs for the rest."""
     front = (f"---\nname: {name}-expert\ndescription: {TODO}: who reviews what, and when to "
-             "use it.\ntools: Read, Grep, Glob, Bash, WebFetch, WebSearch\n---\n\n")
+             "use it.\ntools: Read, Grep, Glob, Bash, WebFetch, WebSearch\n"
+             f"{FRONTMATTER_TAIL}---\n\n")
     persona = f"{SUBAGENT_OPENING}{TODO}: the component, and where its risk lies.\n"
     parts = [persona, AUTHORITY, PIN_SUBAGENT, *_domain(axes), RETURN_SUBAGENT]
     return front + "\n".join(parts)
