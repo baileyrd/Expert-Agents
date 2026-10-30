@@ -1,0 +1,140 @@
+# Graded from 1246-r1-1-report.md, triaged blind in 1246-r1-1-verify.md.
+# prompt_sha is this repo's commit holding the prompts the run read: prompt-at-start.md,
+# then prompt-mid-run.md after an in-place edit, which it re-read and re-graded against.
+case = "conhost/1246-r1"
+variant = "pre-revision"
+prompt_sha = "d7e3b6325d726f461e98bb8e79fc07a8d60933c1"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A paste longer than 4,096 characters loses its head, even while cmd's cooked read is waiting"
+triage = "real"
+reason = "executed: 5,000 chars + CR return 4,094; the 4,096-record cap is documented, loss while a read waits is not; on main ad1c3e37"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Cooked-read echo has no output budget: about 14.9 MB from one 16 KiB slice, against a 144 KiB cap"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "The 1 MiB read-reply cap in design 7.4 isn't enforced"
+triage = "fixed_since"
+reason = "executed: 2 KB of input gave a 13.1 MB reply at head; capped at 1 MiB on main ad1c3e37"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "Ctrl effects grow with clients x Ctrl+C bytes: 335 MB in one handle call"
+triage = "real"
+reason = "executed: 4,194,304 Ctrl effects of 80 B; on main ad1c3e37"
+
+[[finding]]
+id = "F5"
+severity = "P1"
+title = "A trailing ESC is always the Escape key, so a win32 record split after ESC clears the line and types garbage"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F6"
+severity = "P1"
+title = "Focus reports reach VT-input clients that never asked for them"
+triage = "real"
+reason = "executed: a VT client that never enabled focus mode reads ESC[I; conhost suppresses it; on main ad1c3e37"
+
+[[finding]]
+id = "F7"
+severity = "P1"
+title = "Cooked echo writes raw control characters and ESC to the terminal, and isn't laid out"
+triage = "real"
+reason = "executed, partly right: raw C0/ESC echo confirmed (Rusty-Mill/rusty_mill#1256); Backspace erases by code point, not UTF-16 unit; on main ad1c3e37"
+
+[[finding]]
+id = "F8"
+severity = "P1"
+title = "A second cooked read on the same handle overwrites the first read's kept rest"
+triage = "real"
+reason = "executed, partly right: an empty rest clears the earlier one; conhost also overwrites with a non-empty rest; on main ad1c3e37"
+
+[[finding]]
+id = "F9"
+severity = "P2"
+title = "Surrogate pairs in VT mode become two U+FFFD"
+match = "K3"
+quality = "partial"
+
+[[finding]]
+id = "F10"
+severity = "P2"
+title = "An OSC or DCS reply over 4,096 B split across slices is typed as text"
+triage = "real"
+reason = "executed: the tail of a split OSC is read as text; on main ad1c3e37"
+
+[[finding]]
+id = "F11"
+severity = "P2"
+title = "For non-VT clients, a CPR reply with row 1 becomes Ctrl/Shift+F3"
+triage = "real"
+reason = "executed: CSI 1;5R becomes Ctrl+F3 records; narrow, the host strips CPR queries; on main ad1c3e37"
+
+[[finding]]
+id = "F12"
+severity = "P2"
+title = "V8 understates the divergence for synthesized text"
+triage = "false_positive"
+reason = "conhost's own _writeString also gives VK 0 and key-down only for text runs"
+
+[[finding]]
+id = "F13"
+severity = "P2"
+title = "Replies dropped for non-VT clients aren't in 5.10"
+triage = "real"
+reason = "source-traced: conhost passes them to non-VT clients as text; 5.5 says dropped, 5.10 omits it; on main ad1c3e37"
+
+[[finding]]
+id = "F14"
+severity = "P2"
+title = "Ctrl delivery order is oldest first; conhost's is newest first"
+triage = "fixed_since"
+reason = "source-traced: oldest first at head; main ad1c3e37 sorts newest first"
+
+[[finding]]
+id = "F15"
+severity = "P2"
+title = "No ?1004l ?9001l at teardown"
+triage = "fixed_since"
+reason = "source-traced: absent at head; main ad1c3e37 sends the postamble"
+
+[[finding]]
+id = "F16"
+severity = "P2"
+title = "V7's reason doesn't hold"
+triage = "real"
+reason = "source-traced: conhost's fallback serves a new-group child not yet connected; on main ad1c3e37"
+
+[[finding]]
+id = "F17"
+severity = "P2"
+title = "CLOSE_OBJECT ends only its own handle's reads; conhost alerts every waiter"
+triage = "real"
+reason = "executed: an unrecorded divergence; on main ad1c3e37"
+
+[[finding]]
+id = "F18"
+severity = "P2"
+title = "The docs disagree with the code on queued Ctrl key-ups and the reply cap"
+triage = "real"
+reason = "executed: the Ctrl+C key-up stays queued against 5.5; the reply-cap half is fixed on main ad1c3e37"
+
+[[finding]]
+id = "F19"
+severity = "P2"
+title = "Tests the design asks for are missing"
+triage = "real"
+reason = "source-traced: main added second-HangUp tests; ChildExited vs cooked read, Ctrl+C under VT input and the Windows input-event test are still missing on main ad1c3e37"
