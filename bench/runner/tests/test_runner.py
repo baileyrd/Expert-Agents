@@ -35,13 +35,19 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(provider["config"]["custom_system_prompt"], "PROMPT")
         self.assertNotIn("Write", provider["config"]["custom_allowed_tools"])
         self.assertNotIn("model", provider["config"])
+        self.assertIs(provider["config"]["apiKeyRequired"], False)
+
+    def test_an_anthropic_grader_uses_the_claude_code_login(self) -> None:
+        c = build(case(), None, "P", "v", "b" * 40, Path("/co"), "anthropic:messages:m", None)
+        grader = c["defaultTest"]["options"]["provider"]
+        self.assertEqual(grader, {"id": "anthropic:messages:m", "config": {"apiKeyRequired": False}})
 
     def test_each_key_finding_is_a_named_rubric_and_the_grader_is_explicit(self) -> None:
         c = self.config()
         asserts = c["tests"][0]["assert"]
         self.assertEqual([a["metric"] for a in asserts], ["K1", "K2"])
         self.assertIn("if the review names the refused retry.", asserts[0]["value"])
-        self.assertEqual(c["defaultTest"]["options"]["provider"], "grader:x")
+        self.assertEqual(c["defaultTest"]["options"]["provider"], {"id": "grader:x", "config": {}})
         self.assertEqual(c["tests"][0]["vars"]["prompt_sha"], "b" * 40)
 
     def test_a_re_review_lists_the_prior_findings_and_a_first_review_none(self) -> None:

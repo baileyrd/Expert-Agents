@@ -39,6 +39,7 @@ def build(case: Case, prior: Case | None, system_prompt: str, variant: str, prom
             "custom_system_prompt": system_prompt,
             "custom_allowed_tools": list(TOOLS),
             "persist_session": False,
+            "apiKeyRequired": False,  # use the signed-in Claude Code login
         },
     }
     if model:
@@ -47,7 +48,7 @@ def build(case: Case, prior: Case | None, system_prompt: str, variant: str, prom
         "description": f"{case.id} at {case.head[:8]}, variant {variant}",
         "prompts": [TASK + _prior(prior)],
         "providers": [provider],
-        "defaultTest": {"options": {"provider": grader}},
+        "defaultTest": {"options": {"provider": _grader(grader)}},
         "tests": [{
             "description": case.id,
             "vars": {"case": case.id, "prompt_sha": prompt_sha, "repo": case.repo, "pr": case.pr,
@@ -55,6 +56,12 @@ def build(case: Case, prior: Case | None, system_prompt: str, variant: str, prom
             "assert": [_rubric(k) for k in case.key],
         }],
     }
+
+
+def _grader(grader: str) -> dict[str, Any]:
+    """Anthropic graders also use the Claude Code login instead of an API key."""
+    config = {"apiKeyRequired": False} if grader.startswith("anthropic:") else {}
+    return {"id": grader, "config": config}
 
 
 def _prior(prior: Case | None) -> str:

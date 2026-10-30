@@ -8,11 +8,14 @@ the results into one report per run for grading.
 npm ci --prefix bench/runner        # once: promptfoo and the Agent SDK, pinned
 python3 -m bench.runner prepare bench/cases/mux/1251-r1 \
     --target ~/src/rusty_mill --out /tmp/bench-1251 --variant baseline --repeat 5
-# run the printed promptfoo command (needs ANTHROPIC_API_KEY), then:
+# run the printed promptfoo command, signed in to Claude Code, then:
 python3 -m bench.runner extract /tmp/bench-1251/results.json \
     --out reports/mux/<date>-<variant>/
 ```
 
+- **No API key.** The reviewer and the default grader use your signed-in Claude Code
+  login (`apiKeyRequired: false`), so runs count against your plan's usage. Unset
+  `ANTHROPIC_API_KEY` first: if it is set, it is used instead.
 - **Blind.** `prepare` builds a new repository fetched by SHA from your clone of the
   target: the head and its history, with no later commits, no other refs and no
   remote. The reviewer cannot see the fix or the review.
