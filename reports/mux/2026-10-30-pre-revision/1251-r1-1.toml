@@ -1,0 +1,48 @@
+# Graded from 1251-r1-1-report.md, triaged blind in 1251-r1-1-verify.md.
+# prompt_sha is this repo's commit holding the prompt the run read, prompt.md beside it.
+case = "mux/1251-r1"
+variant = "pre-revision"
+prompt_sha = "d7e3b6325d726f461e98bb8e79fc07a8d60933c1"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A takeover does not record the token the client presented, so a second lost Welcome after an idle reconnect drops the client"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A pane the TUI stops showing is hung up without Detach or ReleaseLease, so its orphan holds the block's lease for 30 s"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "The TUI still treats a lost block Welcome as fatal, and its comments now say something false"
+triage = "real"
+reason = "partly right: stale comments confirmed, a retry would also need the dropped control token; on main ad1c3e37"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The docs say a detached block client leaves at once, but it lingers for the grace"
+triage = "real"
+reason = "executed: still listed 2 s after Detach at head and on main ad1c3e37; the lease is freed at once"
+
+[[finding]]
+id = "F5a"
+severity = "P2"
+title = "The TUI's Detach before a clean exit has no test that fails without it"
+triage = "real"
+reason = "executed: deleting it keeps every TUI test green at head and on main ad1c3e37"
+
+[[finding]]
+id = "F5b"
+severity = "P2"
+title = "Disconnect on a kept client is untested"
+triage = "real"
+reason = "executed: removing the orphan check keeps the server suite green at head and on main ad1c3e37"
