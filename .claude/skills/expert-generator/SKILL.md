@@ -103,8 +103,11 @@ the target clone, Node and the sandbox (`bench/runner/README.md`). If this sessi
 not on such a machine, stop here: commit, push, and hand the person the commands below
 as a paste-ready prompt.
 
-For a variant, first commit its `prompt.md` and `codex.md` over the expert's on a local
-branch that is never pushed: the runner reads the committed `experts/<name>/prompt.md`.
+For a variant, first commit its `prompt.md`, `codex.md` and `expert.toml` over the
+expert's on a local branch that is never pushed: the runner reads the committed
+`experts/<name>/prompt.md`, and `check` fails if the headings differ from the manifest.
+Then make sure the current prompt has runs on every case the variant will run; bench it
+on any case its latest report lacks, the same way, so the comparison is like for like.
 
 ```
 npm ci --prefix bench/runner
@@ -134,6 +137,6 @@ after a check on current `main`; anything an attacker could use goes to the owne
 ## 7. Land
 
 A new expert lands with its cases and report. A variant replaces the expert's
-`prompt.md` and `codex.md` only if it beats the current baseline without regressing any
-case; otherwise land only the report. Open the PR, request review from
+`prompt.md`, `codex.md` and `expert.toml` only if it beats the current prompt, on the
+same cases, without regressing any case; otherwise land only the report. Open the PR, request review from
 `dottiusmaximus`, and stop: agents never merge.
