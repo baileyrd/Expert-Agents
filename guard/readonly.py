@@ -36,6 +36,8 @@ _GH_WRITES = {
     "secret": {"set", "delete"},
     "variable": {"set", "delete"},
 }
+_GH_API_VALUED = "XfFHtpq"  # short flags of `gh api` that take a value
+_HTTP_VALUED = "XdFTouHAebcxwmrKECYyzUQP"  # of curl and wget, enough to stop a bundle
 _GH_API_WRITE_FLAGS = {"-f", "-F", "--field", "--raw-field", "--input"}
 _HTTP_WRITE_FLAGS = {"-d", "--data", "--data-raw", "--data-binary", "--data-urlencode",
                      "--json", "-F", "--form", "-T", "--upload-file", "--post-data",
@@ -193,37 +195,61 @@ def _check_gh(args: list[str]) -> str | None:
 
 
 def _check_gh_api(args: list[str]) -> str | None:
-    method = _method(args, {"-X", "--method"})
+    options = _options(args, _GH_API_VALUED)
+    method = _method(options, {"-X", "--method"})
     if method not in {None, "GET", "HEAD"}:
         return f"`gh api -X {method}` writes to GitHub; reviewers are read-only"
-    if method is None and any(_flag(a) in _GH_API_WRITE_FLAGS for a in args):
+    if method is None and any(flag in _GH_API_WRITE_FLAGS for flag, _ in options):
         return "`gh api` with fields sends a POST; reviewers are read-only"
     return None
 
 
 def _check_http(args: list[str]) -> str | None:
-    method = _method(args, {"-X", "--request", "--method"})
+    options = _options(args, _HTTP_VALUED)
+    method = _method(options, {"-X", "--request", "--method"})
     if method not in {None, "GET", "HEAD"}:
         return f"an HTTP {method} request; reviewers are read-only"
-    if any(_flag(a) in _HTTP_WRITE_FLAGS for a in args):
+    if any(flag in _HTTP_WRITE_FLAGS for flag, _ in options):
         return "an HTTP request with a body; reviewers are read-only"
     return None
 
 
-def _method(args: list[str], flags: set[str]) -> str | None:
-    for i, arg in enumerate(args):
-        name, eq, value = arg.partition("=")
-        if name in flags:
-            if eq:
-                return value.upper()
-            return args[i + 1].upper() if i + 1 < len(args) else "UNKNOWN"
-        if arg.startswith("-X") and len(arg) > 2 and "-X" in flags:
-            return arg[2:].upper()
+def _options(args: list[str], valued: str) -> list[tuple[str, str | None]]:
+    """Each option as (flag, value), however it is spelled.
+
+    `--name=v` and `--name v`; short flags alone (`-d v`), with the value attached (`-dv`)
+    or bundled (`-sSd v`, `-sXPOST`), where the first letter in `valued` takes the rest of
+    the word, or else the next one, as its value. A value the next word supplies is that
+    word, which is then not read as an option itself.
+    """
+    out: list[tuple[str, str | None]] = []
+    i = 0
+    while i < len(args):
+        arg, i = args[i], i + 1
+        if not arg.startswith("-") or arg == "-":
+            continue
+        if arg.startswith("--"):
+            name, eq, value = arg.partition("=")
+            out.append((name, value if eq else (args[i] if i < len(args) else None)))
+            continue
+        for at, letter in enumerate(arg[1:], start=2):
+            if letter not in valued:
+                out.append((f"-{letter}", None))
+                continue
+            attached = arg[at:]
+            if not attached:
+                attached = args[i] if i < len(args) else None
+                i += 1
+            out.append((f"-{letter}", attached))
+            break
+    return out
+
+
+def _method(options: list[tuple[str, str | None]], flags: set[str]) -> str | None:
+    for flag, value in options:
+        if flag in flags:
+            return (value or "UNKNOWN").upper()
     return None
-
-
-def _flag(arg: str) -> str:
-    return arg.partition("=")[0]
 
 
 def main(stdin: str) -> tuple[int, str]:

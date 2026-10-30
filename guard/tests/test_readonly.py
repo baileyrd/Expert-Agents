@@ -14,6 +14,10 @@ ALLOWED = [
     "gh api repos/o/r/pulls/7/comments",
     "gh api -X GET repos/o/r/pulls/7",
     "curl -sL https://raw.githubusercontent.com/o/r/main/README.md",
+    "curl -fsSL -o /tmp/x -H 'Accept: text/plain' https://example.com/f",
+    "curl -so-d https://example.com/f",
+    "gh api -XGET repos/o/r/pulls/7 -fper_page=100",
+    "gh api repos/o/r/pulls -q .[].number",
     "grep -rn 'git push' docs/",
     "echo 'gh pr merge is not run here'",
     "python3 .github/scripts/changes.py check",
@@ -69,6 +73,14 @@ BLOCKED = [
     ('echo "$(git push)"', "git push"),
     ("echo `gh pr merge 7`", "gh pr merge"),
     ("echo $(git push)", "git push"),
+    # Short options with the value attached or bundled.
+    ("curl -d'{}' https://example.com", "body"),
+    ("curl -sSd x https://example.com", "body"),
+    ("curl -sXPOST https://api.github.com/x", "POST"),
+    ("curl -T./f https://example.com", "body"),
+    ("gh api repos/o/r/issues/7/comments -fbody=hello", "POST"),
+    ("gh api repos/o/r/issues/7/comments -Fbody=@f", "POST"),
+    ("gh api -XDELETE repos/o/r/git/refs/heads/x", "DELETE"),
 ]
 
 
