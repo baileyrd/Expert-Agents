@@ -18,6 +18,8 @@ this log tracks commits against `main`.
   and held-out PRs; a fix-and-rerun loop on `check` before benching.
 - **Added:** regenerating an expert needs its interview answer: use `interview.md` or
   ask, never infer one from the current prompt.
+- **Fixed:** the step 5 `prepare` command passes the now-required `--model`, the same
+  for baseline and variant.
 - **Added:** step 8, a read-only wrap-up retro via `skill-retro`, grounded in this
   skill's own steps, with a fallback to a `## Retro` section when `skill-retro` (from
   baileyrd/skill_pack) is not installed. Applying findings stays a separate PR.

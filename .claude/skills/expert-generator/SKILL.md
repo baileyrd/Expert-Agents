@@ -154,13 +154,15 @@ headings differ from the manifest) and bench it there.
 ```
 npm ci --prefix bench/runner
 python3 -m bench.runner prepare bench/cases/<name>/<case> --target <clone> \
-    --out <work>/<case> --variant <variant> --repeat 5
+    --out <work>/<case> --variant <variant> --repeat 5 --model <model>
 # run the printed eval command; then:
 python3 -m bench.runner extract <work>/<case>/grade/results.json \
     --out reports/<name>/<date>-<variant>/
 ```
 
-Use `--repeat 5` so results compare with the baselines.
+Use `--repeat 5` so results compare with the baselines. `--model` is required and
+recorded with every result; pass the same model for the current prompt and the variant,
+because reports compare only when their models match.
 
 ## 6. Grade and report
 
