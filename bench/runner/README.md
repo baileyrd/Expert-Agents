@@ -46,8 +46,10 @@ the pinned one here, because promptfoo loads the Agent SDK from beside the confi
 - **Oracles instead of network.** The prompts' strongest evidence is a reference source
   (microsoft/terminal for conhost, mosh for mux). Clone it beforehand at the commit the
   target pins (conhost: `THIRD_PARTY_NOTICES.md` at the case head) and pass
-  `--oracle NAME=PATH`, repeatable. The task names each path and its commit, and the
-  reviewer reads it in place with sandboxed Bash. A path inside this repo, the target
+  `--oracle NAME=PATH`, repeatable, with a full (not blobless) clone. `prepare` snapshots
+  PATH's HEAD into `<out>/oracles/NAME` with no remote, so later edits or untracked files
+  in PATH never reach a run, and the task names each snapshot and its commit; the reviewer
+  reads it with sandboxed Bash and cannot write it. A path inside this repo, the target
   clone or the work directory is refused. Without one, the conhost expert cannot read
   conhost and marks its citations "(unverified)", so the run measures less than a live
   review does.

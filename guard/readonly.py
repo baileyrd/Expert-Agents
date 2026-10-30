@@ -2,8 +2,9 @@
 
 Claude Code runs it before each Bash call of a reviewer subagent, with the call as JSON on
 stdin. Exit 0 lets the command run; exit 2 blocks it and shows stderr to the reviewer.
-It blocks pushes, GitHub writes through `gh`, and HTTP writes through `curl`/`wget`, and
-fails closed on input it cannot parse.
+It blocks pushes, GitHub writes through `gh`, HTTP writes through `curl`/`wget`, and a
+shell run on a script or stdin it cannot see. It reads `-c` strings, `eval` and command
+substitution, and fails closed on input it cannot parse.
 
 This is a second layer, not a sandbox: a determined command can evade a deny-list. The
 boundary that holds is the dispatch rule that a reviewer gets no GitHub write credentials.
@@ -13,12 +14,14 @@ Standard library only, so the copy in a target repo needs nothing installed.
 from __future__ import annotations
 
 import json
-import shlex
 import sys
 
-_PUNCTUATION = set("();<>|&")
+_BLANKS = set(" \t\r")
+_SEPARATORS = set("();<>|&`\n")
+_DQ_ESCAPES = set('"\\$`\n')
 _WRAPPERS = {"env", "command", "exec", "nohup", "sudo", "xargs", "time", "nice"}
 _SHELLS = {"sh", "bash", "zsh", "dash"}
+_SHELL_VALUED = {"-o", "+o", "-O", "+O", "--rcfile", "--init-file"}
 _GIT_VALUED = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
 _GH_VALUED = {"-R", "--repo", "--hostname"}
 _GH_WRITES = {
@@ -42,27 +45,79 @@ _HTTP_WRITE_FLAGS = {"-d", "--data", "--data-raw", "--data-binary", "--data-urle
 def verdict(command: str) -> str | None:
     """Why the command is blocked, or None when it may run."""
     try:
-        commands = _commands(command)
+        commands, nested = _commands(command)
     except ValueError as err:
         return f"cannot parse the command ({err}), so it is blocked"
     for words in commands:
         reason = _check(words)
         if reason:
             return reason
+    for inner in nested:
+        reason = verdict(inner)
+        if reason:
+            return reason
     return None
 
 
-def _commands(command: str) -> list[list[str]]:
-    """Simple commands, split quote-aware at `;`, `&`, `|`, parentheses, redirects and newlines."""
-    lexer = shlex.shlex(command.replace("\n", " ; "), posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
-    out: list[list[str]] = [[]]
-    for token in lexer:
-        if token and set(token) <= _PUNCTUATION:
-            out.append([])
+def _commands(command: str) -> tuple[list[list[str]], list[str]]:
+    """Simple commands as words, and the double-quoted text that runs command substitution.
+
+    A small shell lexer: quotes and backslashes join a word, a backslash-newline continues
+    the line, an unquoted `#` at a word's start comments to the end of the line (not past
+    it), and newlines, `;`, `&`, `|`, parentheses, backticks and redirects split commands.
+    """
+    commands: list[list[str]] = [[]]
+    nested: list[str] = []
+    word: list[str] | None = None
+    i = 0
+    while i < len(command):
+        c = command[i]
+        if c == "\\":
+            i += 2
+            if command[i - 1 : i] == "\n":
+                continue
+            word = (word or []) + [command[i - 1 : i]]
+        elif c == "'":
+            close = command.find("'", i + 1)
+            if close < 0:
+                raise ValueError("unterminated single quote")
+            word, i = (word or []) + [command[i + 1 : close]], close + 1
+        elif c == '"':
+            text, i = _double_quoted(command, i + 1)
+            if "$(" in text or "`" in text:
+                nested.append(text)
+            word = (word or []) + [text]
+        elif c == "#" and word is None:
+            close = command.find("\n", i)
+            i = len(command) if close < 0 else close
+        elif c in _BLANKS or c in _SEPARATORS:
+            if word is not None:
+                commands[-1].append("".join(word))
+                word = None
+            if c in _SEPARATORS:
+                commands.append([])
+            i += 1
         else:
-            out[-1].append(token)
-    return [c for c in out if c]
+            word, i = (word or []) + [c], i + 1
+    if word is not None:
+        commands[-1].append("".join(word))
+    return [c for c in commands if c], nested
+
+
+def _double_quoted(command: str, i: int) -> tuple[str, int]:
+    """The text of a double-quoted string starting at `i`, and the index after its quote."""
+    out: list[str] = []
+    while i < len(command):
+        c = command[i]
+        if c == '"':
+            return "".join(out), i + 1
+        if c == "\\" and command[i + 1 : i + 2] in _DQ_ESCAPES:
+            out.append(command[i + 1].replace("\n", ""))
+            i += 2
+            continue
+        out.append(c)
+        i += 1
+    raise ValueError("unterminated double quote")
 
 
 def _check(words: list[str]) -> str | None:
@@ -100,10 +155,17 @@ def _unwrap(words: list[str]) -> list[str]:
 
 
 def _check_shell(words: list[str]) -> str | None:
-    if "-c" not in words:
-        return None
-    at = words.index("-c")
-    return verdict(words[at + 1]) if at + 1 < len(words) else None
+    """Check a `-c` command string, `-c` bundled or not; a shell given none runs unseen code."""
+    args, i, has_c = words[1:], 0, False
+    while i < len(args) and args[i].startswith(("-", "+")) and args[i] not in {"-", "--"}:
+        arg = args[i]
+        has_c = has_c or (arg[0] == "-" and arg[1] != "-" and "c" in arg[1:])
+        i += 2 if arg in _SHELL_VALUED else 1
+    if not has_c:
+        return f"`{words[0]}` without -c runs a script or stdin the guard cannot see"
+    if i >= len(args):
+        return f"`{words[0]} -c` with no command string, so it is blocked"
+    return verdict(args[i])
 
 
 def _subcommand(args: list[str], valued: set[str]) -> list[str]:

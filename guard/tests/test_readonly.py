@@ -17,6 +17,11 @@ ALLOWED = [
     "grep -rn 'git push' docs/",
     "echo 'gh pr merge is not run here'",
     "python3 .github/scripts/changes.py check",
+    "cargo test # then git push",
+    "git log --format='%H # %s'",
+    'git log --grep="fix #12"',
+    "sh -c 'cargo test -p rusty_mux_server'",
+    "cargo test \\\n  -p rusty_conhost",
 ]
 
 BLOCKED = [
@@ -45,6 +50,25 @@ BLOCKED = [
     ("curl -d '{}' https://api.github.com/x", "body"),
     ("wget --post-data=x https://example.com", "body"),
     ("echo 'unbalanced", "cannot parse"),
+    ('echo "unbalanced', "cannot parse"),
+    # A comment ends at its newline, and a backslash-newline continues the command.
+    ("git status # inspect\ngit push origin HEAD", "git push"),
+    ("git \\\npush origin HEAD", "git push"),
+    ("git status # a\n  # b\ngh pr merge 7", "gh pr merge"),
+    # Shell options bundled with -c, or given values, still expose the command string.
+    ("bash -lc 'git push origin HEAD'", "git push"),
+    ("bash -lc 'gh pr merge 7'", "gh pr merge"),
+    ("sh -ec 'gh pr review 7 --approve'", "gh pr review"),
+    ("bash -o pipefail -c 'git push'", "git push"),
+    ("bash --norc -c 'git push'", "git push"),
+    ("bash -c", "no command string"),
+    # A shell with no -c runs code the guard cannot see.
+    ("echo 'git push' | bash", "cannot see"),
+    ("bash probe.sh", "cannot see"),
+    # Command substitution, quoted or not.
+    ('echo "$(git push)"', "git push"),
+    ("echo `gh pr merge 7`", "gh pr merge"),
+    ("echo $(git push)", "git push"),
 ]
 
 

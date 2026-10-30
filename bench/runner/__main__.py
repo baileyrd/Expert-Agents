@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tomllib
@@ -53,12 +54,12 @@ def prepare(args: argparse.Namespace) -> int:
     grade = out / GRADE
     if args.repeat < 1:
         raise ValueError("--repeat must be at least 1")
-    oracles = tuple(_oracle(spec, (ROOT, target, out)) for spec in args.oracle)
     runs = _runs(out, name, args.repeat, (ROOT, target, grade), tuple(args.allow_domain))
     for run in runs:
         blind_checkout(case, target, run.checkout)
         run.scratch.mkdir(parents=True, exist_ok=True)
     grade.mkdir(exist_ok=True)
+    oracles = tuple(_oracle(spec, (ROOT, target, out), out) for spec in args.oracle)
     _link_modules(out)
     config = review(case, prior, prompt, args.variant, _prompt_sha(), runs, args.model, oracles)
     path = out / f"{name}.review.yaml"
@@ -126,20 +127,45 @@ def _refuse_collisions(out: Path, outputs: list[RunOutput]) -> None:
         raise ValueError(f"{out} already has {', '.join(taken)}; extract into a fresh directory")
 
 
-def _oracle(spec: str, hidden: tuple[Path, ...]) -> Oracle:
-    """`NAME=PATH`: a git clone outside every hidden path, pinned to its current HEAD."""
+def _oracle(spec: str, hidden: tuple[Path, ...], out: Path) -> Oracle:
+    """`NAME=PATH`: a git clone outside every hidden path, snapshotted at its HEAD.
+
+    The reviewer reads the snapshot, a clone of that one commit under the work directory
+    with no remote, so later edits, untracked files or a moved HEAD in PATH never reach a
+    run and the recorded commit is exactly what it sees.
+    """
     name, sep, raw = spec.partition("=")
-    if not sep or not name or not raw:
-        raise ValueError(f"--oracle {spec!r}: want NAME=PATH")
-    path = Path(raw).expanduser().resolve()
+    if not sep or not re.fullmatch(r"[\w-][\w.-]*", name) or not raw:
+        raise ValueError(f"--oracle {spec!r}: want NAME=PATH, NAME of letters, digits, . _ -")
+    source = Path(raw).expanduser().resolve()
     for h in hidden:
-        if path == h or h in path.parents or path in h.parents:
-            raise ValueError(f"--oracle {path} overlaps {h}, which the reviewer may not read")
-    result = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"],
+        if source == h or h in source.parents or source in h.parents:
+            raise ValueError(f"--oracle {source} overlaps {h}, which the reviewer may not read")
+    commit = _git_at(source, "rev-parse", "HEAD")
+    snapshot = out / "oracles" / name
+    if snapshot.exists():
+        _require_snapshot(snapshot, commit)
+    else:
+        _git_at(source, "clone", "--quiet", "--no-checkout", str(source), str(snapshot))
+        _git_at(snapshot, "checkout", "--quiet", "--detach", commit)
+        _git_at(snapshot, "remote", "remove", "origin")
+    return Oracle(name=name, path=snapshot, commit=commit)
+
+
+def _require_snapshot(snapshot: Path, commit: str) -> None:
+    """A snapshot left by an earlier prepare is reused only if it is still that commit, clean."""
+    if _git_at(snapshot, "rev-parse", "HEAD") != commit:
+        raise ValueError(f"{snapshot} is not at {commit}; use a fresh --out")
+    if _git_at(snapshot, "status", "--porcelain", "--untracked-files=all"):
+        raise ValueError(f"{snapshot} has changes; use a fresh --out")
+
+
+def _git_at(path: Path, *args: str) -> str:
+    result = subprocess.run(["git", "-C", str(path), *args],
                             capture_output=True, text=True, check=False)
     if result.returncode != 0:
-        raise ValueError(f"--oracle {path} is not a git clone: {result.stderr.strip()}")
-    return Oracle(name=name, path=path, commit=result.stdout.strip())
+        raise ValueError(f"git {args[0]} in {path} failed: {result.stderr.strip()}")
+    return result.stdout.strip()
 
 
 def _runs(out: Path, name: str, repeat: int, hidden: tuple[Path, ...],

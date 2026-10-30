@@ -263,22 +263,63 @@ class PrepareTest(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("readable by a later review", err)
 
-    def test_an_oracle_is_a_git_clone_outside_every_hidden_path_pinned_to_head(self) -> None:
+    def oracle_source(self, root: Path) -> tuple[Path, str]:
+        """A clone with one tracked file, then a tracked edit and an untracked note on top."""
+        source = root / "mosh"
+        source.mkdir()
+        git(source, "init", "-q")
+        (source / "ref.c").write_text("committed\n")
+        git(source, "add", "ref.c")
+        git(source, "commit", "-q", "-m", "c")
+        head = git(source, "rev-parse", "HEAD")
+        (source / "ref.c").write_text("edited after commit\n")
+        (source / "note.md").write_text("untracked\n")
+        return source, head
+
+    def test_an_oracle_is_a_snapshot_of_its_commit_with_none_of_the_source_s_drift(self) -> None:
         from bench.runner.__main__ import _oracle
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()
-            clone, hidden = root / "mosh", root / "hidden"
-            clone.mkdir()
+            source, head = self.oracle_source(root)
+            out = root / "work"
+            oracle = _oracle(f"mosh={source}", (root / "hidden", out), out)
+            self.assertEqual(oracle, Oracle("mosh", out / "oracles" / "mosh", head))
+            self.assertEqual((oracle.path / "ref.c").read_text(), "committed\n")
+            self.assertFalse((oracle.path / "note.md").exists())
+            self.assertEqual(git(oracle.path, "remote"), "")
+            # A commit in the source after prepare never reaches the snapshot.
+            git(source, "commit", "-q", "-am", "later")
+            self.assertEqual((oracle.path / "ref.c").read_text(), "committed\n")
+            self.assertEqual(git(oracle.path, "rev-parse", "HEAD"), head)
+
+    def test_a_reused_snapshot_must_still_be_its_commit_and_clean(self) -> None:
+        from bench.runner.__main__ import _oracle
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            source, _ = self.oracle_source(root)
+            out = root / "work"
+            snapshot = _oracle(f"mosh={source}", (out,), out).path
+            self.assertEqual(_oracle(f"mosh={source}", (out,), out).path, snapshot)
+            (snapshot / "ref.c").write_text("tampered\n")
+            with self.assertRaisesRegex(ValueError, "has changes"):
+                _oracle(f"mosh={source}", (out,), out)
+            git(snapshot, "checkout", "-q", "ref.c")
+            git(source, "commit", "-q", "-am", "moved")
+            with self.assertRaisesRegex(ValueError, "is not at"):
+                _oracle(f"mosh={source}", (out,), out)
+
+    def test_an_oracle_outside_the_rules_is_refused(self) -> None:
+        from bench.runner.__main__ import _oracle
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            hidden, out = root / "hidden", root / "work"
             hidden.mkdir()
-            git(clone, "init", "-q")
-            git(clone, "commit", "-q", "--allow-empty", "-m", "c")
-            head = git(clone, "rev-parse", "HEAD")
-            self.assertEqual(_oracle(f"mosh={clone}", (hidden,)), Oracle("mosh", clone, head))
             for spec, why in ((f"mosh={hidden}", "overlaps"), (f"x={root}", "overlaps"),
                               (f"x={hidden / 'n'}", "overlaps"), ("mosh", "NAME=PATH"),
-                              (f"x={root / 'none'}", "not a git clone")):
+                              (f"../x={root / 'none'}", "NAME=PATH"),
+                              (f"x={root / 'none'}", "failed")):
                 with self.assertRaisesRegex(ValueError, why):
-                    _oracle(spec, (hidden,))
+                    _oracle(spec, (hidden, out), out)
 
     def test_a_work_directory_the_reviewer_may_not_read_is_refused(self) -> None:
         from contextlib import redirect_stderr

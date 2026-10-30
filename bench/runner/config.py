@@ -39,7 +39,8 @@ Wording does not matter; the defect does."""
 class Oracle:
     """A reference source cloned before the run, so a reviewer with no network can read it.
 
-    Sandboxed Bash reads it in place; it is never written. `commit` pins what was read.
+    `path` is a snapshot of `commit` in the work directory, readable and not writable by
+    sandboxed Bash, so the recorded commit is exactly what the reviewer saw.
     """
 
     name: str
