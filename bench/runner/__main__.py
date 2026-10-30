@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tomllib
@@ -20,7 +21,7 @@ from bench.scorer.load import load_case
 from bench.scorer.model import BenchError
 
 from .checkout import CheckoutError, blind_checkout
-from .config import Boundary, review, rubric
+from .config import Boundary, Oracle, review, rubric
 from .extract import RunOutput, report_md, run_outputs, run_skeleton, stem
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -58,8 +59,9 @@ def prepare(args: argparse.Namespace) -> int:
         blind_checkout(case, target, run.checkout)
         run.scratch.mkdir(parents=True, exist_ok=True)
     grade.mkdir(exist_ok=True)
+    oracles = tuple(_oracle(spec, (ROOT, target, out), out) for spec in args.oracle)
     _link_modules(out)
-    config = review(case, prior, prompt, args.variant, _prompt_sha(), runs, args.model)
+    config = review(case, prior, prompt, args.variant, _prompt_sha(), runs, args.model, oracles)
     path = out / f"{name}.review.yaml"
     path.write_text(json.dumps(config, indent=2) + "\n")  # JSON is valid YAML
     print(f"{EVAL} -c {path} -o {grade / 'results.json'}")
@@ -123,6 +125,47 @@ def _refuse_collisions(out: Path, outputs: list[RunOutput]) -> None:
     taken = sorted(n for n in names if (out / n).exists())
     if taken:
         raise ValueError(f"{out} already has {', '.join(taken)}; extract into a fresh directory")
+
+
+def _oracle(spec: str, hidden: tuple[Path, ...], out: Path) -> Oracle:
+    """`NAME=PATH`: a git clone outside every hidden path, snapshotted at its HEAD.
+
+    The reviewer reads the snapshot, a clone of that one commit under the work directory
+    with no remote, so later edits, untracked files or a moved HEAD in PATH never reach a
+    run and the recorded commit is exactly what it sees.
+    """
+    name, sep, raw = spec.partition("=")
+    if not sep or not re.fullmatch(r"[\w-][\w.-]*", name) or not raw:
+        raise ValueError(f"--oracle {spec!r}: want NAME=PATH, NAME of letters, digits, . _ -")
+    source = Path(raw).expanduser().resolve()
+    for h in hidden:
+        if source == h or h in source.parents or source in h.parents:
+            raise ValueError(f"--oracle {source} overlaps {h}, which the reviewer may not read")
+    commit = _git_at(source, "rev-parse", "HEAD")
+    snapshot = out / "oracles" / name
+    if snapshot.exists():
+        _require_snapshot(snapshot, commit)
+    else:
+        _git_at(source, "clone", "--quiet", "--no-checkout", str(source), str(snapshot))
+        _git_at(snapshot, "checkout", "--quiet", "--detach", commit)
+        _git_at(snapshot, "remote", "remove", "origin")
+    return Oracle(name=name, path=snapshot, commit=commit)
+
+
+def _require_snapshot(snapshot: Path, commit: str) -> None:
+    """A snapshot left by an earlier prepare is reused only if it is still that commit, clean."""
+    if _git_at(snapshot, "rev-parse", "HEAD") != commit:
+        raise ValueError(f"{snapshot} is not at {commit}; use a fresh --out")
+    if _git_at(snapshot, "status", "--porcelain", "--untracked-files=all"):
+        raise ValueError(f"{snapshot} has changes; use a fresh --out")
+
+
+def _git_at(path: Path, *args: str) -> str:
+    result = subprocess.run(["git", "-C", str(path), *args],
+                            capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise ValueError(f"git {args[0]} in {path} failed: {result.stderr.strip()}")
+    return result.stdout.strip()
 
 
 def _runs(out: Path, name: str, repeat: int, hidden: tuple[Path, ...],
@@ -214,7 +257,12 @@ def _parser() -> argparse.ArgumentParser:
     prep.add_argument("--drop", action="append", default=[], metavar="HEADING",
                       help="ablate a section by its heading; repeatable")
     prep.add_argument("--repeat", type=int, default=3, help="runs per case, each in its own checkout")
-    prep.add_argument("--model", help="reviewer model; default is the SDK's")
+    prep.add_argument("--model", required=True,
+                      help="reviewer model, recorded with every result so runs compare")
+    prep.add_argument("--oracle", action="append", default=[], metavar="NAME=PATH",
+                      help="a reference source cloned beforehand at its pinned commit, named "
+                           "to the reviewer (repeatable); conhost: microsoft-terminal, "
+                           "mux: mosh")
     prep.add_argument("--allow-domain", action="append", default=[], metavar="DOMAIN",
                       help="let sandboxed Bash reach DOMAIN (repeatable); the web tools stay "
                            "off. github.com exposes the live review, so a run using it is not blind")

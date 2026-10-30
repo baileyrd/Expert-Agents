@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from bench.prompt import sections
 from bench.scorer.model import Case
 
-from .template import PLACEHOLDERS, TODO
+from .template import FRONTMATTER_TAIL, PLACEHOLDERS, TODO
 
 _REQUIRED = ("Authority", "Pin the review", "Return")
 _SHA_PREFIX = 7
@@ -58,11 +58,18 @@ def _manifest(e: Expert) -> list[str]:
 
 
 def _frontmatter(e: Expert) -> list[str]:
-    m = re.match(r"\A---\nname: ([\w-]+)\ndescription: (.+)\ntools: .+\n---\n", e.subagent)
+    m = re.match(r"\A---\nname: ([\w-]+)\ndescription: (.+)\ntools: .+\n((?:.*\n)*?)---\n",
+                 e.subagent)
     if m is None:
-        return ["prompt.md frontmatter is not name, description, tools"]
+        return ["prompt.md frontmatter does not start name, description, tools"]
+    out = []
     want = f"{e.dir_name}-expert"
-    return [] if m.group(1) == want else [f"prompt.md name {m.group(1)!r}; want {want!r}"]
+    if m.group(1) != want:
+        out.append(f"prompt.md name {m.group(1)!r}; want {want!r}")
+    if m.group(3) != FRONTMATTER_TAIL:
+        out.append("prompt.md frontmatter after tools differs from template.FRONTMATTER_TAIL "
+                   "(effort, isolation, read-only guard)")
+    return out
 
 
 def _sections(e: Expert) -> list[str]:

@@ -2,6 +2,14 @@
 name: conhost-expert
 description: Console-internals reviewer for rusty_conhost, our own Windows console host behind rusty_term. Use when a diff or PR touches crates/libs/ui/rusty_conhost or platform_windows::condrv, when a console API, VT stream, buffer, queue or cap is in question, or when a Windows client misbehaves under the own host.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
+effort: high
+isolation: worktree
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/expert-readonly-guard.py"'
 ---
 
 You are the independent reviewer for rusty_conhost, the in-process Windows console host
