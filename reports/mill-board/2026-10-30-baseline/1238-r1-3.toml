@@ -1,0 +1,33 @@
+# Grade 1238-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1238-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Two boards on one store hand out the same number"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Any failure numbering an unrelated stray fails every card_add and import"
+triage = "real"
+reason = "board.rs:338 `?` aborts insert_numbered; trigger A (already numbered) fixed on main, but trigger B holds on main: a 19-tag stray PATCHed with agent+board:+number: exceeds rusty_tick MAX_TAGS=20 (rusty_tick service.rs:18,800) and main board.rs:356-359 still propagates with `?`"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A number is reused while its trashed or untagged card still exists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "README still lists only three reserved tags"
+triage = "real"
+reason = "README.md:30-32 omits number: while domain.rs:203-209 reserves it; unchanged on main"

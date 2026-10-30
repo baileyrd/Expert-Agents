@@ -41,4 +41,8 @@ summary = """
 Cooked echo, raw ANSI reads, ANSI records and win32-input-mode to VT each convert one
 unit at a time, so U+1F600 becomes two U+FFFD even when both halves arrive together.
 """
+# The three paths follow the review's three files: cooked echo (cooked.rs Line::char),
+# ANSI reads (read.rs read_chars and read_records count as one path) and vt_for
+# (input.rs). The cooked read's returned text is correct at the head; only its echo is
+# per unit, so "the cooked path is correct" does not refute the echo path.
 caught_if = "Names the per-unit conversion in at least two of the three paths (echo, ANSI reads, vt_for); one path is partial."

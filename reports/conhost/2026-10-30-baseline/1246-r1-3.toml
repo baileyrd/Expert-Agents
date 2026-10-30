@@ -1,0 +1,36 @@
+# Grade 1246-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "One Escape key can push output well past the 144 KiB cap"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A lone ESC at the end of a 16 KiB slice becomes an Escape key"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Cooked echo sends control characters to the terminal raw"
+triage = "real"
+reason = "executed at head: a,^L,^N,^G echo as 61 0c 0e 07 (cooked.rs:78-81); conhost renders them ^X (readDataCooked.cpp:1362-1366); not in §5.10; unchanged on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Deferred cooked editing (cursor keys, history, popups) has no owning PR in §10"
+triage = "real"
+reason = "design.md:723 says 'later' but no §10 row (715-735) takes them; glossary design.md:44 includes history; unchanged on main (design.md:747)"
+
+# Non-blocking: its "Design questions and validation gaps" names the K3 per-unit
+# conversion for ANSI raw reads (read_chars). Not graded as a finding.

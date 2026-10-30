@@ -1,0 +1,40 @@
+# Grade 1238-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1238-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Two boards hand out the same number and #n reaches the wrong card"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P0"
+title = "A number is reused while its card still exists (trash or agent tag removed)"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "card_add and GitHub import fail when another board numbers the same stray first"
+triage = "fixed_since"
+reason = "real at head (board.rs:337-340, domain.rs:522-524); fixed on main by 22a35d8f0, Card::numbered returns the card unchanged (domain.rs:521-530)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "README disagrees with the code on reserved tags and storage mapping"
+triage = "real"
+reason = "README.md:30-31 and :73 omit number: while domain.rs:203-209 reserves it; unchanged on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Pre-existing user number: tags are reinterpreted or silently dropped"
+triage = "real"
+reason = "base reserved_tag lacked number: (domain.rs:203-206); head tick.rs:306-316 parses/filters them and the numbering PATCH rewrites tags without them; unchanged on main tick.rs:320-330"

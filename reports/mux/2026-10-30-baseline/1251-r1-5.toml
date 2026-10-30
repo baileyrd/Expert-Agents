@@ -1,0 +1,40 @@
+# Grade 1251-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "mux/1251-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A killed rusty-mux locks the next one out of typing with no time limit"
+triage = "real"
+reason = "source trace: TUI never handles LeaseChanged (no match in tui/src/main.rs), lease() only runs from sync() (main.rs:1585,1600-1605), refused take() clears asking (main.rs:985-991); orphan from killed client (state.rs:238-241) blocks the next one past 30 s; on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Retrying a lost Welcome fails after a takeover with no request"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Over --ssh the exit Detach can be lost when ssh is killed"
+triage = "real"
+reason = "source trace: main.rs:508-516 writes Detach and shuts the socket, then drop(app) -> Forward::drop SIGKILLs ssh (ssh.rs:165) with no wait for Done; same race as the select! probe, worse over ssh; on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Docs that now disagree with the code"
+triage = "real"
+reason = "mismatches exist: main.rs:505 vs state.rs:238-241 (detached token client is orphaned 30 s), main.rs:178-179 Missed::Broken, DECISIONS.md:37/39 not superseded, fragment limits; on main (main.rs:518, :189)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Test coverage gaps for exit Detach, used-token replay and the keep test"
+triage = "real"
+reason = "no TUI test checks the lease after exit; takeover.rs:155 a_client_that_detached_before_leaving_holds_no_lease waits for Done, so it passes at base; tui/tests/lifecycle.rs has no lease check; on main"

@@ -1,0 +1,33 @@
+# Grade 1165-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1165-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A deployment from the old env file silently runs in memory and loses its cards"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "The card-read fix has no test that pauses at the race"
+triage = "fixed_since"
+reason = "head fake_tick/mod.rs has no hook between GET /tasks and GET /docs/board, so tick.rs:487-507 re-read and READ_ATTEMPTS Conflict are only hit by luck in execution.rs; f680de28 adds race_after + tick_store.rs:509,524 on main"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "The only process-level test of the binary was deleted"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Docs the PR leaves false: main.rs, store.rs and board.rs health wording"
+triage = "real"
+reason = "main.rs:12-13 says 503 once it needs a restart; TickStore::health (tick.rs:739-748) is 503 only while rusty_tick is unreachable; still main.rs:13 on main; store.rs:37 and board.rs:204 must be reopened likewise stale (main store.rs:43, board.rs:394)"

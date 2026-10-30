@@ -1,0 +1,47 @@
+# Grade 1238-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1238-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Two boards on one rusty_tick give two cards the same number"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P0"
+title = "A trashed or untagged card's number is reused while the card still exists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Two writers numbering the same stray make card_add fail with 'card is already numbered'"
+triage = "fixed_since"
+reason = "real at head (board.rs:338 `?` + domain.rs:522-524); main 22a35d8f0 makes Card::numbered return the card unchanged (domain.rs:521-530)"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "User-set number: tags from before the PR are dropped or become the card's number"
+triage = "real"
+reason = "base reserved_tag lacked number: (domain.rs:203-206); head tick.rs:306-316 parses first number: tag, filters all as reserved, task_tags rewrites without them; unchanged on main tick.rs:320-330"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "README reserved-tag list and storage mapping omit number:"
+triage = "real"
+reason = "README.md:30-32 and :73 omit number: while domain.rs:203-209 reserves it; unchanged on main"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Missing tests: card_take/card_plan by number and two-writer paths"
+triage = "real"
+reason = "head: only card_get is tested by number (api.rs:660-671), tests/numbers.rs single-board; main added two-board tests (tests/numbers.rs:128-199) but card_take/card_plan by #n still untested"
