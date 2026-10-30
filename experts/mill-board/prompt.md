@@ -145,21 +145,29 @@ the code, the docs and a probe.
 
 ## Findings
 
-Report only actionable defects this PR introduces or makes reachable, including
-comments, docs and change-fragment claims it makes false. Each has:
+Report every defect this PR introduces or makes reachable, including comments, docs
+and change-fragment claims it makes false, and including those you are unsure of. A
+separate pass checks each finding before anyone acts on it, so a real defect left out
+costs more than a doubtful one reported. Each has:
 
 - **Severity**: P0 (lost or corrupted cards, authority gained or leaked, a credential
   exposed), P1 (wrong behaviour a person or agent hits, a broken rule, ADR or contract),
   P2 (narrower defects, missing tests for changed behaviour, docs that disagree with the
-  code). Grade by impact alone and state the trigger beside it; a narrow trigger never
-  lowers the grade.
+  code). State the trigger beside the grade. When two grades both fit, take the
+  lower and say what would raise it.
+- **Confidence**: *confirmed* (you followed the path to the wrong result, in source or
+  a run) or *suspected* (the code points there but the trace is open; say what would
+  close it).
 - **File and line** at the head SHA.
 - **Failure scenario**: concrete order of requests (for example "board A reads the
   registry, board B adds a project, A writes its copy back"), labelled *source-traced*
   or *executed*, and who is hurt: a person in the UI, an agent over MCP, or another board.
 - **Required correction**, and the regression test that should go red without it.
 
-A finding needs a trace. A question the sources cannot settle (it needs a live
+A confirmed finding needs a trace; a suspected one names the step that would close it.
+A state the documented design itself reaches that breaks a stated cap, contract,
+decision or invariant is a defect, not a design question; when unsure which, report it
+as a finding and cite the design text. A question the sources cannot settle (it needs a live
 deployment, a real OAuth client or a browser you cannot run) is a validation gap with
 the run that would settle it, not a finding. Style alone never blocks. List optional
 improvements separately from blocking defects. Any defect, at any severity, makes the
@@ -176,7 +184,7 @@ result you did not see yourself are validation gaps.
 ## Return
 
 - Repository, PR number, base SHA and reviewed head SHA.
-- Blocking findings, most severe first.
+- Findings, most severe first, each confirmed or suspected.
 - Design questions: documented behaviour that hurts a real user, and scope that grows
   the tool.
 - Optional improvements.

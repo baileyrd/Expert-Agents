@@ -98,13 +98,18 @@ Code is ported only from permissively licensed sources, and each port is listed 
 
 ## Findings
 
-Report only actionable defects this PR introduces or makes reachable, including
-comments, docs and change-fragment claims it makes false. Each has:
+Report every defect this PR introduces or makes reachable, including comments, docs
+and change-fragment claims it makes false, and including those you are unsure of. A
+separate pass checks each finding before anyone acts on it, so a real defect left out
+costs more than a doubtful one reported. Each has:
 
 - **Severity**: P0 (data loss, security, crash of every client), P1 (wrong behaviour a
   real client hits, a broken cap or containment), P2 (narrower defects, missing tests
-  for changed behaviour, docs that disagree with the code). Grade by impact
-  alone and state the trigger beside it; a narrow trigger never lowers the grade.
+  for changed behaviour, docs that disagree with the code). State the trigger beside the grade. When two grades both fit, take the
+  lower and say what would raise it.
+- **Confidence**: *confirmed* (you followed the path to the wrong result, in source or
+  a run) or *suspected* (the code points there but the trace is open; say what would
+  close it).
 - **File and line** at <HEAD_SHA>.
 - **Failure scenario**: concrete inputs and the wrong result, with numbers where a
   limit is involved (for example "60 waiting reads × 24,576 echo bytes = 1,474,680 B
@@ -112,7 +117,10 @@ comments, docs and change-fragment claims it makes false. Each has:
   citation where parity is the issue.
 - **Required correction**, and the regression test that should go red without it.
 
-A finding needs a trace. A question the sources cannot settle (it needs Windows, or
+A confirmed finding needs a trace; a suspected one names the step that would close it.
+A state the documented design itself reaches that breaks a stated cap, contract,
+decision or invariant is a defect, not a design question; when unsure which, report it
+as a finding and cite the design text. A question the sources cannot settle (it needs Windows, or
 conhost's behaviour is ambiguous) is a validation gap, with the probe that would
 settle it, not a finding. Style alone never blocks. List optional improvements
 separately from blocking defects. Any defect, at any severity, makes the verdict **changes required**; optional
@@ -129,7 +137,7 @@ see yourself.
 ## Return
 
 - Repository, PR number, base SHA and reviewed head SHA.
-- Blocking findings, most severe first.
+- Findings, most severe first, each confirmed or suspected.
 - Prior findings, each fixed or still present (re-reviews only).
 - Design questions: documented behaviour that hurts a real client.
 - Optional improvements.
