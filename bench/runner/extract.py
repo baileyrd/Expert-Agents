@@ -30,7 +30,7 @@ def run_outputs(results: dict[str, Any]) -> list[RunOutput]:
         error = r.get("error") or (None if "response" in r else "no response")
         outputs.append(RunOutput(
             case=v["case"],
-            variant=r["provider"].get("label") or r["provider"]["id"],
+            variant=v.get("variant") or r["provider"].get("label") or r["provider"]["id"],
             prompt_sha=v["prompt_sha"],
             run=counts[v["case"]],
             report=str(response.get("output") or ""),

@@ -51,16 +51,22 @@ def prepare(args: argparse.Namespace) -> int:
     _outside(out, (ROOT, target))
     name = case.id.replace("/", "-")
     grade = out / GRADE
-    boundary = Boundary(checkout=out / "review" / name, scratch=out / "scratch",
-                        hidden=(ROOT, target, grade), domains=tuple(args.allow_domain))
-    blind_checkout(case, target, boundary.checkout)
-    boundary.scratch.mkdir(parents=True, exist_ok=True)
+    hidden = (ROOT, target, grade)
+    if args.repeat < 1:
+        raise ValueError("--repeat must be at least 1")
+    runs = tuple(Boundary(checkout=out / "review" / f"{name}-{n}",
+                          scratch=out / "scratch" / f"{name}-{n}",
+                          hidden=hidden, domains=tuple(args.allow_domain))
+                 for n in range(1, args.repeat + 1))
+    for run in runs:
+        blind_checkout(case, target, run.checkout)
+        run.scratch.mkdir(parents=True, exist_ok=True)
     grade.mkdir(exist_ok=True)
     _link_modules(out)
-    config = review(case, prior, prompt, args.variant, _prompt_sha(), boundary, args.model)
+    config = review(case, prior, prompt, args.variant, _prompt_sha(), runs, args.model)
     path = out / f"{name}.review.yaml"
     path.write_text(json.dumps(config, indent=2) + "\n")  # JSON is valid YAML
-    print(f"{EVAL} -c {path} --repeat {args.repeat} -o {grade / 'results.json'}")
+    print(f"{EVAL} -c {path} -o {grade / 'results.json'}")
     return 0
 
 
@@ -200,7 +206,7 @@ def _parser() -> argparse.ArgumentParser:
     prep.add_argument("--variant", default="baseline", help="label for this prompt variant")
     prep.add_argument("--drop", action="append", default=[], metavar="HEADING",
                       help="ablate a section by its heading; repeatable")
-    prep.add_argument("--repeat", type=int, default=3, help="runs per case")
+    prep.add_argument("--repeat", type=int, default=3, help="runs per case, each in its own checkout")
     prep.add_argument("--model", help="reviewer model; default is the SDK's")
     prep.add_argument("--allow-domain", action="append", default=[], metavar="DOMAIN",
                       help="let sandboxed Bash reach DOMAIN (repeatable); the web tools stay "

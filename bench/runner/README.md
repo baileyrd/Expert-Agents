@@ -56,7 +56,9 @@ the pinned one here, because promptfoo loads the Agent SDK from beside the confi
   Sections marked `required` in `expert.toml` are refused.
 - **Re-reviews.** A case with `prior` passes the prior round's key as the findings to
   re-check.
-- **N runs.** `--repeat` (default 3) with `--no-cache`, so repeats are real runs.
+- **N runs.** `--repeat` (default 3) gives each run its own provider, checkout and
+  scratch directory, so runs never see each other's builds or probe files; `--no-cache`
+  keeps every run real.
 - **Extract.** Writes `<case>-<n>-report.md` per run and a graded-run skeleton
   `<case>-<n>.toml` per successful run, and refuses before writing anything if any of
   those files exist. A failed run's report names its error, gets no skeleton, and makes
