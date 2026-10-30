@@ -11,6 +11,7 @@ class RunOutput:
     case: str
     variant: str
     prompt_sha: str
+    model: str
     run: int
     report: str
     latency_ms: int
@@ -32,6 +33,7 @@ def run_outputs(results: dict[str, Any]) -> list[RunOutput]:
             case=v["case"],
             variant=v.get("variant") or r["provider"].get("label") or r["provider"]["id"],
             prompt_sha=v["prompt_sha"],
+            model=str(v.get("model") or "unrecorded"),
             run=counts[v["case"]],
             report=str(response.get("output") or ""),
             latency_ms=int(r.get("latencyMs") or 0),
@@ -45,7 +47,8 @@ def run_outputs(results: dict[str, Any]) -> list[RunOutput]:
 def report_md(o: RunOutput) -> str:
     """The reviewer's report with a header naming the run and its cost, or why it failed."""
     cost = f"${o.cost_usd:.2f}" if o.cost_usd is not None else "unknown"
-    return (f"<!-- {o.case} run {o.run}, variant {o.variant}, prompt {o.prompt_sha}; "
+    return (f"<!-- {o.case} run {o.run}, variant {o.variant}, prompt {o.prompt_sha}, "
+            f"model {o.model}; "
             f"{o.latency_ms / 1000:.0f} s, {o.tokens or 'unknown'} tokens, {cost} -->\n\n"
             + (f"**Run failed:** {o.error}\n" if o.error else f"{o.report}\n"))
 

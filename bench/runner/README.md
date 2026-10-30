@@ -10,7 +10,8 @@ Needs Node 22.22 or newer (promptfoo's floor; `npm ci` refuses older), and on Li
 ```
 npm ci --prefix bench/runner        # once: promptfoo and the Agent SDK, pinned
 python3 -m bench.runner prepare mux/1251-r1 \
-    --target ~/src/rusty_mill --out /tmp/bench-1251 --variant baseline --repeat 5
+    --target ~/src/rusty_mill --out /tmp/bench-1251 --variant baseline --repeat 5 \
+    --model <model> --oracle mosh=~/src/oracles/mosh
 # 1. run the printed review command, signed in to Claude Code
 python3 -m bench.runner extract /tmp/bench-1251/grade/results.json \
     --out reports/mux/<date>-<variant>/
@@ -41,11 +42,20 @@ the pinned one here, because promptfoo loads the Agent SDK from beside the confi
   review. Sandboxed Bash allows no domains unless `--allow-domain` opens one
   (repeatable), for example the crates.io hosts if `cargo` has no cached registry.
   Opening `github.com` lets Bash read the live review, so a run that does is not blind;
-  say so in its report. With no network, the conhost expert cannot clone
-  microsoft/terminal and marks its conhost citations "(unverified)".
+  say so in its report.
+- **Oracles instead of network.** The prompts' strongest evidence is a reference source
+  (microsoft/terminal for conhost, mosh for mux). Clone it beforehand at the commit the
+  target pins (conhost: `THIRD_PARTY_NOTICES.md` at the case head) and pass
+  `--oracle NAME=PATH`, repeatable. The task names each path and its commit, and the
+  reviewer reads it in place with sandboxed Bash. A path inside this repo, the target
+  clone or the work directory is refused. Without one, the conhost expert cannot read
+  conhost and marks its citations "(unverified)", so the run measures less than a live
+  review does.
 
 ## The rest
 
+- **Model.** `--model` is required and recorded with every result and in each report's
+  header, so two reports compare only when their models match.
 - **No API key.** The reviewer and the default grader use your signed-in Claude Code
   login (`apiKeyRequired: false`), so runs count against your plan's usage. Unset
   `ANTHROPIC_API_KEY` first: if it is set, it is used instead.

@@ -20,7 +20,7 @@ from bench.scorer.load import load_case
 from bench.scorer.model import BenchError
 
 from .checkout import CheckoutError, blind_checkout
-from .config import Boundary, review, rubric
+from .config import Boundary, Oracle, review, rubric
 from .extract import RunOutput, report_md, run_outputs, run_skeleton, stem
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -53,13 +53,14 @@ def prepare(args: argparse.Namespace) -> int:
     grade = out / GRADE
     if args.repeat < 1:
         raise ValueError("--repeat must be at least 1")
+    oracles = tuple(_oracle(spec, (ROOT, target, out)) for spec in args.oracle)
     runs = _runs(out, name, args.repeat, (ROOT, target, grade), tuple(args.allow_domain))
     for run in runs:
         blind_checkout(case, target, run.checkout)
         run.scratch.mkdir(parents=True, exist_ok=True)
     grade.mkdir(exist_ok=True)
     _link_modules(out)
-    config = review(case, prior, prompt, args.variant, _prompt_sha(), runs, args.model)
+    config = review(case, prior, prompt, args.variant, _prompt_sha(), runs, args.model, oracles)
     path = out / f"{name}.review.yaml"
     path.write_text(json.dumps(config, indent=2) + "\n")  # JSON is valid YAML
     print(f"{EVAL} -c {path} -o {grade / 'results.json'}")
@@ -123,6 +124,22 @@ def _refuse_collisions(out: Path, outputs: list[RunOutput]) -> None:
     taken = sorted(n for n in names if (out / n).exists())
     if taken:
         raise ValueError(f"{out} already has {', '.join(taken)}; extract into a fresh directory")
+
+
+def _oracle(spec: str, hidden: tuple[Path, ...]) -> Oracle:
+    """`NAME=PATH`: a git clone outside every hidden path, pinned to its current HEAD."""
+    name, sep, raw = spec.partition("=")
+    if not sep or not name or not raw:
+        raise ValueError(f"--oracle {spec!r}: want NAME=PATH")
+    path = Path(raw).expanduser().resolve()
+    for h in hidden:
+        if path == h or h in path.parents or path in h.parents:
+            raise ValueError(f"--oracle {path} overlaps {h}, which the reviewer may not read")
+    result = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"],
+                            capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise ValueError(f"--oracle {path} is not a git clone: {result.stderr.strip()}")
+    return Oracle(name=name, path=path, commit=result.stdout.strip())
 
 
 def _runs(out: Path, name: str, repeat: int, hidden: tuple[Path, ...],
@@ -214,7 +231,12 @@ def _parser() -> argparse.ArgumentParser:
     prep.add_argument("--drop", action="append", default=[], metavar="HEADING",
                       help="ablate a section by its heading; repeatable")
     prep.add_argument("--repeat", type=int, default=3, help="runs per case, each in its own checkout")
-    prep.add_argument("--model", help="reviewer model; default is the SDK's")
+    prep.add_argument("--model", required=True,
+                      help="reviewer model, recorded with every result so runs compare")
+    prep.add_argument("--oracle", action="append", default=[], metavar="NAME=PATH",
+                      help="a reference source cloned beforehand at its pinned commit, named "
+                           "to the reviewer (repeatable); conhost: microsoft-terminal, "
+                           "mux: mosh")
     prep.add_argument("--allow-domain", action="append", default=[], metavar="DOMAIN",
                       help="let sandboxed Bash reach DOMAIN (repeatable); the web tools stay "
                            "off. github.com exposes the live review, so a run using it is not blind")

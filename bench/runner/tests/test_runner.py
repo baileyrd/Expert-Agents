@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from bench.runner.checkout import CheckoutError, blind_checkout
-from bench.runner.config import Boundary, review, rubric
+from bench.runner.config import Boundary, Oracle, review, rubric
 from bench.runner.extract import report_md, run_outputs, run_skeleton
 from bench.scorer.model import parse_case, parse_run
 
@@ -32,21 +32,21 @@ BOUNDARY = Boundary(checkout=Path("/work/review/co"), scratch=Path("/work/scratc
 class ReviewConfigTest(unittest.TestCase):
     def config(self, prior=None, boundary=BOUNDARY):
         c = case(round=2, prior="7-r1") if prior else case()
-        return review(c, prior, "PROMPT", "v1", "b" * 40, (boundary,), None)
+        return review(c, prior, "PROMPT", "v1", "b" * 40, (boundary,), "m")
 
     def test_no_real_case_s_review_config_holds_its_answer_key(self) -> None:
         from bench.runner.__main__ import CASES
         from bench.scorer.load import load_case
         for case_dir in sorted(CASES.glob("*/*")):
             c = load_case(case_dir)
-            text = json.dumps(review(c, None, "PROMPT", "v", "b" * 40, (BOUNDARY,), None))
+            text = json.dumps(review(c, None, "PROMPT", "v", "b" * 40, (BOUNDARY,), "m"))
             for k in c.key:
                 for secret in (k.title, k.summary, k.caught_if, k.fix):
                     self.assertNotIn(secret, text, f"{c.id} {k.id}")
             self.assertNotIn("assert", text)
             if c.prior:
                 prior = load_case(case_dir.parent / c.prior)
-                task = review(c, prior, "P", "v", "b" * 40, (BOUNDARY,), None)["prompts"][0]["raw"]
+                task = review(c, prior, "P", "v", "b" * 40, (BOUNDARY,), "m")["prompts"][0]["raw"]
                 self.assertNotIn("/", task, f"{c.id}: promptfoo would read the task as a path")
 
     def test_the_reviewer_runs_the_prompt_in_the_checkout_without_write_tools(self) -> None:
@@ -72,7 +72,7 @@ class ReviewConfigTest(unittest.TestCase):
     def test_each_run_writes_only_to_its_own_checkout_and_scratch(self) -> None:
         runs = tuple(Boundary(Path(f"/work/review/co-{n}"), Path(f"/work/scratch/{n}"),
                               BOUNDARY.hidden) for n in (1, 2, 3))
-        providers = review(case(), None, "P", "v", "b" * 40, runs, None)["providers"]
+        providers = review(case(), None, "P", "v", "b" * 40, runs, "m")["providers"]
         writes = [tuple(p["config"]["sandbox"]["filesystem"]["allowWrite"]) for p in providers]
         self.assertEqual(len(providers), 3)
         self.assertEqual(len({w for ws in writes for w in ws}), 6)
@@ -92,6 +92,21 @@ class ReviewConfigTest(unittest.TestCase):
     def test_no_prompt_text_looks_like_a_file_path(self) -> None:
         for prompt in (self.config()["prompts"][0]["raw"], self.config(prior=case())["prompts"][0]["raw"]):
             self.assertNotIn("/", prompt)
+
+    def test_the_model_is_set_and_recorded_with_every_result(self) -> None:
+        config = self.config()
+        self.assertEqual(config["providers"][0]["config"]["model"], "m")
+        self.assertEqual(config["tests"][0]["vars"]["model"], "m")
+
+    def test_oracles_reach_the_task_as_a_var_naming_path_and_commit(self) -> None:
+        none = self.config()
+        self.assertIn("{{oracles}}", none["prompts"][0]["raw"])
+        self.assertEqual(none["tests"][0]["vars"]["oracles"], "")
+        mosh = Oracle("mosh", Path("/oracles/mosh"), SHA)
+        task_vars = review(case(), None, "P", "v", "b" * 40, (BOUNDARY,), "m",
+                           (mosh,))["tests"][0]["vars"]
+        self.assertIn(f"- mosh at {SHA}: /oracles/mosh", task_vars["oracles"])
+        self.assertIn("no network", task_vars["oracles"])
 
     def test_a_re_review_lists_the_prior_findings_and_a_first_review_none(self) -> None:
         self.assertNotIn("Prior findings", self.config()["prompts"][0]["raw"])
@@ -118,8 +133,8 @@ class RubricConfigTest(unittest.TestCase):
 
 class ExtractTest(unittest.TestCase):
     RESULTS = {"results": {"results": [
-        {"vars": {"case": "mux/7-r1", "prompt_sha": SHA}, "provider": {"id": "p", "label": "v1"},
-         "response": {"output": "F1 ..."},
+        {"vars": {"case": "mux/7-r1", "prompt_sha": SHA, "model": "m1"},
+         "provider": {"id": "p", "label": "v1"}, "response": {"output": "F1 ..."},
          "latencyMs": 61000, "cost": 1.5, "tokenUsage": {"total": 1200}},
         {"vars": {"case": "mux/7-r1", "prompt_sha": SHA}, "provider": {"id": "p"},
          "response": {"output": None}},
@@ -129,8 +144,8 @@ class ExtractTest(unittest.TestCase):
         first, second = run_outputs(self.RESULTS)
         self.assertEqual((first.run, second.run), (1, 2))
         self.assertEqual(second.variant, "p")
-        self.assertIn("61 s, 1200 tokens, $1.50 -->", report_md(first))
-        self.assertIn("unknown tokens, unknown", report_md(second))
+        self.assertIn("model m1; 61 s, 1200 tokens, $1.50 -->", report_md(first))
+        self.assertIn("model unrecorded; 0 s, unknown tokens, unknown", report_md(second))
 
     def test_a_failed_run_is_kept_apart_from_the_successful_ones(self) -> None:
         failed = {"vars": {"case": "mux/7-r1", "prompt_sha": SHA}, "provider": {"id": "p"},
@@ -213,7 +228,7 @@ class PrepareTest(unittest.TestCase):
             (case_dir / "answer_key.toml").write_text((ROOT / "bench/cases/mux/1251-r1/answer_key.toml").read_text())
             work = tmp / "work"
             self.assertEqual(run_main(["prepare", str(case_dir), "--target", str(src),
-                                       "--out", str(work)])[0], 0)
+                                       "--out", str(work), "--model", "m"])[0], 0)
             config = json.loads((work / "mux-9-r1.review.yaml").read_text())
             dirs = {p["config"]["working_dir"] for p in config["providers"]}
             self.assertEqual(len(dirs), 3)  # --repeat's default, one checkout per run
@@ -248,13 +263,30 @@ class PrepareTest(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("readable by a later review", err)
 
+    def test_an_oracle_is_a_git_clone_outside_every_hidden_path_pinned_to_head(self) -> None:
+        from bench.runner.__main__ import _oracle
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            clone, hidden = root / "mosh", root / "hidden"
+            clone.mkdir()
+            hidden.mkdir()
+            git(clone, "init", "-q")
+            git(clone, "commit", "-q", "--allow-empty", "-m", "c")
+            head = git(clone, "rev-parse", "HEAD")
+            self.assertEqual(_oracle(f"mosh={clone}", (hidden,)), Oracle("mosh", clone, head))
+            for spec, why in ((f"mosh={hidden}", "overlaps"), (f"x={root}", "overlaps"),
+                              (f"x={hidden / 'n'}", "overlaps"), ("mosh", "NAME=PATH"),
+                              (f"x={root / 'none'}", "not a git clone")):
+                with self.assertRaisesRegex(ValueError, why):
+                    _oracle(spec, (hidden,))
+
     def test_a_work_directory_the_reviewer_may_not_read_is_refused(self) -> None:
         from contextlib import redirect_stderr
         from bench.runner.__main__ import ROOT, main
         err = io.StringIO()
         with tempfile.TemporaryDirectory() as tmp, redirect_stderr(err):
             status = main(["prepare", str(ROOT / "bench/cases/mux/1251-r1"), "--target", tmp,
-                           "--out", str(ROOT / "reports" / "work")])
+                           "--out", str(ROOT / "reports" / "work"), "--model", "m"])
         self.assertEqual(status, 1)
         self.assertIn("which the reviewer may not read", err.getvalue())
 
@@ -270,7 +302,7 @@ class PrepareTest(unittest.TestCase):
         for run in runs:
             others = {d for r in runs if r != run for d in (r.checkout, r.scratch)}
             self.assertEqual(set(run.hidden), {Path("/repo")} | others)
-            cfg = review(case(), None, "P", "v", "b" * 40, (run,), None)["providers"][0]["config"]
+            cfg = review(case(), None, "P", "v", "b" * 40, (run,), "m")["providers"][0]["config"]
             for d in others:
                 self.assertIn(str(d), cfg["sandbox"]["filesystem"]["denyRead"])
                 self.assertIn(f"Read(/{d}/**)", cfg["disallowed_tools"])

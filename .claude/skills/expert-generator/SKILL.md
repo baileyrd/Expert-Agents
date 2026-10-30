@@ -64,7 +64,8 @@ From them, list:
 
 ## 4. Write prompt.md
 
-Fill every `TODO(generator)`. Keep Authority, Pin the review and Return as generated.
+Fill every `TODO(generator)`. Keep Authority, Pin the review, Return and the frontmatter
+after `tools` (effort, isolation, the read-only guard) as generated.
 
 - **Persona**: open with "You are the independent reviewer for", name the component and
   its risk, and say which knowledge is the rare part. The frontmatter `description`
