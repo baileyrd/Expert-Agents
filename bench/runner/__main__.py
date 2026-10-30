@@ -51,13 +51,9 @@ def prepare(args: argparse.Namespace) -> int:
     _outside(out, (ROOT, target))
     name = case.id.replace("/", "-")
     grade = out / GRADE
-    hidden = (ROOT, target, grade)
     if args.repeat < 1:
         raise ValueError("--repeat must be at least 1")
-    runs = tuple(Boundary(checkout=out / "review" / f"{name}-{n}",
-                          scratch=out / "scratch" / f"{name}-{n}",
-                          hidden=hidden, domains=tuple(args.allow_domain))
-                 for n in range(1, args.repeat + 1))
+    runs = _runs(out, name, args.repeat, (ROOT, target, grade), tuple(args.allow_domain))
     for run in runs:
         blind_checkout(case, target, run.checkout)
         run.scratch.mkdir(parents=True, exist_ok=True)
@@ -127,6 +123,17 @@ def _refuse_collisions(out: Path, outputs: list[RunOutput]) -> None:
     taken = sorted(n for n in names if (out / n).exists())
     if taken:
         raise ValueError(f"{out} already has {', '.join(taken)}; extract into a fresh directory")
+
+
+def _runs(out: Path, name: str, repeat: int, hidden: tuple[Path, ...],
+          domains: tuple[str, ...]) -> tuple[Boundary, ...]:
+    """One checkout and scratch per run; each run is denied every other run's pair."""
+    pairs = [(out / "review" / f"{name}-{n}", out / "scratch" / f"{name}-{n}")
+             for n in range(1, repeat + 1)]
+    return tuple(
+        Boundary(checkout=co, scratch=sc, domains=domains,
+                 hidden=hidden + tuple(d for pair in pairs if pair != (co, sc) for d in pair))
+        for co, sc in pairs)
 
 
 def _case_dir(case: Path) -> Path:

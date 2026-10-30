@@ -264,6 +264,17 @@ class PrepareTest(unittest.TestCase):
         self.assertEqual(_case_dir(Path("mux/1251-r1")), CASES / "mux/1251-r1")
         self.assertEqual(_case_dir(CASES / "mux/1251-r1"), CASES / "mux/1251-r1")
 
+    def test_each_run_is_denied_every_other_run_s_checkout_and_scratch(self) -> None:
+        from bench.runner.__main__ import _runs
+        runs = _runs(Path("/w"), "c", 3, (Path("/repo"),), ())
+        for run in runs:
+            others = {d for r in runs if r != run for d in (r.checkout, r.scratch)}
+            self.assertEqual(set(run.hidden), {Path("/repo")} | others)
+            cfg = review(case(), None, "P", "v", "b" * 40, (run,), None)["providers"][0]["config"]
+            for d in others:
+                self.assertIn(str(d), cfg["sandbox"]["filesystem"]["denyRead"])
+                self.assertIn(f"Read(/{d}/**)", cfg["disallowed_tools"])
+
     def test_the_work_directory_links_the_pinned_node_modules_once(self) -> None:
         from bench.runner.__main__ import RUNNER, _link_modules
         with tempfile.TemporaryDirectory() as tmp:
