@@ -19,8 +19,9 @@ Every case was run the same way:
 - The repeats of a case share one checkout and one scratch directory. They are not isolated from
   each other: generated r1 run 1 reports that another run wrote probe tests into its copy of the head
   (`2026-10-30-generated/1246-r1-1-report.md`). It discarded that test run and used a private
-  directory, but it had seen the other run's probes. Treat r1 hit rates as from runs that could see
-  each other's scratch work; the runner needs per-repeat scratch before this is ruled out.
+  directory, but it had seen the other run's probes. Every run in both arms, and the 2026-10-30
+  baseline, ran this way, so no hit rate here comes from isolated repeats. The runner gives each run
+  its own checkout and scratch from a074bbf on the baseline branch.
 
 Each run was graded by a verifier that saw the report, the key and the code at the head and at the
 rusty_mill main `ebb92e28`, and that probed claims with `#[cfg(test)]` tests where `cargo` could run
