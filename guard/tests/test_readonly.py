@@ -18,6 +18,8 @@ ALLOWED = [
     "curl -so-d https://example.com/f",
     "gh api -XGET repos/o/r/pulls/7 -fper_page=100",
     "gh api repos/o/r/pulls -q .[].number",
+    "bash -c -- 'printf %s ok'",
+    "curl -X HEAD -X GET https://example.com/f",
     "grep -rn 'git push' docs/",
     "echo 'gh pr merge is not run here'",
     "python3 .github/scripts/changes.py check",
@@ -81,6 +83,15 @@ BLOCKED = [
     ("gh api repos/o/r/issues/7/comments -fbody=hello", "POST"),
     ("gh api repos/o/r/issues/7/comments -Fbody=@f", "POST"),
     ("gh api -XDELETE repos/o/r/git/refs/heads/x", "DELETE"),
+    # `--` ends the shell's options; the command string still follows.
+    ("bash -c -- 'git push origin HEAD'", "git push"),
+    ("sh -lc -- 'gh pr merge 7'", "gh pr merge"),
+    # A write method anywhere among repeated methods counts, in either order.
+    ("curl -X GET -X POST https://example.invalid/x", "POST"),
+    ("curl -X POST -X GET https://example.invalid/x", "POST"),
+    ("curl -XGET -XPUT https://example.invalid/x", "PUT"),
+    ("curl --request=GET --request=DELETE https://example.invalid/x", "DELETE"),
+    ("gh api -X GET -X PATCH repos/o/r", "PATCH"),
 ]
 
 

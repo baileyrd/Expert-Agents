@@ -36,6 +36,7 @@ _GH_WRITES = {
     "secret": {"set", "delete"},
     "variable": {"set", "delete"},
 }
+_READ_METHODS = {"GET", "HEAD"}
 _GH_API_VALUED = "XfFHtpq"  # short flags of `gh api` that take a value
 _HTTP_VALUED = "XdFTouHAebcxwmrKECYyzUQP"  # of curl and wget, enough to stop a bundle
 _GH_API_WRITE_FLAGS = {"-f", "-F", "--field", "--raw-field", "--input"}
@@ -165,6 +166,8 @@ def _check_shell(words: list[str]) -> str | None:
         i += 2 if arg in _SHELL_VALUED else 1
     if not has_c:
         return f"`{words[0]}` without -c runs a script or stdin the guard cannot see"
+    if i < len(args) and args[i] == "--":
+        i += 1  # end of options: the command string follows
     if i >= len(args):
         return f"`{words[0]} -c` with no command string, so it is blocked"
     return verdict(args[i])
@@ -197,7 +200,7 @@ def _check_gh(args: list[str]) -> str | None:
 def _check_gh_api(args: list[str]) -> str | None:
     options = _options(args, _GH_API_VALUED)
     method = _method(options, {"-X", "--method"})
-    if method not in {None, "GET", "HEAD"}:
+    if method is not None and method not in _READ_METHODS:
         return f"`gh api -X {method}` writes to GitHub; reviewers are read-only"
     if method is None and any(flag in _GH_API_WRITE_FLAGS for flag, _ in options):
         return "`gh api` with fields sends a POST; reviewers are read-only"
@@ -207,7 +210,7 @@ def _check_gh_api(args: list[str]) -> str | None:
 def _check_http(args: list[str]) -> str | None:
     options = _options(args, _HTTP_VALUED)
     method = _method(options, {"-X", "--request", "--method"})
-    if method not in {None, "GET", "HEAD"}:
+    if method is not None and method not in _READ_METHODS:
         return f"an HTTP {method} request; reviewers are read-only"
     if any(flag in _HTTP_WRITE_FLAGS for flag, _ in options):
         return "an HTTP request with a body; reviewers are read-only"
@@ -246,10 +249,14 @@ def _options(args: list[str], valued: str) -> list[tuple[str, str | None]]:
 
 
 def _method(options: list[tuple[str, str | None]], flags: set[str]) -> str | None:
-    for flag, value in options:
-        if flag in flags:
-            return (value or "UNKNOWN").upper()
-    return None
+    """The request method, or None if unset; any non-read method wins whatever its order.
+
+    curl takes the last of repeated `-X`, so a read method before or after a write one
+    must not hide it.
+    """
+    methods = [(value or "UNKNOWN").upper() for flag, value in options if flag in flags]
+    writes = [m for m in methods if m not in _READ_METHODS]
+    return writes[0] if writes else (methods[-1] if methods else None)
 
 
 def main(stdin: str) -> tuple[int, str]:
