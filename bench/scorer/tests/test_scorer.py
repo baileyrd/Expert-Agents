@@ -106,6 +106,14 @@ class ScoreTest(unittest.TestCase):
                        matched("F3", "K2", severity="P2"))
         self.assertEqual((s.severity.agree, s.severity.over, s.severity.under), (1, 0, 1))
 
+    def test_an_ungraded_key_finding_counts_for_recall_but_not_severity(self) -> None:
+        key = {"review": "r", "finding": [key_finding("K1", "ungraded")]}
+        c = parse_case("mux/7-r1", PR, key)
+        s = score_run(c, parse_run(run(matched("F1", "K1")), c))
+        self.assertEqual(s.recall, 1.0)
+        self.assertEqual(s.severity.agree + s.severity.over + s.severity.under, 0)
+        self.assertIn("| K1 | ungraded |", render(c, summarise(c, [parse_run(run(), c)])))
+
     def test_a_summary_spreads_runs_and_rates_each_key_finding(self) -> None:
         runs = [parse_run(run(matched("F1", "K1"), triaged("F2", "false_positive"), n=1), case()),
                 parse_run(run(matched("F1", "K2"), n=2), case())]

@@ -1,0 +1,7 @@
+expert = "mill-board"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1187
+title = "rusty_mill_board: OAuth sign-in for /mcp"
+round = 1
+base = "55e5f3c65762cfd71c8f10883bcee20ea972ce7b"
+head = "2017c08f1f83ab7a181b69574b354376f9ad5e2a"

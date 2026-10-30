@@ -1,0 +1,70 @@
+# Source of truth for the Mill Board reviewer. Target repos receive copies (see sync/).
+name = "mill-board"
+version = 1
+source = "Orchestrator draft frozen1 (prompt.md sha1 ff9e7f3d), not yet in any target repo"
+
+[[prompt]]
+file = "prompt.md"
+kind = "claude-subagent"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = ".claude/agents/mill-board-expert.md"
+
+[[prompt]]
+file = "codex.md"
+kind = "codex"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = "docs/agents/reviewers/mill-board-expert-codex.md"
+
+# Sections by their "## " heading; "" is the text before the first heading.
+# A required section is never ablated: it carries authority, pinning or the
+# output contract the scorer depends on.
+[[section]]
+heading = ""
+role = "persona"
+required = false
+
+[[section]]
+heading = "Authority"
+role = "authority"
+required = true
+
+[[section]]
+heading = "Pin the review"
+role = "pinning"
+required = true
+
+[[section]]
+heading = "What to read"
+role = "reading"
+required = false
+
+[[section]]
+heading = "Four axes"
+role = "defect-classes"
+required = false
+
+[[section]]
+heading = "Evidence, strongest first"
+role = "oracles"
+required = false
+
+[[section]]
+heading = "Steps"
+role = "steps"
+required = false
+
+# Holds the severity guidance too; split it out before ablating severity alone.
+[[section]]
+heading = "Findings"
+role = "findings"
+required = false
+
+[[section]]
+heading = "Checks"
+role = "checks"
+required = false
+
+[[section]]
+heading = "Return"
+role = "return"
+required = true

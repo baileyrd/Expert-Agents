@@ -6,7 +6,8 @@
   `fixed_since` findings are true positives (each was real at the reviewed head);
   design questions count on neither side.
 - Severity: each matched key finding compares the reviewer's grade on its best match
-  with the key's. "Over" means the reviewer graded it more severe.
+  with the key's. "Over" means the reviewer graded it more severe. Ungraded key
+  findings are left out.
 """
 
 from __future__ import annotations
@@ -113,7 +114,7 @@ def _precision(findings: tuple[RunFinding, ...]) -> float | None:
 def _severity(case: Case, best: dict[str, tuple[Quality, RunFinding]]) -> SeverityAgreement:
     agree = over = under = 0
     for key in case.key:
-        if key.id not in best:
+        if key.id not in best or key.severity is None:
             continue
         given = best[key.id][1].severity.value
         if given == key.severity.value:

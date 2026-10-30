@@ -12,6 +12,7 @@ replace CI, the D4 Windows run, owner confirmation or the merge queue.
 |---|---|---|
 | [conhost](experts/conhost/) | Rusty-Mill/rusty_mill | rusty_conhost, the Windows console host |
 | [mux](experts/mux/) | Rusty-Mill/rusty_mill | rusty_mux, the terminal multiplexer for agents |
+| [mill-board](experts/mill-board/) | Rusty-Mill/rusty_mill | Mill Board, the kanban agents and people share |
 | [general](experts/general/) | Rusty-Mill/rusty_mill | fallback for PRs outside every domain |
 
 ## Layout

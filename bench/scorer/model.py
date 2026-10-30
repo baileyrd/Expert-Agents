@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any
 
 _SHA = re.compile(r"^[0-9a-f]{40}$")
+UNGRADED = "ungraded"  # answer keys only: blocking in the review, with no P-grade
 
 
 class BenchError(ValueError):
@@ -43,7 +44,7 @@ class Triage(Enum):
 @dataclass(frozen=True)
 class KeyFinding:
     id: str
-    severity: Severity
+    severity: Severity | None  # None: the review called it blocking without a grade
     title: str
     files: tuple[str, ...]
     fix: str
@@ -142,9 +143,10 @@ def parse_run(raw: dict[str, Any], case: Case) -> Run:
 
 
 def _parse_key_finding(raw: dict[str, Any]) -> KeyFinding:
+    ungraded = raw.get("severity") == UNGRADED
     return KeyFinding(
         id=_str(raw, "id"),
-        severity=_severity(raw),
+        severity=None if ungraded else _severity(raw),
         title=_str(raw, "title"),
         files=tuple(_strs(raw, "files")),
         fix=_sha(raw, "fix"),

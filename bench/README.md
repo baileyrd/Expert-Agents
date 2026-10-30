@@ -28,7 +28,7 @@ review = "<link to the review or review comment>"
 
 [[finding]]
 id = "K1"
-severity = "P2"           # the reviewer's grade in the human review
+severity = "P2"           # the human review's grade; "ungraded" if it said only "blocking"
 title = "..."
 files = ["path/at/head"]
 fix = "<40-char SHA>"

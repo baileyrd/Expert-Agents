@@ -1,0 +1,39 @@
+# Three reviews on this head; each finding's summary links its own.
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1187#pullrequestreview-5673783860"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "A restricted token's grant resolves to another credential with the same actor"
+files = ["crates/apps/rusty_mill_board/src/identities.rs"]
+fix = "8452ee5f5aef5c392569bfb586bfcefd1567418a"
+summary = """
+by_actor (identities.rs:276-277) returns the first credential with an actor name, so a
+restricted token's grant resolves to a duplicate and gains its role and projects.
+Review: https://github.com/Rusty-Mill/rusty_mill/pull/1187#pullrequestreview-5673783860
+"""
+caught_if = "Names grant resolution by actor name picking a different, broader credential."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "An IPv6 issuer's Host is bracketed differently by the two guards"
+files = ["crates/libs/net/rusty_oauth_server/src/issuer.rs"]
+fix = "10927f9d583adb009d23a25e2cb3d472bb054541"
+summary = """
+The web guard and the MCP guard bracket an IPv6 Host differently (issuer.rs:29-33), so
+metadata and consent return 403. Review: https://github.com/Rusty-Mill/rusty_mill/pull/1187#pullrequestreview-5673796580
+"""
+caught_if = "Names IPv6 Host bracketing disagreeing between the guards."
+
+[[finding]]
+id = "K3"
+severity = "P1"
+title = "Two boards in one directory share the default oauth.json"
+files = ["crates/apps/rusty_mill_board/src/main.rs"]
+fix = "1ebd8a8977b87d5bee41127c5c9d518a7b2f109b"
+summary = """
+main.rs:168-178 defaults oauth.json by directory, so board A's grant is valid on board B.
+Review: https://github.com/Rusty-Mill/rusty_mill/pull/1187#pullrequestreview-5673834930
+"""
+caught_if = "Names two boards sharing the default OAuth grant store."

@@ -22,7 +22,7 @@ def render(case: Case, summary: Summary) -> str:
         "|---|---|---|---|",
     ]
     lines += [
-        f"| {k.id} | {k.severity.name} | {k.title} | {summary.hit_rate(k.id):.2f} |"
+        f"| {k.id} | {k.severity.name if k.severity else 'ungraded'} | {k.title} | {summary.hit_rate(k.id):.2f} |"
         for k in case.key
     ]
     return "\n".join(lines) + "\n"
