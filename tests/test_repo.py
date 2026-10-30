@@ -5,11 +5,12 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from bench.scorer.load import load_case
+from bench.scorer.load import load_case, load_run
 
 ROOT = Path(__file__).resolve().parent.parent
 EXPERTS = ROOT / "experts"
 CASES = ROOT / "bench" / "cases"
+REPORTS = ROOT / "reports"
 
 
 def manifest(expert: Path) -> dict:
@@ -70,6 +71,16 @@ class CasesTest(unittest.TestCase):
             prior = load_case(case_dir.parent / case.prior)
             self.assertEqual((prior.repo, prior.pr), (case.repo, case.pr), case.id)
             self.assertLess(prior.round, case.round, case.id)
+
+
+class RunsTest(unittest.TestCase):
+    def test_every_graded_run_loads_against_its_case(self) -> None:
+        runs = sorted(REPORTS.glob("*/*/*.toml"))
+        self.assertTrue(runs)
+        for path in runs:
+            with path.open("rb") as f:
+                case_id = tomllib.load(f)["case"]
+            load_run(path, load_case(CASES / case_id))
 
 
 class HeadingsTest(unittest.TestCase):

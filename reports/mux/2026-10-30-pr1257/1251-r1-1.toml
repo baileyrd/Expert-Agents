@@ -1,0 +1,34 @@
+# Graded from 1251-r1-1-report.md, triaged blind in 1251-r1-1-verify.md.
+# prompt_sha is the rusty_mill commit the prompt was frozen at; experts/mux v1 is identical.
+case = "mux/1251-r1"
+variant = "pr1257"
+prompt_sha = "0f3a30def4d2d7e849cdae1aba5f602f85384287"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A token the client proved it holds by presenting it is not kept; an idle client loses itself on the second lost Welcome"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "The PR makes its claim that a local socket keeps today's behaviour false: a killed local rusty-mux holds its lease for 30 s"
+triage = "real"
+reason = "executed: lease held 30.07 s at head, freed at once at base; on main 65c04a00"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Detached block clients linger in list for the grace instead of leaving at once"
+triage = "real"
+reason = "executed: 30.07 s in list at head; on main 65c04a00"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "No test goes red without the TUI's Detach-before-exit"
+triage = "real"
+reason = "executed: deleting it keeps all TUI tests green; on main 65c04a00"
