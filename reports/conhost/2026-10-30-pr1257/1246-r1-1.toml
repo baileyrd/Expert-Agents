@@ -1,0 +1,90 @@
+# Graded from 1246-r1-1-report.md, triaged blind in 1246-r1-1-verify.md.
+# prompt_sha is the rusty_mill commit the prompt was frozen at; experts/conhost v1 is identical.
+case = "conhost/1246-r1"
+variant = "pr1257"
+prompt_sha = "0f3a30def4d2d7e849cdae1aba5f602f85384287"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "VT-input clients get win32 keys through a partial encoder; non-BMP characters arrive as two U+FFFD"
+match = "K3"
+quality = "partial"   # names vt_for only; claims cooked and raw paths keep pairs, contrary to the key
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A win32-input-mode record split right after its ESC becomes Escape plus literal text"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A paste into a waiting read loses all but its last 4,096 characters"
+triage = "real"
+reason = "executed; the cap is in design 6.1/7.4 but loss while a read waits is not; on main 5991f222"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "Cooked-read echo is unbounded and breaks the 144 KiB output cap"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F5"
+severity = "P1"
+title = "Ctrl effects are not coalesced: one 16 KiB slice of Ctrl+C makes 4,194,304 effects"
+triage = "real"
+reason = "executed; about 640 MiB, worse than claimed; on main 5991f222"
+
+[[finding]]
+id = "F6"
+severity = "P1"
+title = "Cooked echo sends controls raw and erases one cell per unit"
+triage = "real"
+reason = "executed; filed as Rusty-Mill/rusty_mill#1256; on main 5991f222"
+
+[[finding]]
+id = "F7"
+severity = "P1"
+title = "Ctrl+S under LINE_INPUT is stored as a character instead of pausing output"
+triage = "real"
+reason = "verifier grades it P2, not P1; on main 5991f222"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "RAW_READ with a zero-length buffer answers 0xC0000023; conhost answers 0xC0070023"
+triage = "real"
+reason = "RAW_READ only; on main 5991f222"
+
+[[finding]]
+id = "F9"
+severity = "P2"
+title = "Ctrl events go to clients oldest-first; conhost dispatches newest-first"
+triage = "real"
+reason = "on main 5991f222"
+
+[[finding]]
+id = "F10"
+severity = "P2"
+title = "Recordings write every typed byte although design 8.2 says they scrub user history"
+triage = "real"
+reason = "on main 5991f222"
+
+[[finding]]
+id = "F11"
+severity = "P2"
+title = "Design 5.5 says Ctrl+C queues nothing; the code queues its key-up"
+triage = "real"
+reason = "the doc is wrong, not the code: conhost queues the key-up too; on main 5991f222"
+
+[[finding]]
+id = "F12"
+severity = "P2"
+title = "Tests that design 7.2-7.4 and 8.1 require for PR 3 are missing"
+triage = "real"
+reason = "evidence partly wrong (own_pty.rs was touched); 8ec54b85 added one of the tests"

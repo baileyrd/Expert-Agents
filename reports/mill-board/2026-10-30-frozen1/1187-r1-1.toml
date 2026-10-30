@@ -1,0 +1,41 @@
+# Graded from 1187-r1-1-report.md, triaged blind in verify.md.
+# prompt_sha is this repo's commit that added experts/mill-board v1, identical to frozen1.
+case = "mill-board/1187-r1"
+variant = "frozen1"
+prompt_sha = "fcfa8797ba3bbc78fbc4463dad3313c4ea6980de"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A grant made with one token acts as a different credential of the same actor"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P0"
+title = "Grant subjects are not namespaced by auth mode: 'shared' is also a valid actor name"
+triage = "real"
+reason = "on main; verifier grades P2: needs --oauth-state at the identities grant file and an agent named shared"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "An IPv6-literal issuer is not accepted by the web guard, so sign-in cannot start"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The constant-time doc comment moved onto the wrong function"
+triage = "real"
+reason = "by_actor doc comment, on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The CLI wiring of OAuth has no test"
+triage = "real"
+reason = "partly fixed on main by 1ebd8a89 and 10927f9d; removing main.rs:349 still fails no test"

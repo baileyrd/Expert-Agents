@@ -1,0 +1,7 @@
+expert = "mill-board"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1165
+title = "rusty_mill_board: cards only in rusty_tick (ADR-0012 step 6)"
+round = 1
+base = "c4a0d031b437e9140d192f172838f4261da5b889"
+head = "453dd9f21e5c005b13f21d59fd30093af1bfbc01"

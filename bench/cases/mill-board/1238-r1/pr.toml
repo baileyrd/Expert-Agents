@@ -1,0 +1,7 @@
+expert = "mill-board"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1238
+title = "rusty_mill_board: board-wide card numbers"
+round = 1
+base = "d50375a25ced7622f88810e6d3bcad8f1986bb50"
+head = "43e0720953f356a5a1abec4fd4da8a6a9a3032a5"

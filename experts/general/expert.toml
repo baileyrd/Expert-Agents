@@ -1,0 +1,11 @@
+# The owner's general reviewer: the fallback when a PR touches no expert's domain.
+# It has no sections to ablate and no bench cases.
+name = "general"
+version = 1
+source = "Rusty-Mill/rusty_mill PR #1257 at 0f3a30def4d2d7e849cdae1aba5f602f85384287"
+
+[[prompt]]
+file = "codex.md"
+kind = "codex"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = "docs/agents/reviewers/general-reviewer-codex.md"

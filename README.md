@@ -1,3 +1,51 @@
 # Expert Agents
 
-Domain-expert reviewer agents, their prompts, and the bench that measures them.
+Domain-expert reviewer agents: the prompts, how they are generated, and the bench
+that shows which prompt changes help or hurt. This repo is the source of truth;
+target repos receive copies.
+
+Each reviewer encodes what a hard-to-hire specialist would check, grounded in the
+defects past reviews actually caught. Reviewers are read-only and additive: they never
+replace CI, the D4 Windows run, owner confirmation or the merge queue.
+
+| Expert | Target | Domain |
+|---|---|---|
+| [conhost](experts/conhost/) | Rusty-Mill/rusty_mill | rusty_conhost, the Windows console host |
+| [mux](experts/mux/) | Rusty-Mill/rusty_mill | rusty_mux, the terminal multiplexer for agents |
+| [mill-board](experts/mill-board/) | Rusty-Mill/rusty_mill | Mill Board, the kanban agents and people share |
+| [general](experts/general/) | Rusty-Mill/rusty_mill | fallback for PRs outside every domain |
+
+## Layout
+
+```
+experts/<name>/      prompt.md (Claude subagent), codex.md (Codex), expert.toml
+bench/cases/         frozen cases: pr.toml pins a PR head; answer_key.toml lists its known findings
+bench/runner/        runs a prompt variant N times per case (not built yet)
+bench/scorer/        recall, precision and severity agreement against the key
+reports/<expert>/    committed results, <date>-<variant>.md, graded runs beside them
+orchestrator/        how a new expert is generated
+sync/                how approved prompts reach target repos
+docs/                Codex dispatch procedure
+```
+
+`expert.toml` names each prompt's target path and the prompt's sections, so an
+ablation can drop one section at a time. See [bench/README.md](bench/README.md) for the
+case, key and run formats.
+
+## Workflow
+
+1. Generate or edit a prompt variant.
+2. Run it on the bench, N runs per case.
+3. Compare the report with the current baseline.
+4. Promote only if it beats the baseline without regressing on any case.
+5. Sync the promoted prompt to its target repos.
+
+No promotion without a bench result. Changes land by PR, reviewed by DottiusMaximus.
+
+## Checks
+
+```
+python3 -m unittest
+```
+
+Python 3.11 or later, standard library only.

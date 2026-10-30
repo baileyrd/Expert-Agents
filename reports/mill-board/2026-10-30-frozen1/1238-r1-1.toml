@@ -1,0 +1,41 @@
+# Graded from 1238-r1-1-report.md, triaged blind in verify.md.
+# prompt_sha is this repo's commit that added experts/mill-board v1, identical to frozen1.
+case = "mill-board/1238-r1"
+variant = "frozen1"
+prompt_sha = "fcfa8797ba3bbc78fbc4463dad3313c4ea6980de"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Two boards on one rusty_tick hand out the same number"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A number held by two cards resolves silently to whichever lists first"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A trashed or untagged card's number is reused while the card still exists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "card_add fails with 'card is already numbered' when another writer numbers a stray first"
+triage = "fixed_since"
+reason = "fixed by 22a35d8f, a later commit on the same PR"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Board README lists too few reserved tags; ADR-0012 tag budget not updated"
+triage = "real"
+reason = "on main"

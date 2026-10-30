@@ -1,0 +1,14 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1165#pullrequestreview-5669459945"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "Process-test children inherit board configuration and credentials"
+files = ["crates/apps/rusty_mill_board/tests/process.rs"]
+fix = "1a1e58b248c44e00699423314ac431343446534a"
+summary = """
+tests/process.rs clears only six variables, so an inherited MILL_BOARD_GITHUB_CONFIG, or
+MILL_BOARD_GITHUB_REPO plus GITHUB_TOKEN, starts real sync, and MILL_BOARD_IDENTITIES
+can create or read an external credentials file.
+"""
+caught_if = "Names the child environment inheriting board config or credentials despite claimed isolation."

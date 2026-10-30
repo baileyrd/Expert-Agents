@@ -1,0 +1,14 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1246#issuecomment-6512418405"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "The engine waits on a poll decision made before the turn's events"
+files = ["crates/libs/ui/rusty_conhost/src/runtime.rs"]
+fix = "2dfc3a6cd2136d98065b031cf0f65601568dcbd7"
+summary = """
+The wait deadline comes from plan.poll, computed before events run. A last slice that
+leaves reads_ready set, or an ESC write-end cut that leaves input queued, then waits with
+no timeout; the waker is auto-reset and already consumed, so the remainder can stall.
+"""
+caught_if = "Names the stale pre-event poll plan with either the reads_ready or the leftover-input case."

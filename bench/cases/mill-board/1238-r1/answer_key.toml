@@ -1,0 +1,23 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1238#issuecomment-6503674964"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Number allocation is serialized by a process-local mutex"
+files = ["crates/apps/rusty_mill_board/src/board.rs"]
+fix = "22a35d8f08db65f5e8eff5bbafc50e9aa8352eb9"
+summary = "board.rs:345-353 serializes allocation in-process; two boards on one rusty_tick both take max+1."
+caught_if = "Names two board processes on one rusty_tick allocating the same number."
+
+[[finding]]
+id = "K2"
+severity = "P1"
+title = "Numbers come from live cards only, so they can be reused"
+files = ["crates/apps/rusty_mill_board/src/board.rs"]
+fix = "22a35d8f08db65f5e8eff5bbafc50e9aa8352eb9"
+summary = """
+board.rs:326-331 derives numbers from Store::list(), so untag, trash or restore makes a
+live card's number reusable, and lookup picks the first of duplicates instead of failing
+closed.
+"""
+caught_if = "Names reuse after trash, untag or restore, or lookup not failing closed on duplicates."

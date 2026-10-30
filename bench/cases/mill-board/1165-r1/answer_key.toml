@@ -1,0 +1,31 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1165#pullrequestreview-5669285044"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "The removed MILL_BOARD_STORE binding is silently ignored"
+files = ["crates/apps/rusty_mill_board/src/main.rs"]
+fix = "f680de2844fc492f52c0e9b08a57386ca3e062c0"
+summary = """
+main.rs:197-204: with the retired MILL_BOARD_STORE still set and no tick URL, a shipped
+unit starts an empty, healthy in-memory board whose writes are lost at restart.
+"""
+caught_if = "Names a shipped configuration silently starting a memory board that loses writes."
+
+[[finding]]
+id = "K2"
+severity = "ungraded"
+title = "The real-process tests were deleted with service.rs"
+files = ["crates/apps/rusty_mill_board/tests/service.rs"]  # deleted at head; the path is the base's
+fix = "f680de2844fc492f52c0e9b08a57386ca3e062c0"
+summary = "First-admin credential confidentiality and real-process SIGTERM tests went with service.rs; restore them on a synthetic backend."
+caught_if = "Names the lost first-admin confidentiality or SIGTERM process tests."
+
+[[finding]]
+id = "K3"
+severity = "ungraded"
+title = "Store docs claim a card and its event become visible atomically"
+files = ["crates/apps/rusty_mill_board/src/store.rs"]
+fix = "f680de2844fc492f52c0e9b08a57386ca3e062c0"
+summary = "The docs claim atomic, commit-ordered visibility; the tick HTTP commit precedes local event recording."
+caught_if = "Names the doc claim against the commit-then-record order."
