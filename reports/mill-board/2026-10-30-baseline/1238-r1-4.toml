@@ -1,0 +1,30 @@
+# Grade 1238-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1238-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 4
+
+# F1 also says get_number picks the first of duplicate numbers and should refuse instead
+# (K2's "lookup not failing closed on duplicates"); one finding can match only one key.
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Process-local lock lets two boards hand out the same number; #n acts on the first listed"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Two boards numbering the same stray make card_add fail with 'card is already numbered'"
+triage = "fixed_since"
+reason = "real at head (board.rs:338, domain.rs:522-525); fixed on main by 22a35d8f0, Card::numbered returns the card unchanged (domain.rs:521-530)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Board README reserved-tag list and storage mapping omit number:"
+triage = "real"
+reason = "README.md:30-31 and :73 omit number: while domain.rs:203-209 reserves it; unchanged on main"
+
+# Design questions names K2 (number reuse after delete) as non-blocking; not scored.

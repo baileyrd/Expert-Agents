@@ -1,0 +1,36 @@
+# Grade 1246-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Cooked-read echo breaks the 144 KiB output cap: one Escape makes about 96 KiB"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "An ESC that ends the engine's 16 KiB input slice becomes a phantom Escape key"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "The design and the code disagree about Ctrl+C"
+triage = "real"
+reason = "design.md:403 'Nothing is queued' vs read.rs:146-150 key-down-only intercept and test ctrl_c_goes_to_every_client_and_ends_cooked_reads; unchanged on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The §7.4 cooked-echo stalled-reader test is missing"
+triage = "real"
+reason = "design.md:634 lists cooked echo; the only high-water assertions at head are console.rs:1754/1766 (writes)"
+
+# Non-blocking: "Optional improvements" names the K3 per-unit conversion for ANSI
+# non-line reads (and guesses conhost does the same). Not graded as a finding.

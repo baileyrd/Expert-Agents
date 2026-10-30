@@ -1,6 +1,9 @@
 {
   "name": "expert-agents-runner",
   "private": true,
+  "engines": {
+    "node": ">=22.22"
+  },
   "description": "Pinned promptfoo and Claude Agent SDK for the bench runner.",
   "scripts": {
     "eval": "promptfoo eval --no-cache"

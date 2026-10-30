@@ -52,8 +52,25 @@ class Boundary:
 
 
 def review(case: Case, prior: Case | None, system_prompt: str, variant: str, prompt_sha: str,
-           boundary: Boundary, model: str | None) -> dict[str, Any]:
-    """The reviewer's config: the case's task and prompt in a sandbox, with no answer key."""
+           runs: tuple[Boundary, ...], model: str | None) -> dict[str, Any]:
+    """The reviewer's config: the case's task and prompt in a sandbox, with no answer key.
+
+    One provider per run, each with its own checkout and scratch, so concurrent or later
+    runs never see each other's builds, probes or notes.
+    """
+    return {
+        "description": f"{case.id} at {case.head[:8]}, variant {variant}",
+        "prompts": [{"raw": TASK + _prior(prior), "label": "review"}],
+        "providers": [{"id": PROVIDER, "label": f"{variant} run {n}",
+                       "config": _reviewer(system_prompt, b, model)}
+                      for n, b in enumerate(runs, start=1)],
+        "tests": [{"description": case.id, "vars": {
+            "case": case.id, "variant": variant, "prompt_sha": prompt_sha, "repo": case.repo,
+            "pr": case.pr, "base": case.base, "head": case.head}}],
+    }
+
+
+def _reviewer(system_prompt: str, boundary: Boundary, model: str | None) -> dict[str, Any]:
     config: dict[str, Any] = {
         "working_dir": str(boundary.checkout),
         "custom_system_prompt": system_prompt,
@@ -65,14 +82,7 @@ def review(case: Case, prior: Case | None, system_prompt: str, variant: str, pro
     }
     if model:
         config["model"] = model
-    return {
-        "description": f"{case.id} at {case.head[:8]}, variant {variant}",
-        "prompts": [{"raw": TASK + _prior(prior), "label": "review"}],
-        "providers": [{"id": PROVIDER, "label": variant, "config": config}],
-        "tests": [{"description": case.id, "vars": {
-            "case": case.id, "prompt_sha": prompt_sha, "repo": case.repo, "pr": case.pr,
-            "base": case.base, "head": case.head}}],
-    }
+    return config
 
 
 def rubric(case: Case, reports: list[tuple[str, str]], grader: str) -> dict[str, Any]:

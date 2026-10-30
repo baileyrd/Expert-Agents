@@ -1,0 +1,49 @@
+# Grade 1246-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A paste of more than 4,096 characters loses its beginning, even with a read waiting"
+triage = "design_question"
+reason = "executed at head: 6,000-char paste into a waiting cooked read returns 4,096 units + InputDropped; design.md:499 and :610 decide a 4,096-record cap sized for paste, oldest dropped"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "The engine's 16 KiB input slice can end right after an ESC, a phantom Escape key"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A later cooked read on the same handle wipes out a line's kept rest"
+triage = "real"
+reason = "executed at head: read A returns 'ab', read B 'x\\r\\n', third read waits and 'cdef\\r\\n' is gone (keep_pending read.rs:649-653 stores even an empty rest; conhost readDataCooked.cpp:813 skips empty); unchanged on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Surrogate pairs are converted one UTF-16 unit at a time (echo, ANSI reads, ANSI GetConsoleInput)"
+match = "K3"
+quality = "caught"  # echo + ANSI reads: two of the three paths
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "ESC ESC followed by an arrow becomes a literal [A"
+triage = "real"
+reason = "executed at head: \\x1b\\x1b[A gives Alt+Esc (down intercepted, read.rs:160) then text records '[' 'A' (input.rs:251); no Up under either reading; unchanged on main"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Design doc disagrees with code on Ctrl+C/Break queuing; required tests missing"
+triage = "real"
+reason = "design.md:403/405 vs key-up queued (read.rs:141-157, PR test); design.md:634 cooked-echo stalled test and :574 Windows Peek/Read and hang_up-with-pending-read tests absent at head"
+# Note: its "Failure classes / Amplification" says echo stays within the cap,
+# the opposite of K1. K1 is missed.

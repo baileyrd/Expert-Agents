@@ -1,0 +1,36 @@
+# Grade 1187-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1187-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A grant approved with one token acts with another same-actor token's role and projects"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "The board's Host guard rejects an IPv6-literal issuer (brackets kept)"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Misplaced doc comment states the wrong thing about two functions"
+triage = "real"
+reason = "identities.rs:272-273 (head) put identify's constant-time doc on by_actor, a short-circuiting find; still at origin/main identities.rs:272-273"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Issuer-host acceptance and default oauth.json location untested"
+triage = "real"
+reason = "head: tests/web.rs start_oauth builds hosts by hand, no process test uses --issuer, main.rs has no tests; main added default_oauth_state test (1ebd8a89) but main.rs:349 allowed_hosts.extend(issuer_hosts) is still unexercised"
+
+# Optional improvements names K3 ("Two boards can share one oauth.json by default ... beside --identities
+# ... a token from one board's issuer is accepted by the other"), but not in Blocking findings: not scored.

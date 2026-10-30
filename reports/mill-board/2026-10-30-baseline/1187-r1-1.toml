@@ -1,0 +1,36 @@
+# Grade 1187-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "mill-board/1187-r1"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A grant resolves to whichever credential has the same actor name"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P0"
+title = "An OAuth access token for /mcp is accepted on /api/settings_*"
+triage = "design_question"
+reason = "web.rs:118-119 (head) documents with_oauth as accepting its access tokens on /api and /mcp, and identify (web.rs:184-189) is used for both by design; unchanged at origin/main web.rs:136"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Misplaced constant-time doc comment on by_actor"
+triage = "real"
+reason = "identities.rs:272-273 (head) put identify's constant-time doc on by_actor, a short-circuiting find; still at origin/main identities.rs:272-273"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Issuer-host push and default grant-file location have no test"
+triage = "real"
+reason = "head: tests/web.rs start_oauth builds hosts by hand, no process test uses --issuer, main.rs has no tests; main added default_oauth_state test (1ebd8a89) but main.rs:349 allowed_hosts.extend(issuer_hosts) is still unexercised"
+
+# Non-blocking ("Checks and validation gaps") mentions two boards sharing one oauth.json, but via the
+# SAME --identities file and calls it out of scope (cross-process locking); not K3's mechanism.

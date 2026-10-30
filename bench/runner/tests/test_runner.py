@@ -32,28 +32,29 @@ BOUNDARY = Boundary(checkout=Path("/work/review/co"), scratch=Path("/work/scratc
 class ReviewConfigTest(unittest.TestCase):
     def config(self, prior=None, boundary=BOUNDARY):
         c = case(round=2, prior="7-r1") if prior else case()
-        return review(c, prior, "PROMPT", "v1", "b" * 40, boundary, None)
+        return review(c, prior, "PROMPT", "v1", "b" * 40, (boundary,), None)
 
     def test_no_real_case_s_review_config_holds_its_answer_key(self) -> None:
         from bench.runner.__main__ import CASES
         from bench.scorer.load import load_case
         for case_dir in sorted(CASES.glob("*/*")):
             c = load_case(case_dir)
-            text = json.dumps(review(c, None, "PROMPT", "v", "b" * 40, BOUNDARY, None))
+            text = json.dumps(review(c, None, "PROMPT", "v", "b" * 40, (BOUNDARY,), None))
             for k in c.key:
                 for secret in (k.title, k.summary, k.caught_if, k.fix):
                     self.assertNotIn(secret, text, f"{c.id} {k.id}")
             self.assertNotIn("assert", text)
             if c.prior:
                 prior = load_case(case_dir.parent / c.prior)
-                task = review(c, prior, "P", "v", "b" * 40, BOUNDARY, None)["prompts"][0]["raw"]
+                task = review(c, prior, "P", "v", "b" * 40, (BOUNDARY,), None)["prompts"][0]["raw"]
                 self.assertNotIn("/", task, f"{c.id}: promptfoo would read the task as a path")
 
     def test_the_reviewer_runs_the_prompt_in_the_checkout_without_write_tools(self) -> None:
         provider = self.config()["providers"][0]
         cfg = provider["config"]
         self.assertEqual((provider["label"], cfg["working_dir"], cfg["custom_system_prompt"]),
-                         ("v1", "/work/review/co", "PROMPT"))
+                         ("v1 run 1", "/work/review/co", "PROMPT"))
+        self.assertEqual(self.config()["tests"][0]["vars"]["variant"], "v1")
         self.assertEqual(cfg["custom_allowed_tools"], ["Read", "Grep", "Glob", "Bash"])
         self.assertTrue({"Edit", "Write", "WebFetch", "WebSearch"} <= set(cfg["disallowed_tools"]))
         self.assertIs(cfg["apiKeyRequired"], False)
@@ -67,6 +68,15 @@ class ReviewConfigTest(unittest.TestCase):
                           sandbox["allowUnsandboxedCommands"]), (True, True, False))
         self.assertEqual(sandbox["filesystem"]["denyRead"], ["/src/expert-agents", "/src/target"])
         self.assertEqual(sandbox["filesystem"]["allowWrite"], ["/work/review/co", "/work/scratch"])
+
+    def test_each_run_writes_only_to_its_own_checkout_and_scratch(self) -> None:
+        runs = tuple(Boundary(Path(f"/work/review/co-{n}"), Path(f"/work/scratch/{n}"),
+                              BOUNDARY.hidden) for n in (1, 2, 3))
+        providers = review(case(), None, "P", "v", "b" * 40, runs, None)["providers"]
+        writes = [tuple(p["config"]["sandbox"]["filesystem"]["allowWrite"]) for p in providers]
+        self.assertEqual(len(providers), 3)
+        self.assertEqual(len({w for ws in writes for w in ws}), 6)
+        self.assertEqual(len({p["label"] for p in providers}), 3)
 
     def test_network_is_off_unless_domains_are_allowed(self) -> None:
         off = self.config()["providers"][0]["config"]
@@ -205,6 +215,9 @@ class PrepareTest(unittest.TestCase):
             self.assertEqual(run_main(["prepare", str(case_dir), "--target", str(src),
                                        "--out", str(work)])[0], 0)
             config = json.loads((work / "mux-9-r1.review.yaml").read_text())
+            dirs = {p["config"]["working_dir"] for p in config["providers"]}
+            self.assertEqual(len(dirs), 3)  # --repeat's default, one checkout per run
+            self.assertTrue(all((Path(d) / ".git").is_dir() for d in dirs))
             (work / "grade" / "results.json").write_text(json.dumps({"results": {"results": [
                 {**ok_result(), "vars": {"case": "mux/1251-r1", "prompt_sha": SHA}}]}}))
             self.assertEqual(run_main(["extract", str(work / "grade" / "results.json"),
@@ -245,6 +258,37 @@ class PrepareTest(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("which the reviewer may not read", err.getvalue())
 
+
+    def test_a_case_is_named_by_its_directory_or_its_id(self) -> None:
+        from bench.runner.__main__ import CASES, _case_dir
+        self.assertEqual(_case_dir(Path("mux/1251-r1")), CASES / "mux/1251-r1")
+        self.assertEqual(_case_dir(CASES / "mux/1251-r1"), CASES / "mux/1251-r1")
+
+    def test_each_run_is_denied_every_other_run_s_checkout_and_scratch(self) -> None:
+        from bench.runner.__main__ import _runs
+        runs = _runs(Path("/w"), "c", 3, (Path("/repo"),), ())
+        for run in runs:
+            others = {d for r in runs if r != run for d in (r.checkout, r.scratch)}
+            self.assertEqual(set(run.hidden), {Path("/repo")} | others)
+            cfg = review(case(), None, "P", "v", "b" * 40, (run,), None)["providers"][0]["config"]
+            for d in others:
+                self.assertIn(str(d), cfg["sandbox"]["filesystem"]["denyRead"])
+                self.assertIn(f"Read(/{d}/**)", cfg["disallowed_tools"])
+
+    def test_the_work_directory_links_the_pinned_node_modules_once(self) -> None:
+        from bench.runner.__main__ import RUNNER, _link_modules
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            _link_modules(out)
+            _link_modules(out)  # a second prepare into the same directory is fine
+            self.assertEqual((out / "node_modules").resolve(), (RUNNER / "node_modules").resolve())
+
+    def test_a_work_directory_with_other_node_modules_is_refused(self) -> None:
+        from bench.runner.__main__ import _link_modules
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "node_modules").mkdir()
+            with self.assertRaisesRegex(ValueError, "is not a link"):
+                _link_modules(Path(tmp))
 
 class CheckoutTest(unittest.TestCase):
     def test_the_checkout_has_the_head_and_nothing_after_it(self) -> None:
