@@ -1,6 +1,24 @@
 ---
 name: expert-generator
-description: Turn an interview answer ("summarize this project in five words; what expert would we recruit?") into a grounded expert PR reviewer in experts/<name>/, then bench it. Use when asked to create, generate or regenerate an expert reviewer from such an answer.
+description: >-
+  Turns an interview answer ("summarize this project in five words; what
+  expert would we recruit?") into a grounded expert PR reviewer under
+  experts/, then benches it. Maps the answer's traits to review axes,
+  mines the target repo's own review-fix commits for defect classes (held-out
+  bench PRs removed), fills the scaffold from python3 -m orchestrator
+  new/mine/codex/check, builds bench cases, grades runs against answer keys
+  and opens a PR with the report. Also regenerates an existing expert as a
+  variant that lands only if it beats the current prompt on the same cases.
+  Use when asked to create, generate, regenerate or bench an expert reviewer,
+  to "make an agent" or "recruit an expert" for a repo or domain, or when
+  someone pastes a five-words-and-an-expert answer.
+metadata:
+  version: 1.1.0
+compatibility: >-
+  Run from an Expert-Agents checkout. Needs python3, git, a local clone of
+  the target repo, and gh or the GitHub MCP tools. Benching also needs Node
+  and a signed-in Claude Code login. The wrap-up retro uses the skill-retro
+  skill from baileyrd/skill_pack when installed.
 ---
 
 # Expert generator
@@ -12,14 +30,32 @@ for?"*, the target repo and a local clone of it. Output: `experts/<name>/` with
 a graded bench run, and a PR.
 
 The answer gives the persona and the axes. The defect classes come from the target
-repo's own review fixes, never from general expertise. Read `README.md`,
+repo's own review fixes, never from general expertise: a reviewer grounded in what this
+repo's reviewers actually caught finds this repo's bugs, while a generic one restates
+textbook advice. Read `README.md`,
 `orchestrator/README.md`, `bench/README.md`, `bench/runner/README.md` and one existing
 expert (`experts/mux/prompt.md`) before starting.
+
+Copy this checklist and tick it off; each step says what "done" means.
+
+```
+- [ ] 1. interview.md written, Profile has 2–5 axes
+- [ ] 2. 3+ bench cases, held-out PRs listed
+- [ ] 3. scaffold + grounding.md (defect classes, oracles, settled decisions)
+- [ ] 4. prompt.md + codex.md; check reports 0 problems; unittest green
+- [ ] 5. bench runs (or paste-ready handoff)
+- [ ] 6. graded runs scored, report written
+- [ ] 7. PR open, review requested
+- [ ] 8. wrap-up retro reported
+```
 
 ## 1. Record the interview
 
 Ask for the name (kebab-case; the subagent becomes `<name>-expert`), the target repo and
-the clone path if the request does not give them. Write `interview.md`: the question,
+the clone path if the request does not give them. The answer itself is the one input
+you cannot reconstruct: to regenerate an expert, use its `interview.md` if it has one,
+otherwise ask for the answer. Never write one from the existing prompt, since axes
+inferred from the prompt only reproduce it. Write `interview.md`: the question,
 the answer verbatim, then a **Profile**:
 
 - **Scope**: the paths in the target that make up the domain.
@@ -39,7 +75,8 @@ Pick three or more past PRs in scope that had review rounds, and build a case pe
 reviewed head as `bench/README.md` says (`pr.toml`, `answer_key.toml`, every key finding
 citing the review and its fix commit). Reuse existing cases under
 `bench/cases/<name>/`. These PRs are held out: the prompt must never name them, their
-commits, or their findings' specifics.
+commits, or their findings' specifics, because a prompt that has seen the answer key
+scores recall it would not have on a new PR.
 
 ## 3. Scaffold and ground
 
@@ -93,6 +130,8 @@ python3 -m orchestrator check <expert dir> --target <clone>   # must report 0 pr
 python3 -m unittest
 ```
 
+If `check` reports problems or a test fails, fix the prompt and run all three again;
+bench only on a clean `check`, since a leaked held-out commit invalidates every run.
 `check` refuses leftover TODOs, sections that differ from `expert.toml`, a Codex
 prompt without its placeholders, and any held-out PR number or commit in either prompt
 (`--target` is required once the expert has cases, so every commit of a held-out PR is checked).
@@ -115,13 +154,15 @@ headings differ from the manifest) and bench it there.
 ```
 npm ci --prefix bench/runner
 python3 -m bench.runner prepare bench/cases/<name>/<case> --target <clone> \
-    --out <work>/<case> --variant <variant> --repeat 5
+    --out <work>/<case> --variant <variant> --repeat 5 --model <model>
 # run the printed eval command; then:
 python3 -m bench.runner extract <work>/<case>/grade/results.json \
     --out reports/<name>/<date>-<variant>/
 ```
 
-Use `--repeat 5` so results compare with the baselines.
+Use `--repeat 5` so results compare with the baselines. `--model` is required and
+recorded with every result; pass the same model for the current prompt and the variant,
+because reports compare only when their models match.
 
 ## 6. Grade and report
 
@@ -142,4 +183,17 @@ after a check on current `main`; anything an attacker could use goes to the owne
 A new expert lands with its cases and report. A variant replaces the expert's
 `prompt.md`, `codex.md` and `expert.toml` only if it beats the current prompt, on the
 same cases, without regressing any case; otherwise land only the report. Open the PR, request review from
-`dottiusmaximus`, and stop: agents never merge.
+`dottiusmaximus`, then do step 8. Agents never merge.
+
+## 8. Wrap-up retro
+
+After step 7 (or the step 5 handoff, if the bench ran elsewhere), run the `skill-retro`
+skill on this skill, grounded in this run: did the Profile's trait-to-axis mapping hold up
+once the defect classes were mined, did `mine` surface enough review fixes or did the
+classes rest on one commit each, did `check` catch something the steps should have
+prevented, and did the bench handoff or grading need a command these steps lack. This
+runs unattended and only reports; apply what it finds in a separate, approved PR, never
+in the expert's PR. `skill-retro` lives in
+[baileyrd/skill_pack](https://github.com/baileyrd/skill_pack/tree/main/meta/skill-retro);
+if it is not installed, answer the same questions in a short `## Retro` section of the
+PR body or handoff instead.

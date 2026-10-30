@@ -1,0 +1,23 @@
+{
+  "skill_name": "expert-generator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Five words: conflict-free merge, convergence, no data loss. Expert: someone who has proven CRDT convergence and broken real sync engines; the rarest part is reasoning about concurrent ops and tombstones. Also property-based testing. Make an expert reviewer called crdt for Rusty-Mill/rusty_mill, clone is at ~/src/rusty_mill.",
+      "expected_output": "interview.md with the answer verbatim and a Profile whose first axis is convergence under concurrent ops and which treats property-based testing as method, not an axis; cases built before the prompt; grounding.md from orchestrator mine scoped to crates/foundation/rusty_crdt; prompt.md passing check with --target; bench handed off; PR described; retro reported.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Regenerate the mux expert from its interview and see if it beats the current prompt.",
+      "expected_output": "Finds that experts/mux has no interview.md and asks for the interview answer instead of inferring one from the current prompt; records what it would do next as a variant (written under --out scratch, current prompt benched on missing cases first, variant benched in an unpushed worktree, experts/mux replaced only on a win without regressions).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Can you make an agent that reviews PRs to rusty_tick? Summary: tasks for humans and agents. I'd recruit someone who's built a sync-safe task store with strict due-date and recurrence semantics.",
+      "expected_output": "Asks for (or infers and records) the expert name and clone path; runs steps 1-4 scoped to crates/apps/rusty_tick; with no Node or Claude Code login stops at step 5 and hands over paste-ready bench commands.",
+      "files": []
+    }
+  ]
+}
