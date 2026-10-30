@@ -16,10 +16,12 @@ class CheckoutError(RuntimeError):
 
 
 def blind_checkout(case: Case, target: Path, dest: Path) -> None:
-    """Check out `case.head` at `dest` with no later commits, no other refs and no remote.
+    """Check out `case.head` at `dest` with no later commits and no link to the target.
 
     The reviewer must not see the fix commits or the review, so this is a new repository
-    fetched by SHA from a local clone of the target, not a worktree of it.
+    fetched by SHA from a local clone of the target, not a worktree of it. Its `origin` is
+    itself, holding only `refs/pull/<pr>/head`, so the prompts' pinning step
+    (`git fetch origin pull/<pr>/head`) works and confirms the head.
     """
     if dest.exists():
         raise CheckoutError(f"{dest} already exists; use a fresh work directory")
@@ -27,6 +29,8 @@ def blind_checkout(case: Case, target: Path, dest: Path) -> None:
     _git(dest, "fetch", "-q", "--no-tags", "--upload-pack", _UPLOAD_PACK, str(target.resolve()),
          case.base, case.head)
     _git(dest, "checkout", "-q", "--detach", case.head)
+    _git(dest, "update-ref", f"refs/pull/{case.pr}/head", case.head)
+    _git(dest, "remote", "add", "origin", str(dest.resolve()))
 
 
 def _git(cwd: Path | None, *args: str) -> None:

@@ -73,6 +73,30 @@ class ExtractTest(unittest.TestCase):
         self.assertIn("61 s, 1200 tokens, $1.50; rubric recall: K1 1, K2 0.5", report_md(first))
         self.assertIn("unknown tokens, unknown", report_md(second))
 
+    def test_a_failed_run_is_kept_apart_from_the_successful_ones(self) -> None:
+        failed = {"vars": {"case": "mux/7-r1", "prompt_sha": SHA}, "provider": {"id": "p"},
+                  "error": "API error: overloaded"}
+        ok, bad = run_outputs({"results": {"results": [self.RESULTS["results"]["results"][0], failed]}})
+        self.assertIsNone(ok.error)
+        self.assertEqual(bad.error, "API error: overloaded")
+        self.assertIn("**Run failed:** API error: overloaded", report_md(bad))
+
+    def test_extract_writes_good_runs_and_exits_1_on_a_failed_one(self) -> None:
+        import io, json
+        from contextlib import redirect_stderr, redirect_stdout
+        from bench.runner.__main__ import main
+        failed = {"vars": {"case": "mux/7-r1", "prompt_sha": SHA}, "provider": {"id": "p"},
+                  "error": "boom"}
+        with tempfile.TemporaryDirectory() as tmp:
+            results = Path(tmp) / "results.json"
+            results.write_text(json.dumps(
+                {"results": {"results": [self.RESULTS["results"]["results"][0], failed]}}))
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                status = main(["extract", str(results), "--out", str(Path(tmp) / "out")])
+            written = sorted(p.name for p in (Path(tmp) / "out").iterdir())
+        self.assertEqual(status, 1)
+        self.assertEqual(written, ["7-r1-1-report.md", "7-r1-1.toml", "7-r1-2-report.md"])
+
     def test_the_skeleton_is_a_valid_graded_run(self) -> None:
         import tomllib
         run = parse_run(tomllib.loads(run_skeleton(run_outputs(self.RESULTS)[0])), case())
@@ -88,7 +112,9 @@ class CheckoutTest(unittest.TestCase):
             dest = Path(tmp) / "co"
             blind_checkout(case(base, head), src, dest)
             self.assertEqual(git(dest, "rev-parse", "HEAD"), head)
-            self.assertEqual(git(dest, "remote"), "")
+            self.assertEqual(git(dest, "remote", "get-url", "origin"), str(dest.resolve()))
+            git(dest, "fetch", "-q", "origin", "pull/7/head")
+            self.assertEqual(git(dest, "rev-parse", "FETCH_HEAD"), head)
             missing = subprocess.run(["git", "cat-file", "-e", later], cwd=dest, check=False)
             self.assertNotEqual(missing.returncode, 0)
             with self.assertRaisesRegex(CheckoutError, "already exists"):

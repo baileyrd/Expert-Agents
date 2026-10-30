@@ -31,14 +31,13 @@ GRADER = "anthropic:messages:claude-sonnet-5-5"
 def main(argv: list[str]) -> int:
     args = _parser().parse_args(argv)
     try:
-        args.command(args)
+        return args.command(args) or 0
     except (BenchError, CheckoutError, ValueError, KeyError, OSError) as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
-    return 0
 
 
-def prepare(args: argparse.Namespace) -> None:
+def prepare(args: argparse.Namespace) -> int:
     """Check out the case blind and write its promptfoo config, then print the eval command."""
     case = load_case(args.case)
     prior = load_case(args.case.parent / case.prior) if case.prior else None
@@ -52,17 +51,28 @@ def prepare(args: argparse.Namespace) -> None:
     path.write_text(json.dumps(config, indent=2) + "\n")  # JSON is valid YAML
     print(f"npx --prefix bench/runner promptfoo eval --no-cache -c {path} "
           f"--repeat {args.repeat} -o {out / 'results.json'}")
+    return 0
 
 
-def extract(args: argparse.Namespace) -> None:
-    """Write `<case>-<n>-report.md` and `<case>-<n>.toml` per run."""
+def extract(args: argparse.Namespace) -> int:
+    """Write `<case>-<n>-report.md` per run, and `<case>-<n>.toml` for each that succeeded.
+
+    A failed run keeps its report, naming the error, and gets no graded-run skeleton, so it
+    is never scored as a review with no findings. Any failure makes the exit status 1.
+    """
     results = json.loads(args.results.read_text())
     args.out.mkdir(parents=True, exist_ok=True)
+    failed = 0
     for o in run_outputs(results):
         stem = args.out / f"{o.case.split('/')[1]}-{o.run}"
         Path(f"{stem}-report.md").write_text(report_md(o))
+        if o.error:
+            failed += 1
+            print(f"FAILED {stem}-report.md: {o.error}", file=sys.stderr)
+            continue
         Path(f"{stem}.toml").write_text(run_skeleton(o))
         print(f"{stem}-report.md")
+    return 1 if failed else 0
 
 
 def _prompt_sha() -> str:

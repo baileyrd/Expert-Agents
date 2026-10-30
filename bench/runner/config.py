@@ -12,7 +12,8 @@ PROVIDER = "anthropic:claude-agent-sdk"
 TOOLS = ("Read", "Grep", "Glob", "Bash", "WebFetch", "WebSearch")
 TASK = (
     "Review PR {{pr}} of {{repo}} against base {{base}} at head {{head}}. "
-    "The working directory is a checkout of the head with history up to it and no remote."
+    "The working directory is a checkout of the head with history up to it; its origin serves only "
+    "pull/{{pr}}/head."
 )
 RUBRIC = """\
 Grade whether this code review reports the following known defect as one of its findings.

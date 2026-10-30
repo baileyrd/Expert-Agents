@@ -17,8 +17,8 @@ python3 -m bench.runner extract /tmp/bench-1251/results.json \
   login (`apiKeyRequired: false`), so runs count against your plan's usage. Unset
   `ANTHROPIC_API_KEY` first: if it is set, it is used instead.
 - **Blind.** `prepare` builds a new repository fetched by SHA from your clone of the
-  target: the head and its history, with no later commits, no other refs and no
-  remote. The reviewer cannot see the fix or the review.
+  target: the head and its history, with no later commits and no link back to the
+  target. The reviewer cannot see the fix or the review.
 - **Frozen prompt.** The prompt is the expert's Claude subagent `prompt.md` body as
   committed; `prepare` refuses uncommitted changes under `experts/` and records the
   commit as `prompt_sha`. Make a variant by committing it (on a branch) first.
@@ -36,5 +36,6 @@ python3 -m bench.runner extract /tmp/bench-1251/results.json \
   ([bench/README.md](../README.md)), and [the scorer](../scorer/) reads those files.
 
 The reviewer may use Read, Grep, Glob, Bash, WebFetch and WebSearch in its disposable
-checkout; it has no write tools and the checkout has no remote. Keep `--out` outside
+checkout; it has no write tools, and the checkout's `origin` is itself, holding only
+`refs/pull/<pr>/head` so the prompts' pinning step works. Keep `--out` outside
 `reports/`, since it holds the checkout.

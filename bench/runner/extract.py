@@ -17,6 +17,7 @@ class RunOutput:
     latency_ms: int
     cost_usd: float | None
     tokens: int | None
+    error: str | None  # set when the provider call failed; report is then empty
 
 
 def run_outputs(results: dict[str, Any]) -> list[RunOutput]:
@@ -26,27 +27,31 @@ def run_outputs(results: dict[str, Any]) -> list[RunOutput]:
     for r in results["results"]["results"]:
         v = r["vars"]
         counts[v["case"]] = counts.get(v["case"], 0) + 1
+        response = r.get("response") or {}
+        error = r.get("error") or (None if "response" in r else "no response")
         outputs.append(RunOutput(
             case=v["case"],
             variant=r["provider"].get("label") or r["provider"]["id"],
             prompt_sha=v["prompt_sha"],
             run=counts[v["case"]],
-            report=str(r["response"].get("output") or ""),
+            report=str(response.get("output") or ""),
             recall_by_key=dict(r.get("namedScores") or {}),
             latency_ms=int(r.get("latencyMs") or 0),
             cost_usd=r.get("cost"),
             tokens=(r.get("tokenUsage") or {}).get("total"),
+            error=str(error) if error else None,
         ))
     return outputs
 
 
 def report_md(o: RunOutput) -> str:
-    """The reviewer's report with a header naming the run and its cost."""
+    """The reviewer's report with a header naming the run and its cost, or why it failed."""
     keys = ", ".join(f"{k} {v:g}" for k, v in sorted(o.recall_by_key.items())) or "none"
     cost = f"${o.cost_usd:.2f}" if o.cost_usd is not None else "unknown"
     return (f"<!-- {o.case} run {o.run}, variant {o.variant}, prompt {o.prompt_sha}; "
             f"{o.latency_ms / 1000:.0f} s, {o.tokens or 'unknown'} tokens, {cost}; "
-            f"rubric recall: {keys} -->\n\n{o.report}\n")
+            f"rubric recall: {keys} -->\n\n"
+            + (f"**Run failed:** {o.error}\n" if o.error else f"{o.report}\n"))
 
 
 def run_skeleton(o: RunOutput) -> str:
