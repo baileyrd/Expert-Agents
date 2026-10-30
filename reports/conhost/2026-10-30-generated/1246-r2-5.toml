@@ -1,0 +1,36 @@
+# Grade 1246-r2-5-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r2"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 5
+
+[[finding]]
+id = "N1"
+severity = "P1"
+title = "A held cooked read can stall until an unrelated key when the reader drains during the handle call"
+triage = "real"
+reason = "source trace at head and main: the hold tests out.len() = held snapshot taken at handle start (runtime.rs:610-611, console.rs:229-235) plus echo; read() raises output_drained only when a read starts above DRAIN_WAKE_ABOVE 64 KiB (runtime.rs:39, 216; main :253); with held 61,440 and >=17,921 B drained concurrently the queue after push_output is <=64,000, so no read raises the flag; only OutputDrained or Input call serve_reads (console.rs:539-543, read.rs:117); main must_poll/drains_itself (runtime.rs:688-696) cover echo_held only when detached. Contradicts design.md:606 'goes on when the reader drains'"
+
+[[finding]]
+id = "N2"
+severity = "P1"
+title = "Later input slices evict a held cooked read's own queued input past the 4,096-record cap"
+triage = "real"
+reason = "executed at head and main: cooked read with queued output 80 KiB-500, 4,000 a held with 3,499 records left, 1 KiB drain + OutputDrained leaves 2,475, then a 3,000 b + CR slice hits 4,096 with InputDropped logged; the line returns 2,619 a and 3,000 b. sched::turn takes input whenever output <= 80 KiB (sched.rs:82; main sched.rs:96 checks only reads_cut, not echo_held), so held records sit across turns while new input is admitted; design 7.4 says a held read goes on with its input still queued and that the lane blocks writes"
+
+[[finding]]
+id = "N3"
+severity = "P2"
+title = "A unit parked in held_unit is invisible to record readers and the input event"
+triage = "real"
+reason = "executed at head and main: raw mode, win32 lone high 55357 then a, ReadConsoleA 3 bytes returns EF BF BD; then held_unit = a, input_available false, GetNumberOfInputEvents 0, peek 0, a waiting ReadConsoleInputW completes with the later y; next_text pops the next unit into held_unit (read.rs:565-580) which sync_input_available (console.rs:551-552), get_number_of_input_events (read.rs:262) and read_records ignore; still on main (read.rs:605-623, console.rs:655-661)"
+
+[[finding]]
+id = "N4"
+severity = "P2"
+title = "The docs understate the ANSI record cache (3 records, not 2)"
+triage = "real"
+reason = "executed at head 8ec54b85 and main ebb92e28: ANSI GetConsoleInput count 1 on U+1F600 returns 1 record and leaves cached_records.len() == 3 (record_utf8 puts the pair's 4 UTF-8 bytes on the low half, read.rs:658-676), against design.md:614 (main :620) \"3 bytes, 2 records\"; still on main"
+
+# K1 and K2 not raised. The design question (record cap vs 16 KiB slice) repeats the baseline
+# r5 F1 design question and is not graded.

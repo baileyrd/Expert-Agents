@@ -1,0 +1,70 @@
+# Grade 1246-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r1"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "One Esc key can echo about 96 KB in a single call, breaking the 7.4 output limits"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Cooked echo is inserted inside a client's unfinished escape sequence"
+triage = "design_question"
+reason = "trace holds (read.rs:462-463 pushes echo straight after client bytes) but conhost 09beddc6 does the same: client VT and cooked echo go through one state machine and passthrough writer (_stream.cpp:405-421, readDataCooked.cpp:1287 WriteCharsVT); main keeps it on purpose (screen.rs:100-104 'Whatever the client's unfinished sequence was, this ends it')"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "An ESC at the end of a 16 KiB input slice becomes the Escape key"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "VT-input clients get Backspace as 0x08 and Ctrl+Backspace as 0x7f"
+triage = "real"
+reason = "source trace: vt_for (input.rs:544-552) emits k.ch, so Backspace (ch 8) goes out as 0x08 and Shift+Tab as TAB, no DECCKM; conhost InputBuffer routes records through TerminalInput::HandleKey (inputBuffer.cpp:682-709), which sends DEL for Backspace and CBT for Shift+Tab (terminalInput.cpp:911-930); unchanged on main (input.rs:562-569)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Echo writes typed C0 controls raw, and Backspace erases one column whatever the width"
+triage = "real"
+reason = "same as baseline run 3 F3: cooked.rs:78-81 push_units echoes C0 raw; conhost renders ^X and expands Tab (readDataCooked.cpp:1349-1366); unchanged on main; width: cooked.rs:109 one BS-space-BS per character vs conhost width layout (readDataCooked.cpp:1235-1287)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "A Ctrl event is queued before the read it ends is completed"
+triage = "design_question"
+reason = "effects are [Ctrl, Complete] (read.rs:148-149), but design.md:560 says Ctrl effects go to a FIFO worker and 'can reach the OS after later driver effects. That is intended'; the relative order to driver effects is not guaranteed by design"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Tests the design requires for input are missing"
+triage = "real"
+reason = "same as baseline runs 1 F5/2 F8: design.md:634 cooked-echo stalled-reader test, design.md:569-574 core and Windows interleavings, design.md:643 stalled-worker test all absent at head"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "Appendix A was not updated"
+triage = "real"
+reason = "design.md:970 'pinned in PR 3' with no numbers while msg.rs uses 0x01000003/0x02000003; unchanged on main (design.md:999)"
+
+[[finding]]
+id = "F9"
+severity = "P2"
+title = "The recorder keeps typed input, which the design says the sanitiser scrubs"
+triage = "real"
+reason = "design.md:676 sanitiser scrubs user history; the PR makes fixture.rs record terminal input (fixture.rs:22-25 'typed passwords included', event_line input hex); design not updated; unchanged on main (design.md:683, fixture.rs:27)"
+
+# K3 not raised. Focus reports are under Design questions; not graded.

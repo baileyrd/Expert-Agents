@@ -1,0 +1,21 @@
+# Grade 1246-r2-2-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r2"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Removing a held cooked read strands the reads waiting behind it with their input queued"
+triage = "real"
+reason = "executed at head and main: 4 prefilled cooked reads on handle A (3 complete, 1 held), raw ReadConsoleW on a created handle B waits; CLOSE_OBJECT A completes the held read with STATUS_ALERTED and clears echo_held but the raw read stays waiting with 3 records queued until the next OutputDrained; end_reads (read.rs:193-215) never re-runs serve_reads, callers console.rs:598-614 (main console.rs:734-751) unchanged. Severity overstated: the strand lasts until the next drain, which a hold normally implies"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "While echo is held, GetConsoleInput returns nothing but the input event and event count say input is there"
+triage = "real"
+reason = "executed at head and main: 4 prefilled cooked reads, Escape+x+CR x4 in one slice: echo_held true, input_available true, GetNumberOfInputEvents 3, PeekConsoleInput NOREMOVE|NOWAIT returns 0; get_console_input empties results while echo_held (read.rs:313) but the count (read.rs:262) and the event (console.rs:552) still report the queue; not recorded in design.md 7.4/5.10; still on main (read.rs:345 reads_behind, count unchanged)"
+
+# K1 and K2 not raised; the K2 re-check (writing counter) only states it fixed.

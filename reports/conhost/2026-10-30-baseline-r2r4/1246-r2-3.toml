@@ -1,0 +1,15 @@
+# Grade 1246-r2-3-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r2"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Design 7.4 understates the ANSI record cache after K3"
+triage = "real"
+reason = "executed at head 8ec54b85 and main ebb92e28: win32 key-downs for lone high 0xD83D then U+20AC, ANSI GetConsoleInput count 1 returns 1 record and leaves cached_records.len() == 5 (U+FFFD + euro = 6 UTF-8 bytes on one record, read.rs:656-675), against design.md:614 (main :620) \"3 bytes, 2 records\"; still on main"
+
+# K1 and K2 not raised. The InputMore doc gap appears only under optional improvements (not graded).
+# The design question (held echo: event/count vs peek) is not graded.

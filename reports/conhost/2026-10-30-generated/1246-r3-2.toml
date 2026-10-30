@@ -1,0 +1,14 @@
+# Grade 1246-r3-2-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r3"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Input after two coalesced ESC-ending writes stalls until an unrelated event"
+match = "K1"
+quality = "caught"
+# Names plan.poll computed from the lane length before take_input (sched.rs:98, runtime.rs:574)
+# and the ESC cut leaving bytes queued with the auto-reset waker consumed: K1's leftover-input case.

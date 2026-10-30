@@ -1,0 +1,13 @@
+# Grade 1246-r4-5-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r4"
+variant = "baseline"
+prompt_sha = "6f8b297a8d8b51ce008e641769215a46032faff9"
+run = 5
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "No test checks that turn() decides on the state after work()"
+triage = "real"
+reason = "source trace at 2dfc3a6c: Engine::turn (runtime.rs:527-530) is called only by run (runtime.rs:518); both new engine tests go through turns_without_another_wake (runtime.rs:934-941), which calls work() then must_poll() itself, the sched test (sched.rs:274-292) checks the pure predicate, and tests/own_pty.rs writes neither an ESC-ended write nor owed large reads, so moving runtime.rs:530 above work() fails no test; same on main ebb92e28 (turn at runtime.rs:581-584; tests that call turn() never check the wait deadline); same claim as generated r2 R1 / r3 F1"
+# Does not touch K1 (READ_IO admission).

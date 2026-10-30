@@ -1,0 +1,92 @@
+# Grade 1246-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r1"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Cooked-read echo has no budget and can exceed the 144 KiB output cap without limit"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Cooked echo sends C0 control characters to the terminal raw"
+triage = "real"
+reason = "same as baseline run 3 F3: cooked.rs:78-81 push_units echoes C0 raw; conhost renders ^X and expands Tab (readDataCooked.cpp:1349-1366); unchanged on main"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Backspace echo is wrong across a wrapped line and over wide characters"
+triage = "real"
+reason = "source trace: backspace always emits one BS-space-BS (cooked.rs:96-110) whatever the cell width or row; conhost lays the line out by column width and redraws across rows (readDataCooked.cpp:1235-1287 _layoutLine/_appendCUP); not in section 5.10; unchanged on main (cooked.rs:134)"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "An ESC that ends a 16 KiB input slice is read as the Escape key"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F5"
+severity = "P1"
+title = "Win32 records are turned into the wrong VT for VIRTUAL_TERMINAL_INPUT clients"
+triage = "real"
+reason = "source trace: vt_for (input.rs:544-552) emits k.ch, so Backspace (ch 8) goes out as 0x08 and Shift+Tab as TAB, no DECCKM; conhost InputBuffer routes records through TerminalInput::HandleKey (inputBuffer.cpp:682-709), which sends DEL for Backspace and CBT for Shift+Tab (terminalInput.cpp:911-930); unchanged on main (input.rs:562-569)"
+
+[[finding]]
+id = "F6"
+severity = "P1"
+title = "Focus reports the host asked for reach VT-input clients that never enabled them"
+triage = "real"
+reason = "same as baseline run 2 F4: read.rs:100-104 passes Focus raw to VT clients; conhost forwards only if client set ?1004 (inputBuffer.cpp:589-591, terminalInput.cpp:420-422); unchanged on main (read.rs:107-110)"
+
+[[finding]]
+id = "F7"
+severity = "P1"
+title = "Two waiting cooked reads on one handle lose the first read's leftover text"
+triage = "real"
+reason = "same as baseline run 5 F3: an empty rest from read B overwrites cdef (keep_pending read.rs:649-653 stores even empty; conhost readDataCooked.cpp:811-816 saves only non-empty); unchanged on main (read.rs:755-758)"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "Ctrl events are sent oldest client first"
+triage = "fixed_since"
+reason = "real at head (read.rs:166 ascending cookie; conhost ProcessList.cpp:214-216 newest first via crbegin); fixed in 1eb6ec680, main read.rs:193 sorts Reverse(cookie)"
+
+[[finding]]
+id = "F9"
+severity = "P2"
+title = "In plain-VT input, Alt+[ and Alt+O wait for the next key and merge with it"
+triage = "real"
+reason = "source trace: csi()/escape() return Incomplete for a trailing ESC [ or ESC O (input.rs:276, 292); conhost flushes a trailing run of at most 2 starting with ESC as Esc/Alt+key when no win32-input-mode sequence was seen (stateMachine.cpp:2036-2072); unchanged on main (input.rs:263-264, 309)"
+
+[[finding]]
+id = "F10"
+severity = "P2"
+title = "The host never turns off what its preamble turned on"
+triage = "fixed_since"
+reason = "real at head (runtime.rs:474 preamble, no ?9001l/?1004l anywhere in the crate; conhost VtIo.cpp:245-260 Shutdown resets both); fixed in 1eb6ec680, main console.rs:46 POSTAMBLE pushed at runtime.rs:870"
+
+[[finding]]
+id = "F11"
+severity = "P2"
+title = "Text from plain-VT input becomes key-downs with VK 0 and no key-up, unrecorded in 5.10"
+triage = "real"
+reason = "source trace: key_events maps Text to KeyEvent::text (input.rs:508, 86-95: down only, vk 0); conhost WriteString uses CharToKeyEvents for non-VT clients (InteractDispatch.cpp:93-101, VK from layout, down and up); V8 (design.md:478) records only scan code 0; unchanged on main (input.rs:525)"
+
+[[finding]]
+id = "F12"
+severity = "P2"
+title = "Tests the design requires for the changed behaviour are missing"
+triage = "real"
+reason = "same as baseline runs 1 F5/2 F8: design.md:634 cooked-echo stalled-reader test, design.md:569-574 core and Windows interleavings, design.md:643 stalled-worker test all absent at head"
+
+# K3: only "a surrogate pair typed right at the line cap is half kept" under
+# Optional improvements; not the per-unit conversion and not graded.

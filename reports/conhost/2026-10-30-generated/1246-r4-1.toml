@@ -1,0 +1,7 @@
+# Grade 1246-r4-1-report.md into [[finding]] tables; see bench/README.md.
+case = "conhost/1246-r4"
+variant = "generated"
+prompt_sha = "127573c57ee83fe961ef918e3a829f48e3277fd6"
+run = 1
+# No blocking findings. Not near K1: the liveness checks cover reads_ready, the ESC
+# cut, the drain wake and teardown, never READ_IO admission or submit_read.
