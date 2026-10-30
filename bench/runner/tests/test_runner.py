@@ -246,6 +246,26 @@ class PrepareTest(unittest.TestCase):
         self.assertIn("which the reviewer may not read", err.getvalue())
 
 
+    def test_a_case_is_named_by_its_directory_or_its_id(self) -> None:
+        from bench.runner.__main__ import CASES, _case_dir
+        self.assertEqual(_case_dir(Path("mux/1251-r1")), CASES / "mux/1251-r1")
+        self.assertEqual(_case_dir(CASES / "mux/1251-r1"), CASES / "mux/1251-r1")
+
+    def test_the_work_directory_links_the_pinned_node_modules_once(self) -> None:
+        from bench.runner.__main__ import RUNNER, _link_modules
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            _link_modules(out)
+            _link_modules(out)  # a second prepare into the same directory is fine
+            self.assertEqual((out / "node_modules").resolve(), (RUNNER / "node_modules").resolve())
+
+    def test_a_work_directory_with_other_node_modules_is_refused(self) -> None:
+        from bench.runner.__main__ import _link_modules
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "node_modules").mkdir()
+            with self.assertRaisesRegex(ValueError, "is not a link"):
+                _link_modules(Path(tmp))
+
 class CheckoutTest(unittest.TestCase):
     def test_the_checkout_has_the_head_and_nothing_after_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

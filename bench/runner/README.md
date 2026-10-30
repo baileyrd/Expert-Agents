@@ -4,15 +4,21 @@ Runs one prompt variant of an expert N times on a case with
 [promptfoo](https://www.promptfoo.dev/) and its Claude Agent SDK provider, then splits
 the results into one report per run for grading.
 
+Needs Node 22.22 or newer (promptfoo's floor; `npm ci` refuses older), and on Linux
+`bwrap` and `socat` for the sandbox.
+
 ```
 npm ci --prefix bench/runner        # once: promptfoo and the Agent SDK, pinned
-python3 -m bench.runner prepare bench/cases/mux/1251-r1 \
+python3 -m bench.runner prepare mux/1251-r1 \
     --target ~/src/rusty_mill --out /tmp/bench-1251 --variant baseline --repeat 5
 # 1. run the printed review command, signed in to Claude Code
 python3 -m bench.runner extract /tmp/bench-1251/grade/results.json \
     --out reports/mux/<date>-<variant>/
 # 2. run the printed rubric command for a first-pass recall per key finding
 ```
+
+`prepare` takes a case id or directory. It links the work directory's `node_modules` to
+the pinned one here, because promptfoo loads the Agent SDK from beside the config.
 
 ## Blind by construction
 
@@ -35,9 +41,8 @@ python3 -m bench.runner extract /tmp/bench-1251/grade/results.json \
   review. Sandboxed Bash allows no domains unless `--allow-domain` opens one
   (repeatable), for example the crates.io hosts if `cargo` has no cached registry.
   Opening `github.com` lets Bash read the live review, so a run that does is not blind;
-  say so in its report.
-
-The Linux sandbox needs `bubblewrap` and `socat` installed.
+  say so in its report. With no network, the conhost expert cannot clone
+  microsoft/terminal and marks its conhost citations "(unverified)".
 
 ## The rest
 

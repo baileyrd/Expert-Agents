@@ -1,6 +1,6 @@
 """Bench runner.
 
-  python -m bench.runner prepare <case-dir> --target <clone> --out <dir>
+  python -m bench.runner prepare <case> --target <clone> --out <dir>
       Check the case out blind and write the review's promptfoo config.
   python -m bench.runner extract <results.json> --out <reports dir>
       Write each run's report and a graded-run skeleton, then the rubric config.
@@ -28,6 +28,7 @@ EXPERTS = ROOT / "experts"
 CASES = ROOT / "bench" / "cases"
 GRADER = "anthropic:messages:claude-sonnet-5-5"
 GRADE = "grade"  # in a work directory: results and rubrics, denied to the reviewer
+RUNNER = ROOT / "bench" / "runner"
 EVAL = "npx --prefix bench/runner promptfoo eval --no-cache"
 
 
@@ -42,8 +43,9 @@ def main(argv: list[str]) -> int:
 
 def prepare(args: argparse.Namespace) -> int:
     """Check out the case blind and write its review config, then print the eval command."""
-    case = load_case(args.case)
-    prior = load_case(args.case.parent / case.prior) if case.prior else None
+    case_dir = _case_dir(args.case)
+    case = load_case(case_dir)
+    prior = load_case(case_dir.parent / case.prior) if case.prior else None
     prompt = without(_subagent_prompt(case.expert), _droppable(case.expert, args.drop))
     out, target = args.out.resolve(), args.target.resolve()
     _outside(out, (ROOT, target))
@@ -54,6 +56,7 @@ def prepare(args: argparse.Namespace) -> int:
     blind_checkout(case, target, boundary.checkout)
     boundary.scratch.mkdir(parents=True, exist_ok=True)
     grade.mkdir(exist_ok=True)
+    _link_modules(out)
     config = review(case, prior, prompt, args.variant, _prompt_sha(), boundary, args.model)
     path = out / f"{name}.review.yaml"
     path.write_text(json.dumps(config, indent=2) + "\n")  # JSON is valid YAML
@@ -120,6 +123,24 @@ def _refuse_collisions(out: Path, outputs: list[RunOutput]) -> None:
         raise ValueError(f"{out} already has {', '.join(taken)}; extract into a fresh directory")
 
 
+def _case_dir(case: Path) -> Path:
+    """A case directory, or a case id such as `mux/1251-r1` under bench/cases."""
+    if case.is_dir() or case.is_absolute():
+        return case
+    return CASES / case
+
+
+def _link_modules(out: Path) -> None:
+    """promptfoo loads the Agent SDK from beside the config, so point there at the pinned one."""
+    modules = RUNNER / "node_modules"
+    link = out / "node_modules"
+    if link.is_symlink() and link.resolve() == modules.resolve():
+        return
+    if link.exists() or link.is_symlink():
+        raise ValueError(f"{link} exists and is not a link to {modules}")
+    link.symlink_to(modules, target_is_directory=True)
+
+
 def _outside(out: Path, hidden: tuple[Path, ...]) -> None:
     """The work directory must not sit in a path the reviewer is denied."""
     for h in hidden:
@@ -171,7 +192,8 @@ def _parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(required=True)
     prep = sub.add_parser("prepare", help="blind checkout and review config")
     prep.set_defaults(command=prepare)
-    prep.add_argument("case", type=Path, help="bench/cases/<expert>/<case>")
+    prep.add_argument("case", type=Path,
+                      help="a case directory, or its id under bench/cases (mux/1251-r1)")
     prep.add_argument("--target", type=Path, required=True, help="a local clone of the target repo")
     prep.add_argument("--out", type=Path, required=True,
                       help="a fresh work directory outside this repo and the target clone")
