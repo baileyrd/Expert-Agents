@@ -3,8 +3,8 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Five words: terminal state machine, ConPTY parity. Expert: someone who has shipped a Windows console host and knows VT edge cases cold, that's the rarest part; also fuzzing experience. Make an expert reviewer called conhost for Rusty-Mill/rusty_mill, clone is at ~/src/rusty_mill.",
-      "expected_output": "interview.md with the answer verbatim and a Profile whose first axis is ConPTY/VT parity and which treats fuzzing as method, not an axis; cases built before the prompt; grounding.md from orchestrator mine; prompt.md passing check with --target; bench handed off or run; PR with report; retro reported.",
+      "prompt": "Five words: conflict-free merge, convergence, no data loss. Expert: someone who has proven CRDT convergence and broken real sync engines; the rarest part is reasoning about concurrent ops and tombstones. Also property-based testing. Make an expert reviewer called crdt for Rusty-Mill/rusty_mill, clone is at ~/src/rusty_mill.",
+      "expected_output": "interview.md with the answer verbatim and a Profile whose first axis is convergence under concurrent ops and which treats property-based testing as method, not an axis; cases built before the prompt; grounding.md from orchestrator mine scoped to crates/foundation/rusty_crdt; prompt.md passing check with --target; bench handed off; PR described; retro reported.",
       "files": []
     },
     {
@@ -15,8 +15,8 @@
     },
     {
       "id": 3,
-      "prompt": "Can you make an agent that reviews PRs to the mill-board crate? Summary: kanban for humans and models. I'd recruit someone who's built a workflow engine with strict state transitions.",
-      "expected_output": "Asks for the expert name and clone path if missing; runs steps 1-4; on a machine without Node or a Claude Code login stops at step 5, commits, pushes and hands over paste-ready bench commands.",
+      "prompt": "Can you make an agent that reviews PRs to rusty_tick? Summary: tasks for humans and agents. I'd recruit someone who's built a sync-safe task store with strict due-date and recurrence semantics.",
+      "expected_output": "Asks for (or infers and records) the expert name and clone path; runs steps 1-4 scoped to crates/apps/rusty_tick; with no Node or Claude Code login stops at step 5 and hands over paste-ready bench commands.",
       "files": []
     }
   ]

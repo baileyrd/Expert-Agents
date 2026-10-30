@@ -11,13 +11,15 @@ this log tracks commits against `main`.
 
 - **Changed:** `description` is a `>-` block scalar in the third person, states the
   mechanism (trait-to-axis Profile, mined review fixes, held-out cases, variant gate)
-  and the trigger phrasings; added `version` and `compatibility`.
+  and the trigger phrasings; added `metadata.version` and `compatibility`. The version
+  sits under `metadata` because a top-level `version` key fails a claude.ai upload,
+  the Skills API and `package_skill.py`; it is a skill_pack-only convention.
 - **Added:** a copyable step checklist; the reasons behind repo-grounded defect classes
   and held-out PRs; a fix-and-rerun loop on `check` before benching.
 - **Added:** step 8, a read-only wrap-up retro via `skill-retro`, grounded in this
   skill's own steps. Applying findings stays a separate PR.
-- **Added:** `evals/evals.json` with three prompts (new expert, variant, off-machine
-  handoff).
+- **Added:** `evals/evals.json` with three prompts: a new expert (crdt), a variant
+  (mux), and a casual ask (rusty_tick).
 
 ## v1.0.0 — Initial release
 **2026-10-30**

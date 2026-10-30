@@ -12,7 +12,8 @@ description: >-
   Use when asked to create, generate, regenerate or bench an expert reviewer,
   to "make an agent" or "recruit an expert" for a repo or domain, or when
   someone pastes a five-words-and-an-expert answer.
-version: 1.1.0
+metadata:
+  version: 1.1.0
 compatibility: >-
   Run from an Expert-Agents checkout. Needs python3, git, a local clone of
   the target repo, and gh or the GitHub MCP tools. Benching also needs Node
