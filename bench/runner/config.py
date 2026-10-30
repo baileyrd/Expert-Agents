@@ -1,19 +1,26 @@
-"""The promptfoo config for one case and one prompt variant. Pure: no I/O."""
+"""promptfoo configs for a case: the blind review, and the rubric grading after it. Pure.
+
+The two are separate on purpose. The review config holds no answer key, so nothing the
+reviewer can reach while it runs says what it should find; the rubric config is written
+only after the reviews are done, from their saved reports.
+"""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from bench.scorer.model import Case, KeyFinding
 
 PROVIDER = "anthropic:claude-agent-sdk"
-# The reviewer's tools: read the tree, run git and cargo, consult reference sources.
-TOOLS = ("Read", "Grep", "Glob", "Bash", "WebFetch", "WebSearch")
+LOCAL_TOOLS = ("Read", "Grep", "Glob", "Bash")
+NETWORK_TOOLS = ("WebFetch", "WebSearch")
 TASK = (
     "Review PR {{pr}} of {{repo}} against base {{base}} at head {{head}}. "
-    "The working directory is a checkout of the head with history up to it; its origin serves only "
-    "pull/{{pr}}/head."
+    # No "/" here: promptfoo reads a prompt that looks like a path as a prompt file.
+    "The working directory is a checkout of the head with history up to it, and its origin "
+    "serves only the PR head ref."
 )
 RUBRIC = """\
 Grade whether this code review reports the following known defect as one of its findings.
@@ -26,36 +33,78 @@ reports it only in part (for example one of several affected paths), 0 if missed
 Wording does not matter; the defect does."""
 
 
-def build(case: Case, prior: Case | None, system_prompt: str, variant: str, prompt_sha: str,
-          checkout: Path, grader: str, model: str | None) -> dict[str, Any]:
-    """A promptfoo config that runs the reviewer on the case and grades recall per key finding.
+@dataclass(frozen=True)
+class Boundary:
+    """What the reviewer may touch.
 
-    A re-review case passes its prior round's key as the findings to re-check.
+    `hidden` are paths it must not read (this repo, with every answer key, and the target
+    clone, with the fix commits). `domains` is its network allowlist; empty means no network
+    and no web tools, since any github.com access reaches the live review.
     """
-    provider: dict[str, Any] = {
-        "id": PROVIDER,
-        "label": variant,
-        "config": {
-            "working_dir": str(checkout),
-            "custom_system_prompt": system_prompt,
-            "custom_allowed_tools": list(TOOLS),
-            "persist_session": False,
-            "apiKeyRequired": False,  # use the signed-in Claude Code login
-        },
+
+    checkout: Path
+    scratch: Path
+    hidden: tuple[Path, ...]
+    domains: tuple[str, ...] = ()
+
+
+def review(case: Case, prior: Case | None, system_prompt: str, variant: str, prompt_sha: str,
+           boundary: Boundary, model: str | None) -> dict[str, Any]:
+    """The reviewer's config: the case's task and prompt in a sandbox, with no answer key."""
+    tools = LOCAL_TOOLS + (NETWORK_TOOLS if boundary.domains else ())
+    config: dict[str, Any] = {
+        "working_dir": str(boundary.checkout),
+        "custom_system_prompt": system_prompt,
+        "custom_allowed_tools": list(tools),
+        "disallowed_tools": _disallowed(boundary),
+        "sandbox": _sandbox(boundary),
+        "persist_session": False,
+        "apiKeyRequired": False,  # use the signed-in Claude Code login
     }
     if model:
-        provider["config"]["model"] = model
+        config["model"] = model
     return {
         "description": f"{case.id} at {case.head[:8]}, variant {variant}",
-        "prompts": [TASK + _prior(prior)],
-        "providers": [provider],
+        "prompts": [{"raw": TASK + _prior(prior), "label": "review"}],
+        "providers": [{"id": PROVIDER, "label": variant, "config": config}],
+        "tests": [{"description": case.id, "vars": {
+            "case": case.id, "prompt_sha": prompt_sha, "repo": case.repo, "pr": case.pr,
+            "base": case.base, "head": case.head}}],
+    }
+
+
+def rubric(case: Case, reports: list[tuple[str, str]], grader: str) -> dict[str, Any]:
+    """Grade saved reports, as (label, text) pairs, for recall: one llm-rubric per key finding."""
+    return {
+        "description": f"{case.id} rubric recall",
+        "prompts": [{"raw": "{{report}}", "label": "report"}],
+        "providers": [{"id": "echo"}],  # returns the report itself for the rubrics to grade
         "defaultTest": {"options": {"provider": _grader(grader)}},
-        "tests": [{
-            "description": case.id,
-            "vars": {"case": case.id, "prompt_sha": prompt_sha, "repo": case.repo, "pr": case.pr,
-                     "base": case.base, "head": case.head},
-            "assert": [_rubric(k) for k in case.key],
-        }],
+        "tests": [{"description": label, "vars": {"report": text},
+                   "assert": [_rubric(k) for k in case.key]} for label, text in reports],
+    }
+
+
+def _disallowed(boundary: Boundary) -> list[str]:
+    rules = ["Edit", "Write", "NotebookEdit"]
+    rules += [f"Read(/{p}/**)" for p in boundary.hidden]  # "//abs" is an absolute path rule
+    if not boundary.domains:
+        rules += list(NETWORK_TOOLS)
+    return rules
+
+
+def _sandbox(boundary: Boundary) -> dict[str, Any]:
+    """Bash runs sandboxed or not at all; a missing sandbox fails the run."""
+    return {
+        "enabled": True,
+        "failIfUnavailable": True,
+        "autoAllowBashIfSandboxed": True,
+        "allowUnsandboxedCommands": False,
+        "filesystem": {
+            "denyRead": [str(p) for p in boundary.hidden],
+            "allowWrite": [str(boundary.checkout), str(boundary.scratch)],
+        },
+        "network": {"allowedDomains": list(boundary.domains)},
     }
 
 

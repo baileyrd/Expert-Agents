@@ -13,7 +13,6 @@ class RunOutput:
     prompt_sha: str
     run: int
     report: str
-    recall_by_key: dict[str, float]  # the rubric grader's scores, not a graded run
     latency_ms: int
     cost_usd: float | None
     tokens: int | None
@@ -35,7 +34,6 @@ def run_outputs(results: dict[str, Any]) -> list[RunOutput]:
             prompt_sha=v["prompt_sha"],
             run=counts[v["case"]],
             report=str(response.get("output") or ""),
-            recall_by_key=dict(r.get("namedScores") or {}),
             latency_ms=int(r.get("latencyMs") or 0),
             cost_usd=r.get("cost"),
             tokens=(r.get("tokenUsage") or {}).get("total"),
@@ -46,17 +44,20 @@ def run_outputs(results: dict[str, Any]) -> list[RunOutput]:
 
 def report_md(o: RunOutput) -> str:
     """The reviewer's report with a header naming the run and its cost, or why it failed."""
-    keys = ", ".join(f"{k} {v:g}" for k, v in sorted(o.recall_by_key.items())) or "none"
     cost = f"${o.cost_usd:.2f}" if o.cost_usd is not None else "unknown"
     return (f"<!-- {o.case} run {o.run}, variant {o.variant}, prompt {o.prompt_sha}; "
-            f"{o.latency_ms / 1000:.0f} s, {o.tokens or 'unknown'} tokens, {cost}; "
-            f"rubric recall: {keys} -->\n\n"
+            f"{o.latency_ms / 1000:.0f} s, {o.tokens or 'unknown'} tokens, {cost} -->\n\n"
             + (f"**Run failed:** {o.error}\n" if o.error else f"{o.report}\n"))
+
+
+def stem(o: RunOutput) -> str:
+    """`<case>-<n>`, the file stem for a run's report and graded-run file."""
+    return f"{o.case.split('/')[1]}-{o.run}"
 
 
 def run_skeleton(o: RunOutput) -> str:
     """A graded-run file for the grader to complete with one [[finding]] per finding."""
-    return (f'# Grade {o.case.split("/")[1]}-{o.run}-report.md into [[finding]] tables; '
+    return (f'# Grade {stem(o)}-report.md into [[finding]] tables; '
             "see bench/README.md.\n"
             f'case = "{o.case}"\nvariant = "{o.variant}"\nprompt_sha = "{o.prompt_sha}"\n'
             f"run = {o.run}\n")
