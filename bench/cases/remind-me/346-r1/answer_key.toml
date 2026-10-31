@@ -17,7 +17,7 @@ caught_if = "Names an invalid or missing response index being accepted (defaulti
 [[finding]]
 id = "K2"
 severity = "ungraded"
-title = "Chunked /v1/embeddings responses are not decoded"
+title = "Chunked embeddings responses are not decoded"
 files = ["crates/remind_me_core/src/embedder.rs"]
 fix = "9daba9f88644bffd4c41612121cf5e1eeccda7e5"
 summary = """
