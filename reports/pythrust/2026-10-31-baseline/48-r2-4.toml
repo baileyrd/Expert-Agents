@@ -1,0 +1,33 @@
+# Grade 48-r2-4-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Lists reached at different depths are treated as different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A parameter and a module global are assumed to be different lists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Unrelated loose code still turns off D3/D4 for the whole program"
+triage = "design_question"
+reason = "probe /home/baileyrd/src/pythrust-grade/probes/48-r2/shadow_d3.pyr is accepted at head (and on main), but its only trigger is the x = print(7)/def print gap that roadmap.md A3 lists as a known gap with a whole-program fallback, and grammar.md:64 says the conservative analysis diagnoses nothing"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The fix-it for a change through a temporary names the wrong variable"
+triage = "real"
+reason = "executed /home/baileyrd/src/pythrust-grade/probes/48-r2/fixit_opt.pyr: suggests 'a = list(...)'; applying it (/home/baileyrd/src/pythrust-grade/probes/48-r2/fixit_opt_applied.pyr) gives the same error, while grammar D4's fix-it is b = list(a); on main"

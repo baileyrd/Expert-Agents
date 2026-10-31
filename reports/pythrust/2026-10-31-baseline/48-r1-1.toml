@@ -1,0 +1,41 @@
+# Grade 48-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "List + or * anywhere hits a lowering gap that switches off D3/D4 for the whole program; A6 marked done"
+match = "K2"
+quality = "partial"
+# Names the conservative fallback dropping alias checks, but via list +/* rather than an exception built from a list (ValueError(xs) only quoted from the roadmap).
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "D4 misses a change through a conditional, and or or expression"
+triage = "real"
+reason = "executed probes/48-r1/cond.pyr and orexpr.pyr: check accepts at head, run and CPython print 4; cond_ctl.pyr (b.append) rejected; on main"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Two different tuple fields are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "A parameter is assumed never to be a module global's list"
+triage = "fixed_since"
+reason = "executed probes/48-r1/glob_param.pyr: f(G) with mut xs while g = G is live, check accepts at head, run and CPython print 2; fixed on main (D4 error: changes xs while g may be the same list)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "D3 fix-its that fail (nested lists) or change meaning (return list(xs) for return out)"
+triage = "real"
+reason = "executed probes/48-r1/d3_nested.pyr suggests return list(rows), d3_nested_fixed.pyr applying it is rejected again; d3_retdirect.pyr suggests return list(xs) for return out, which changes the flag=False result; on main"

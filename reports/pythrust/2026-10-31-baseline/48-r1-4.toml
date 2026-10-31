@@ -1,0 +1,47 @@
+# Grade 48-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Two fields of one tuple are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A conditional expression as the receiver hides both names"
+triage = "real"
+reason = "executed probes/48-r1/cond.pyr: check accepts at head, run and CPython print 4; cond_ctl.pyr rejected; on main"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A call returning a global's list drops what the caller stored there"
+triage = "fixed_since"
+reason = "executed probes/48-r1/result_global.pyr: check accepts at head, run and CPython print 2; result_global_ctl.pyr (inline G[len(G) - 1]) rejected; fixed on main (D4 error at b.append)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The D3 fix-it does not work for nested lists"
+triage = "real"
+reason = "executed probes/48-r1/d3_nested.pyr suggests return list(rows); d3_nested_fixed.pyr applying it gives a new D3 error; on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The for loop message appears where there is no loop"
+triage = "real"
+reason = "executed probes/48-r1/forloop_msg.pyr: return h(rows[0], grow(rows)) reports a running for loop; on main"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "The roadmap marks A6 done though D4 violations still pass"
+triage = "real"
+reason = "source trace: roadmap.md:74 ticks A6 and says the probe of conditional expressions and tuples found no further gap, yet cond.pyr and the tuple case (K1) are accepted at head; on main (A6 still ticked, cond.pyr still accepted)"

@@ -1,0 +1,40 @@
+# Grade 65-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/65-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "The own analysis loses a dict's values through a view, breaking D2 and D3"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Native d.get(k, default) evaluates default only when the key is missing"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Roadmap marks the native card done though the True-is-1 store test was dropped"
+triage = "design_question"
+reason = "the PR's own roadmap.md:113 card text and native.md Known gaps (line 89) document storing a bool key into dict[int, V] as a named backend gap with dict_bool_key run-only; documented, not a defect"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "1 in {True} is refused natively with a list/tuple message, undocumented"
+triage = "fixed_since"
+reason = "executed probes/65-r1/in_bool_set.pyr: CPython and run print True, build at head fails 'a value of another type than its list or tuple holds' while native.md:25 lists in on sets as supported and Known gaps omits it; fixed on main (main builds it and the binary prints True)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The D4 message calls a dict 'a list'"
+triage = "real"
+reason = "executed probes/65-r1/d4_msg_{set,dict,dict2}.pyr: check at head rejects a set .add, a callee growing a dict and a dict store inside loops over them with 'changes a list while a for loop over it is running' (alias.rs:666 subject() falls back to 'a list'); on main"

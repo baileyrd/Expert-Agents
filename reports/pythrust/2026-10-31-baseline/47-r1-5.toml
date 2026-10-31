@@ -1,0 +1,19 @@
+# Grade 47-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/47-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Module-level code misses lists that functions store into module variables"
+triage = "real"
+reason = "executed: probes/47-r1/module_callee_store.pyr and module_callee_store_param.pyr pass check at head (exit 0) while the inline module_inline_store.pyr is rejected; run, build and CPython all print [[1], [1]], so add receives row inside rows; roadmap A5 documents only the in-function imprecision, not this; on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Separate parameters are treated as separate lists, so a loose function can forward one list to both"
+match = "K1"
+quality = "caught"
