@@ -3,3 +3,59 @@ case = "agent-cloud/19-r1"
 variant = "baseline"
 prompt_sha = "7c00a3eee28643720845867db321dcd6e32967b9"
 run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "ac-ctl create/resume read limits only from its environment, so sudo boots agents unlimited"
+triage = "real"
+reason = "traced at head 69fe687: ac-ctl main.rs:88 from_lookup(std::env::var); gateway.env read only for AC_BIND/AC_PROFILE; ADR-023 says 'read by ac-ctl too'"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "limits-test cannot pass: [ -s ] on cgroupfs; dies without memory.events"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "limits-test leaves the temporary quota on failure"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Every ac-ctl command now needs a readable Kata config"
+triage = "real"
+reason = "traced at head 69fe687: main.rs:89 limits.check(capacity.guest()?) runs before dispatch for all commands"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Huge memory or disk values wrap to a tiny limit instead of being refused"
+triage = "real"
+reason = "traced at head 69fe687: limits.rs m << 20 / g << 30 on any u64 drop high bits; ADR-023 'anything malformed refuses the start'"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Guest memory touched before +memory is enabled is charged to the parent cgroup"
+triage = "design_question"
+reason = "ADR-023 decides cgroup writes after the VM starts; first-boot-after-reboot charging is a consequence of that decision"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Missing sandbox cgroup error does not name sandbox_cgroup_only"
+triage = "real"
+reason = "traced at head 69fe687: limit_cgroup read error is plain 'read …/cgroup.procs'; ADR-023 says missing or empty names sandbox_cgroup_only"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "dies early without a memory controller (memory.events, pipefail)"
+match = "K2"
+quality = "caught"

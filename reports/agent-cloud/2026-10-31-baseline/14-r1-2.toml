@@ -3,3 +3,31 @@ case = "agent-cloud/14-r1"
 variant = "baseline"
 prompt_sha = "7c00a3eee28643720845867db321dcd6e32967b9"
 run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Diff output buffered whole in gateway memory and as a .send file, size set by the tenant"
+triage = "real"
+reason = "traced at head bb1b6b3: receive --dump stdout read whole (read_all) with no cap; tenant controls file count"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A file the agent names like o<ino>-<gen>-<seq> has every change hidden"
+triage = "real"
+reason = "traced at head bb1b6b3: changes.rs note() drops any temp-shaped path for every command; its own doc comment says only where created or renamed to; runs executed the probe"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Diff runs synchronously on the shared tick thread and under the global lock on forced pause/destroy"
+triage = "real"
+reason = "traced at head bb1b6b3: same trace as run 1's P1"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "security.md and ADR-010 still say history holds only job ids and states"
+triage = "real"
+reason = "traced at head bb1b6b3: docs/security.md:190 'history records only job ids and states'; the PR adds agent-chosen paths to history"

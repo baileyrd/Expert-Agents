@@ -3,3 +3,59 @@ case = "agent-cloud/19-r1"
 variant = "baseline"
 prompt_sha = "7c00a3eee28643720845867db321dcd6e32967b9"
 run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "limits-test leaves current use + 256 MiB quota (50G50)"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "ac-ctl create/resume read limits only from its environment, so sudo boots agents unlimited"
+triage = "real"
+reason = "traced at head 69fe687: ac-ctl main.rs:88 from_lookup(std::env::var); gateway.env read only for AC_BIND/AC_PROFILE; ADR-023 says 'read by ac-ctl too'"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Huge memory or disk values wrap to a tiny limit instead of being refused"
+triage = "real"
+reason = "traced at head 69fe687: limits.rs m << 20 / g << 30 on any u64 drop high bits; ADR-023 'anything malformed refuses the start'"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "limits-test always reports no processes; --enable-quota cannot run on a fresh host"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Undo after ctr run succeeded does not force-delete the running task"
+triage = "real"
+reason = "traced at head 69fe687: boot maps limit_cgroup errors to undo_start, which runs kill_sandbox and remove_stale but not task delete --force as stop() does"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Guest memory touched before +memory is enabled is charged to the parent cgroup"
+triage = "design_question"
+reason = "ADR-023 decides cgroup writes after the VM starts; first-boot-after-reboot charging is a consequence of that decision"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Quotas off fails the boot with raw btrfs stderr, not what to do"
+triage = "real"
+reason = "traced at head 69fe687: limit_disk passes btrfs's error through; ADR-023 says it 'fails the boot with what to do'"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "limits-test.sh --enable-quota never reached on a fresh host; docs order fails every boot"
+match = "K4"
+quality = "caught"
