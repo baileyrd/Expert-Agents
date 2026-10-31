@@ -1,0 +1,40 @@
+# Grade 19-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "agent-cloud/19-r1"
+variant = "baseline"
+prompt_sha = "7c00a3eee28643720845867db321dcd6e32967b9"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Restore builds 50G50 and leaves the trial limit"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "ac-ctl create/resume read limits only from its environment, so sudo boots agents unlimited"
+triage = "real"
+reason = "traced at head 69fe687: ac-ctl main.rs:88 from_lookup(std::env::var); gateway.env read only for AC_BIND/AC_PROFILE; ADR-023 says 'read by ac-ctl too'"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "limits-test exits silently when memory.events is missing"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Every ac-ctl command now needs a readable Kata config"
+triage = "real"
+reason = "traced at head 69fe687: main.rs:89 limits.check(capacity.guest()?) runs before dispatch for all commands"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "No tests for limits-test.sh, gateway agent_limits refusal or a failed subtree_control write"
+triage = "real"
+reason = "traced at head 69fe687: no such tests at head"

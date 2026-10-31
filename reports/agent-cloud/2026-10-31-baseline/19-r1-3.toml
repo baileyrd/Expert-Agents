@@ -1,0 +1,33 @@
+# Grade 19-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "agent-cloud/19-r1"
+variant = "baseline"
+prompt_sha = "7c00a3eee28643720845867db321dcd6e32967b9"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "ac-ctl create/resume read limits only from its environment, so sudo boots agents unlimited"
+triage = "real"
+reason = "traced at head 69fe687: ac-ctl main.rs:88 from_lookup(std::env::var); gateway.env read only for AC_BIND/AC_PROFILE; ADR-023 says 'read by ac-ctl too'"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "limits-test never restores the configured limit (50G50)"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "limits-test always reports no processes ([ -s ] on cgroupfs)"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Messages and ac-ctl behaviour disagree with ADR-023 (missing cgroup, quotas off, Kata config)"
+triage = "real"
+reason = "traced at head 69fe687: each sub-claim traced as in other runs"

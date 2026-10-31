@@ -1,0 +1,57 @@
+# Field-found key: the PR merged without a review round. These defects were found live on
+# BaileyServ after merge and fixed by PRs #20 and #22, whose commits quote the symptoms.
+review = "https://github.com/baileyrd/agent_cloud/pull/20"
+
+[[finding]]
+id = "K1"
+severity = "ungraded"
+title = "limits-test treats every running sandbox as empty: cgroupfs files report size 0"
+files = ["scripts/limits-test.sh"]
+fix = "192e86840055e69f7336a76d7fd5086a1e65f6d8"
+summary = """
+limits-test.sh checks the sandbox cgroup with [ -s "$CG/cgroup.procs" ]. cgroupfs files
+report size 0, so the test is false for a running sandbox and the script reports
+"no processes" on a correctly limited agent.
+"""
+caught_if = "Names the [ -s cgroup.procs ] size test being false on cgroupfs (size 0) so a populated cgroup is reported empty."
+
+[[finding]]
+id = "K2"
+severity = "ungraded"
+title = "limits-test exits silently when memory.events has no matching line"
+files = ["scripts/limits-test.sh"]
+fix = "192e86840055e69f7336a76d7fd5086a1e65f6d8"
+summary = """
+The script runs under set -euo pipefail. grep on memory.events returns 1 when no oom,
+oom_kill or max line matches (or the file is missing), so the pipeline fails and the
+script ends with no message and no verdict.
+"""
+caught_if = "Names the memory.events grep failing under pipefail (no match or missing file) and ending the script without a message."
+
+[[finding]]
+id = "K3"
+severity = "ungraded"
+title = "Restoring the configured disk limit builds '50G50' and leaves the trial limit"
+files = ["scripts/limits-test.sh"]
+fix = "f68c0eb1e514d827cbadd62665e083af725a6d15"
+summary = """
+After the disk test the script restores the limit with
+"${configured:+${configured}G}${configured:-none}". When AC_AGENT_DISK_GIB is set both
+expansions fire (50G then 50), btrfs qgroup limit rejects '50G50', and the agent keeps
+the small trial limit. The restore also does not run if the script exits early.
+"""
+caught_if = "Names the restore argument concatenating both expansions when a limit is configured (e.g. 50G50), so the trial limit stays, or the restore being skipped on an early exit."
+
+[[finding]]
+id = "K4"
+severity = "ungraded"
+title = "Docs set AC_AGENT_DISK_GIB before quotas are enabled, so every create and resume fails"
+files = ["docs/install.md", "deploy/gateway.env"]
+fix = "f68c0eb1e514d827cbadd62665e083af725a6d15"
+summary = """
+A disk limit with quotas off fails the boot by design (ADR-023), but install.md and
+gateway.env present the limit first and enable simple quotas only through the test
+script run against an already running agent. Following the docs in order, every create
+and resume fails until quotas are on.
+"""
+caught_if = "Names the install order: setting AC_AGENT_DISK_GIB with simple quotas still off makes every create and resume fail, so quotas must be enabled first."
