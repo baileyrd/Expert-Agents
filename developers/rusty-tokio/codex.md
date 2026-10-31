@@ -28,7 +28,11 @@ From the task, write down before touching code:
    changes the behaviour the issue names and nothing else. A migration changes the
    runtime and nothing else.
 3. Pin your base: `git fetch origin main`, branch from `origin/main` (name it after the
-   issue, e.g. `fix/rusty-tokio-1302-fallback-reap`), and record the base SHA.
+   issue, e.g. `fix/rusty-tokio-1302-fallback-reap`), and record the base SHA. If you
+   were handed a branch or worktree, use it and record its base instead.
+4. Give the worktree its own `CARGO_TARGET_DIR`. Sibling worktrees building rusty_tokio
+   into one target directory overwrite each other's artifacts, so a red or green result
+   from a shared one may come from another branch's code.
 
 If the issue's trace no longer reproduces on `main`, stop and report that with your
 probe, instead of changing code.
@@ -57,7 +61,11 @@ notify.rs, watch.rs, mpsc/), `runtime/task/` (state.rs, harness.rs),
 `src/sys/unix/selector/` and `src/sys/windows/` for reactors. Both MIT: borrow the
 design, and say so in a comment where you follow it closely. Where rusty_tokio mirrors a
 tokio API, tokio's documented behaviour is the contract, and a test should show the
-same call sequence gives the same result, error kind and wake count on both.
+same call sequence gives the same result, error kind and wake count on both. Such a
+test may enable features on the existing `tokio` dev-dependency (leave `Cargo.lock`
+unchanged). Match tokio's panic messages. Where an invariant below forbids tokio's own
+behaviour (tokio changes state, then panics), the invariant wins: document the
+difference where the API is documented.
 
 ## Invariants your change must keep
 
@@ -110,25 +118,45 @@ await and fd you add or move against all of them.
    module already uses (`tests/<area>.rs` or the module's `#[cfg(test)]`). Prefer a
    hand-polled future with a counting, panicking or re-entrant waker, or a
    barrier-controlled interleaving repeated enough to hit the window, over sleeps.
-   Run it on the base: it must fail (or hang under a bounded timeout) for the reason
-   the issue gives. A test that passes on the base guards nothing; rewrite it.
+   When the only observable is OS state (a zombie, an fd), poll it against a deadline.
+   Bound every test that could hang (its own std thread with `recv_timeout`, or a
+   deadline loop), and isolate one that could abort the process (re-run the test binary
+   as a child with `--exact <name>` and check its output says "1 passed"; hold a
+   hand-built invalid value in `ManuallyDrop`). A test of the fallback runtime goes in
+   its own `tests/fallback*.rs` binary, because the fallback is process-wide.
+   Run it on the base: it must fail (or hang under its bound) for the reason the issue
+   gives, in both debug and `--release` for arithmetic bugs. A test that passes on the
+   base is kept only as a guard: show that a plausible wrong fix (a mutant) turns it
+   red, and say so in its doc.
 2. **Design.** State the invariant the fix restores, which lock guards it, and what
    each drop must undo, citing the module doc or the tokio file you followed. Choose
    the smallest change that restores it.
 3. **Implement.** Keep the diff to the task. Update every module doc, README section and
    comment the change makes true or false. Add the change fragment
-   (`changes/README.md`); any count or claim in it (e.g. "N new tests fail on the base")
-   must be what you measured.
+   (`changes/README.md`); any count or claim in it (e.g. "N new tests fail on the base",
+   with which file each test is in) must be what you measured, recounted after every
+   review round. If an earlier fragment's claim becomes false, say so in yours.
 4. **Break your own change.** Walk the invariants above against your diff: drop each
-   new future at each await, re-enter from a waker's wake, drop and clone, and race
-   the new publication point. Add a test for each window you can force.
+   new future at each await, re-enter from a waker's wake, drop and clone, race the new
+   publication point, and poll with a spent coop budget (`crate::coop::budget`, then
+   `poll_proceed` until `has_budget_remaining()` is false): state a future records when
+   it returns `true` or `Ready` must survive that yield. Give every behaviour the diff
+   changes, side effects of the fix included, a test that is red without it. Show each
+   race test red on a mutant of the exact pattern the invariant forbids (for example an
+   unlocked check followed by a separate update), in debug and `--release`; if it hits
+   rarely, add contending threads rather than only iterations. Check every claim your
+   docs, fragment and commit message make (such as "non-panicking") against the code
+   they describe.
 5. **Checks.** Run and read the result of each: `cargo test -p rusty_tokio
    --all-features`, `cargo test -p rusty_tokio --features io-uring-reactor` (Linux),
    `cargo clippy -p rusty_tokio --all-targets --all-features -- -D warnings`,
    `cargo check -p rusty_tokio --target x86_64-pc-windows-gnu --all-targets`, the moved
-   crate's own tests and clippy for a migration, `cargo fmt --check`, and
+   crate's own tests and clippy for a migration, `cargo fmt --all --check`,
+   `cargo doc -p rusty_tokio --no-deps` (no new warnings), and
    `python3 .github/scripts/changes.py check`. Never report a check as passing unless
-   you saw it pass; Windows and macOS execution are CI's, say so.
+   you saw it pass; Windows and macOS execution are CI's, say so. A failure in a test
+   your diff does not touch: rerun it alone, run it at the base, and report both
+   results; never call the run passing.
 6. **Independent review.** Commit, then have your diff (base SHA to your head SHA)
    reviewed by the rusty-tokio reviewer, which is read-only: run a separate
    `codex exec` with `docs/agents/reviewers/rusty-tokio-expert-codex.md` filled in for
@@ -151,4 +179,5 @@ await and fd you add or move against all of them.
 - Invariants checked and any window you could not force (a validation gap).
 - Checks run with results; validation gaps.
 - The reviewer's findings and how each was resolved.
-- Status: **PR opened**, **blocked** (with the question), or **not reproducible on main**.
+- Status: **PR opened**, **committed, not pushed** (when told not to push), **blocked**
+  (with the question), or **not reproducible on main**.
