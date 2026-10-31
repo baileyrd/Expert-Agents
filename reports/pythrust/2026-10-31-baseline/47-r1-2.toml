@@ -1,0 +1,33 @@
+# Grade 47-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/47-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Two parameters of a loose function are assumed to hold different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A module variable read in a function is assumed distinct from that function's parameter"
+triage = "fixed_since"
+reason = "executed: probes/47-r1/tempered_wrapper_global.pyr (tempered h(owned row) calls add(holder, row); h(holder[0])) passes check at head; run, build and CPython print [[1], [1]]; fixed on main (callers now inherit the parameter/module-values need: h(holder[0]) is rejected)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "In module code a callee's stores into a module variable are not seen by its module-local copy"
+triage = "real"
+reason = "executed: probes/47-r1/module_callee_store.pyr and module_callee_store_param.pyr pass check at head (exit 0) while the inline module_inline_store.pyr is rejected; run, build and CPython all print [[1], [1]], so add receives row inside rows; roadmap A5 documents only the in-function imprecision, not this; on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "grammar.md D2 says only mut triggers the error; the new A5 entry and code count owned too"
+triage = "real"
+reason = "traced docs/grammar.md at head: D2 (line 209) 'Only a tempered callee's mut makes passing one list twice an error' vs A5 deviation (line 180) 'one of them mut or owned'; probes/47-r1/owned_read.pyr (owned+read pair) is rejected; on main (grammar.md:227 D2 unchanged)"

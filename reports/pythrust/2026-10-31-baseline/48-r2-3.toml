@@ -1,0 +1,33 @@
+# Grade 48-r2-3-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Two lists at different depths are assumed never to be the same list, false through tuples"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Changing a list through (a if c else b) is exempt from D4"
+triage = "real"
+reason = "executed /home/baileyrd/src/pythrust-grade/probes/48-r2/cond.pyr: check accepts at head, run and CPython print 4, control b.append is rejected; on main"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A tempered parameter is assumed to be a different list from every module-level list"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The docs claim more than the code does"
+triage = "real"
+reason = "trace: grammar.md:211 says D4 implemented and roadmap.md:74 says conditional expressions were probed and elements are told apart by path, yet probes depth.pyr, cond.pyr and param_global.pyr are accepted at head; on main (cond.pyr still accepted while roadmap A6 still lists conditional expressions as probed)"
