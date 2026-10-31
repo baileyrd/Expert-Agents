@@ -38,3 +38,10 @@ severity = "P2"
 title = "A cancelled job's change note can include the next job's changes"
 triage = "real"
 reason = "traced at head bb1b6b3: transition removes the job from the book and drops the lock before note_changes, so the tick can start the agent's next job before the end snapshot"
+
+[[finding]]
+id = "F6"
+severity = "P3"
+title = "Validation gap: deleted children of a replaced directory may be listed under its temporary o… name (parser probe gives o300-5-0/f)"
+match = "K1"
+quality = "partial"

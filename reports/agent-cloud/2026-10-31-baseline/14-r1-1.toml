@@ -35,6 +35,6 @@ reason = "traced at head bb1b6b3: docs/security.md:190 'history records only job
 [[finding]]
 id = "F5"
 severity = "P3"
-title = "Children of a new directory may appear under a temporary parent path (unverified)"
+title = "Design question: children of a new directory may appear under a temporary parent path (unverified)"
 match = "K1"
 quality = "partial"

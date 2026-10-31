@@ -30,4 +30,11 @@ id = "F4"
 severity = "P2"
 title = "Job snapshots a crash leaves behind are cleaned only by purge"
 triage = "design_question"
-reason = "ADR-019 at head: 'a purge deletes any a crash left behind' documents this as intended"
+reason = "ADR-019 at head: 'a purge deletes any a crash left behind' documents crash leftovers as intended; the purge-versus-diff race in the same finding is graded separately as F5"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Purge can race a still-running job diff and fail with partial state"
+triage = "real"
+reason = "traced at head bb1b6b3: transition marks the job terminal and releases the lock before note_changes, so busy() is false and DELETE ?purge=true can run snap::purge while the diff creates <job>.end; purge lists job snapshots once, then remove_dir_if_present fails on the new subvolume. Rare (needs a purge during a diff); not executed"
