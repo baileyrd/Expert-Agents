@@ -21,7 +21,7 @@ replace CI, the D4 Windows run, owner confirmation or the merge queue.
 ```
 experts/<name>/      prompt.md (Claude subagent), codex.md (Codex), expert.toml
 bench/cases/         frozen cases: pr.toml pins a PR head; answer_key.toml lists its known findings
-bench/runner/        runs a prompt variant N times per case (not built yet)
+bench/suites/        Eval-Kit suites generated from the cases (python3 -m bench suite <expert>)
 bench/scorer/        recall, precision and severity agreement against the key
 reports/<expert>/    committed results, <date>-<variant>.md, graded runs beside them
 orchestrator/        generates a new expert from an interview answer (skill: .claude/skills/expert-generator)
@@ -49,4 +49,5 @@ No promotion without a bench result. Changes land by PR, reviewed by DottiusMaxi
 python3 -m unittest
 ```
 
-Python 3.11 or later, standard library only.
+Python 3.11 or later, standard library only. Running the bench also needs
+[Eval-Kit](https://github.com/baileyrd/Eval-Kit) and the Claude CLI signed in.

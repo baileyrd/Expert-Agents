@@ -6,6 +6,18 @@ this log tracks commits against `main`.
 
 ---
 
+## v1.3.0 — Bench on Eval-Kit
+**2026-10-31**
+
+- **Changed:** the bench runs on Eval-Kit instead of the promptfoo runner. Step 4
+  generates `bench/suites/<name>/` with `python3 -m bench suite`; step 5 runs
+  `evalkit run`, `score --by-check` and `bench extract`, and a variant is compared with
+  `evalkit gate ... baseline@main baseline` instead of a hand-built worktree.
+- **Removed:** Node, `npm ci` and `bench.runner prepare/extract`. Oracle snapshots are
+  not carried over.
+
+---
+
 ## v1.2.0 — Gaps found by the first eval runs
 **2026-10-30**
 
