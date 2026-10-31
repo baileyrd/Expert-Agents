@@ -1,0 +1,18 @@
+# Field-found key: the PR merged without a review round. This defect was found live on
+# BaileyServ after merge and fixed by PR #16, whose description quotes the symptom.
+review = "https://github.com/baileyrd/agent_cloud/pull/16"
+
+[[finding]]
+id = "K1"
+severity = "ungraded"
+title = "Paths under btrfs send's temporary directory names are listed raw"
+files = ["crates/ac-domain/src/changes.rs"]
+fix = "b9f9532a759da13b69cdb549ee3cd163fac1c42e"
+summary = """
+changes::paths drops only a path whose own name is a temporary o<ino>-<gen>-<seq> name.
+btrfs send writes a new directory's files under its temporary name before renaming the
+directory into place, and renames a removed directory away before unlinking its files.
+So a job's note lists its own result files as o2192-198662-0/result.txt, and the
+runner's .jobs files escape the filter meant to hide them.
+"""
+caught_if = "Names files under a temporary o<ino>-<gen>-<seq> directory (written before, or unlinked after, the directory's rename) being reported under the temporary name instead of the real one, or escaping the .jobs filter."
