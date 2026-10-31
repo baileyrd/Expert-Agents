@@ -1,0 +1,5 @@
+# Grade 14-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "agent-cloud/14-r1"
+variant = "baseline"
+prompt_sha = "7c00a3eee28643720845867db321dcd6e32967b9"
+run = 2
