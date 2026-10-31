@@ -74,8 +74,11 @@ python3 -m bench extract <expert> --out reports/<expert>/<date>-baseline/
 settings, and stores it in `suites/<expert>/.evalkit/` (ignored by git). Re-running
 `evalkit run` only fills what is missing, so a changed prompt re-runs and an unchanged
 one costs nothing. `--model` is recorded in the suite; reports compare only when their
-models match. `bench extract` refuses uncommitted changes under `experts/` and
-`bench/suites/` and records this repo's commit as `prompt_sha`.
+models match. `bench extract` takes each run by the key the current suite gives it
+(computed by Eval-Kit, so it needs the same Eval-Kit on `PYTHONPATH`), refuses if any run
+lacks a record under its key, and never relabels an older prompt's or model's run. It
+refuses uncommitted changes under `experts/` and `bench/suites/` and records this repo's
+commit as `prompt_sha`.
 
 **Recall, first pass.** Each key finding is one judge check, so `score --by-check`
 gives a per-finding hit rate. The score of record comes from the graded runs below,

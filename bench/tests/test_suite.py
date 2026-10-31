@@ -96,11 +96,20 @@ class SuiteTest(unittest.TestCase):
             suite.prompt_sections("---\nname: x\n---\nYou review.\n\n## Odd\n\nx\n", {"": "persona"})
 
 
-def record(case_id: str, sample: int, text: str, variant: str = "baseline") -> str:
+def record(case_id: str, sample: int, text: str, variant: str = "baseline",
+           key: str = "") -> str:
     trace = {"final_text": text, "tool_calls": [], "skills_invoked": [], "files": [],
              "input_tokens": 1000, "output_tokens": 200, "cost_usd": 1.5, "duration_ms": 61000}
-    return json.dumps({"key": f"{case_id}{sample}{text}", "variant": variant, "case": case_id,
-                       "sample": sample, "cli_version": "2.1.316", "trace": trace})
+    return json.dumps({"key": key or f"{case_id}-{sample}", "variant": variant,
+                       "case": case_id, "sample": sample, "cli_version": "2.1.316",
+                       "trace": trace})
+
+
+JOBS = (extract.Job("7-r1-1", "7-r1", 1), extract.Job("7-r1-0", "7-r1", 0))
+
+
+def outputs(lines: list[str], jobs: tuple[extract.Job, ...] = JOBS) -> list[extract.RunOutput]:
+    return extract.run_outputs(lines, "mux", "baseline", "m", SHA, jobs)
 
 
 class ExtractTest(unittest.TestCase):
@@ -109,16 +118,34 @@ class ExtractTest(unittest.TestCase):
         record("7-r1", 0, "old"),
         json.dumps({"kind": "verdict", "key": "k", "passed": True, "reason": "r"}),
         record("7-r1", 0, "new"),
-        record("7-r1", 0, "other variant", variant="v2"),
+        record("7-r1", 0, "other variant", variant="v2", key="v2-7-r1-0"),
     ]
 
-    def test_the_latest_run_per_sample_wins_and_verdicts_are_skipped(self) -> None:
-        outs = extract.run_outputs(self.LINES, "mux", "baseline", "m", SHA)
+    def test_the_latest_record_per_key_wins_and_verdicts_are_skipped(self) -> None:
+        outs = outputs(self.LINES)
         self.assertEqual([(o.run, o.report) for o in outs], [(1, "new"), (2, "second")])
         self.assertIn("model m, 2.1.316; 61 s, 1200 tokens, $1.50 -->", extract.report_md(outs[0]))
 
+    def test_an_older_prompts_run_of_the_same_case_is_never_taken(self) -> None:
+        lines = [record("7-r1", 0, "OLD PROMPT", key="old-0"), record("7-r1", 1, "OLD", key="old-1"),
+                 record("7-r1", 0, "current"), record("7-r1", 1, "current too")]
+        self.assertEqual([o.report for o in outputs(lines)], ["current", "current too"])
+        with self.assertRaisesRegex(ValueError, "2 of 2 runs have no record"):
+            outputs(lines[:2])
+
+    def test_a_partial_rerun_is_refused_not_mixed(self) -> None:
+        lines = [record("7-r1", 0, "OLD", key="old-0"), record("7-r1", 1, "OLD", key="old-1"),
+                 record("7-r1", 0, "rerun")]
+        with self.assertRaisesRegex(ValueError, r"1 of 2 runs .*\(7-r1 run 2\)"):
+            outputs(lines)
+
+    def test_a_key_naming_another_job_is_refused(self) -> None:
+        lines = [record("7-r1", 0, "a"), record("8-r1", 0, "b", key="7-r1-1")]
+        with self.assertRaisesRegex(ValueError, "not this suite's"):
+            outputs(lines)
+
     def test_the_skeleton_is_a_valid_graded_run(self) -> None:
-        o = extract.run_outputs(self.LINES, "mux", "baseline", "m", SHA)[0]
+        o = outputs(self.LINES)[0]
         run = parse_run(tomllib.loads(extract.run_skeleton(o)), case())
         self.assertEqual((run.run, run.variant, run.findings), (1, "baseline", ()))
 
