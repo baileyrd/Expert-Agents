@@ -1,0 +1,15 @@
+review = "https://github.com/Rusty-Mill/rusty-remind-me/pull/344#issuecomment-6503856776"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "The sync outbox carries the new evidence but the old weight"
+files = ["crates/remind_me_core/src/consolidation.rs", "crates/remind_me_core/src/db/engine/memories.rs"]
+fix = "411981c1f42285172d49bf216de9cf49fddb4748"
+summary = """
+apply_merges (consolidation.rs ~501-526): set_merged stamps updated_at and queues the
+canonical before Feedback::set_importance writes the boosted base_weight, which does not
+move updated_at and so is never queued. Peers get metadata.evidence with the old weight,
+and a later merge there divides by an evidence factor it never received.
+"""
+caught_if = "Names the merged canonical being queued for sync before its boosted weight is written, so peers receive evidence and weight that disagree."
