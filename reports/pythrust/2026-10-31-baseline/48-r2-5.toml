@@ -1,0 +1,40 @@
+# Grade 48-r2-5-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Any lowering gap anywhere in the module turns off D3 and D4"
+triage = "real"
+reason = "executed /home/baileyrd/src/pythrust-grade/probes/48-r2/listplus.pyr: one loose 'z = [1] + [2]' (list + hits lower/expr.rs:86, an undocumented gap) makes check accept a D4 violation that /home/baileyrd/src/pythrust-grade/probes/48-r2/listplus_ctl.pyr rejects; run and CPython print 2; roadmap A6 claims no lowering gap is left; on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Changing a list through a conditional expression or or hides both names"
+triage = "real"
+reason = "executed /home/baileyrd/src/pythrust-grade/probes/48-r2/cond.pyr and cond_or.pyr: check accepts at head, run and CPython print 4, control rejected; on main"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A parameter and a module global are assumed to be different lists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The D4 fix-it for a changed parameter changes what the program does"
+triage = "fixed_since"
+reason = "executed /home/baileyrd/src/pythrust-grade/probes/48-r2/fixit_param.pyr: suggests 'xs = list(a)'; applied (/home/baileyrd/src/pythrust-grade/probes/48-r2/fixit_param_applied.pyr) it compiles and prints '1 [1]' where CPython prints '2 [1, 2]'; fixed on main (main suggests 'a = list(...)')"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The docs claim gaps are closed that are still open"
+triage = "real"
+reason = "trace: roadmap.md:71 'A6 closed the last one' and :74 'found no further lowering gap' are false given list + in /home/baileyrd/src/pythrust-grade/probes/48-r2/listplus.pyr falls back; on main (same roadmap text, listplus.pyr still accepted)"

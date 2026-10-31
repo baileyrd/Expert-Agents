@@ -1,0 +1,40 @@
+# Grade 346-r2-5-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/346-r2"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "openai embedder identity omits the endpoint, so vectors from a different server are never cleared"
+triage = "design_question"
+reason = '''executed: OpenAiEmbedder identities for http://hostA and http://hostB with the same model/dim compare equal at head (and on main); but docs/adr/0002 addendum (#96, lines 216-220) decides identity is exactly the triple backend, model, dimension, so endpoint exclusion is documented intent'''
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Non-numeric embedding elements are stored as 0.0"
+triage = "real"
+reason = '''executed: probe test in a head export (fake /v1/embeddings server) returns Ok([[0.0,0.0,0.0]]) for [null,null,null], Ok([[0.6,0.0,0.8]]) for [0.6,null,0.8] and Ok([[0.0,NaN,0.0]]) for ["x",1e39,0.5]; checked_vector embedder.rs:418 unwrap_or(0.0); same on main d79f67cd9 (embedder.rs:420)'''
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Release note now false; Ollama Qwen3 query prefix undocumented"
+triage = "real"
+reason = '''executed: OllamaEmbedder::new("qwen3-embedding:0.6b") query body at head is "Instruct: Given a search query...\nQuery:quokkas" (base d5528b13 has no qwen3 entry), while RELEASE_NOTES.md:11 says Ollama requests are otherwise unchanged and never mentions the prefix; note unchanged on main (RELEASE_NOTES.md:24)'''
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Status gives the wrong reason when the openai model is unset"
+triage = "real"
+reason = '''executed: embedding_status() at head with BACKEND=openai and no model returns "configured but not answering (unreachable daemon, or an unconfigured/unloadable ONNX model)", never naming REMIND_ME_OPENAI_EMBED_MODEL (probe error dropped by .is_ok() at embedder.rs:956); same text on main embedder.rs:999'''
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "openai arm of resolve_embedder and new fingerprint variables untested"
+triage = "real"
+reason = '''traced crates/remind_me_core/tests at head: no test sets REMIND_ME_EMBEDDING_BACKEND=openai or calls resolve_embedder/config_fingerprint for openai (openai_embedder_test.rs only builds OpenAiEmbedder directly); still none on main d79f67cd9'''

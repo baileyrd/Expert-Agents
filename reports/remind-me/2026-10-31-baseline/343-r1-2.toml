@@ -1,0 +1,40 @@
+# Grade 343-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Overlapping prefixed matches panic replace() on the write path"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Digits after a decimal point are redacted as card numbers"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-343r1: 'score 0.5555555555554444' -> 'score 0.[REDACTED:card_number]' and '40.4111111111111111' likewise at head and on main d79f67cd9; 208/100000 random {} floats in [0,100) redacted on both (report's 1.2% rate not reproduced with this distribution, behaviour is)"
+
+[[finding]]
+id = "F3"
+severity = "P0"
+title = "Real card numbers missed when another number sits next to them"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "sk- slugs are destroyed as llm_api_key"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-343r1 (redact.rs at head via #[path]): feature/sk-1234-implement-the-new-sync-protocol-for-hub and sk-learn-compatible-estimator-interface-design -> [REDACTED:llm_api_key]; same output on main d79f67cd9"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "No tests for overlapping prefixes, adjacent-digit cards, decimals or sk- slugs"
+triage = "real"
+reason = "traced redact.rs mod tests at head (10 tests, none covers these inputs); main d79f67cd9 adds nested-prefix and cards-next-to-numbers tests but still none for decimals or sk- slugs, which still misbehave there"

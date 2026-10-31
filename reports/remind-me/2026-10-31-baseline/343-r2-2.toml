@@ -1,0 +1,26 @@
+# Grade 343-r2-2-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r2"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A card followed by a word that starts with a digit is never redacted"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Diners 4-6-4 is described but can never match"
+triage = "real"
+reason = "executed: standalone build of head redact.rs (probe-343-r2): \"diners 30569309025904\" and \"diners 3056 930902 5904\" come back unchanged; is_card (redact.rs:323-333) accepts a leading 3 only as 34/37 with 15 digits, so the card_shaped [4,6,4] arm and the Diners claim in its doc comment (redact.rs:303-306) are dead; unchanged on main d79f67cd9"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Repeated prefixes make prefixed() quadratic on hostile input"
+triage = "real"
+reason = "executed: probe-343-r2 release build of head redact.rs: \"sk-\" x20000 (60 KB) 0.26 s, x40000 (120 KB) 1.15 s; \"glpat-\" 120 KB 0.66 s, 240 KB 2.08 s (about 4x per doubling); prefixed() (redact.rs:153-166) scans every anchor to the end of its run with no floor; same timings on main d79f67cd9 (xoxb- part predates the PR)"

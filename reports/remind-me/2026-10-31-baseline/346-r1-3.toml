@@ -1,0 +1,47 @@
+# Grade 346-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/346-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A malformed index silently swaps vectors between memories"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "The openai identity is a routing alias, so swapping the model never clears old vectors"
+triage = "design_question"
+reason = "ADR-0002 addendum (#96) settles identity as the backend/model/dim triple, and RELEASE_NOTES 2026-08-16 records that EmbeddingIdentity deliberately carries no endpoint; an alias re-pointed to other weights is a consequence of that documented choice"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Non-numeric embedding elements become zeros instead of an error"
+triage = "real"
+reason = "executed: fake /v1/embeddings server returning embedding [null,null] -> OpenAiEmbedder::embed returns Ok([[0.0,0.0]]) at head (checked_vector embedder.rs:376 unwrap_or(0.0)); pre-existing on the Ollama path but the PR routes the new backend through it; still unwrap_or(0.0) on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Release notes are wrong about Ollama and leave out the Qwen3 prefix"
+triage = "real"
+reason = "traced embedder.rs:113-119 at head: qwen3-embed row is new (absent at base d5528b1), prefix_for/with_prefix is shared by OllamaEmbedder (:393), so Ollama qwen3-embedding queries gain the Instruct prefix while RELEASE_NOTES says Ollama requests are unchanged and omits the prefix; main's note still says 'otherwise unchanged' with no Qwen3 entry"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Status text does not name the missing openai model"
+triage = "real"
+reason = "executed: embedding_status() with BACKEND=openai and model unset at head returns 'configured but not answering (unreachable daemon, or an unconfigured/unloadable ONNX model)', never naming REMIND_ME_OPENAI_EMBED_MODEL; same text on main (embedder.rs:1000)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Missing tests for the openai resolver arm, cache invalidation and Ollama prefix"
+triage = "real"
+reason = "traced at head and main: no test sets BACKEND=openai through resolve_embedder; embedder_availability_cache_test.rs and open_reconcile_test.rs reference no OPENAI_EMBED_* variable (git grep on d79f67cd9), so dropping embedder.rs:829-830 or the openai arm turns nothing red"

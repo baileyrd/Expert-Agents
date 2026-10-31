@@ -1,0 +1,41 @@
+# Grade 48-r2-2-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A lowering gap anywhere in the program still turns off D3 and D4"
+triage = "design_question"
+reason = "probes /home/baileyrd/src/pythrust-grade/probes/48-r2/shadow.pyr and shadow_d3.pyr are accepted at head (and on main) via the x = print(7)/def print gap, but roadmap.md A3 lists that gap as a known one kept as a fixture, says the fallback is whole-program, and grammar.md:64 says the conservative analysis diagnoses nothing"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Lists at different depths are assumed to be different lists, false through tuples"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A global and an element of another global are assumed distinct"
+triage = "fixed_since"
+reason = "executed /home/baileyrd/src/pythrust-grade/probes/48-r2/global_depth.pyr: check accepts at head, run and CPython print 2 (a and b are one list); fixed on main (rejected at a.append(5): places of one type inside a global may be one list)"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "A temporary read from two names is excused from clashing with both"
+triage = "real"
+reason = "executed /home/baileyrd/src/pythrust-grade/probes/48-r2/cond.pyr and cond_or.pyr: check accepts at head, run and CPython print 4 while b.append(1) is rejected; nothing in grammar/roadmap documents it; on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "No test covers the new native refusal for an exception holding a list"
+triage = "fixed_since"
+reason = "source trace: the refusal message appears only in codegen/mod.rs:1031, no test asserts it, and conformance build_native skips any refusal; fixed on main (conformance.rs build_refuses_an_exception_that_may_close_a_cycle)"
+# K2 is named in the Design questions ("A parameter is assumed to be a different list from every global"), not graded.

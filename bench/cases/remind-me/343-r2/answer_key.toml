@@ -1,0 +1,14 @@
+review = "https://github.com/Rusty-Mill/rusty-remind-me/pull/343#issuecomment-6505799377"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "A later word-adjacent digit group cancels card redaction for the whole run"
+files = ["crates/remind_me_core/src/redact.rs"]
+fix = "2ead5131c8f241f2615c966bfb9f1af41266fb83"
+summary = """
+redact.rs:249-251 checks the boundary once per separated-digit run. In
+"4111111111111111 12months" the trailing "m" touches the last group, so cards_in never
+runs and the independently bounded PAN stays unredacted.
+"""
+caught_if = "Names the boundary check applied per digit run rather than per candidate window, letting a trailing word-adjacent group leave a card unredacted."

@@ -1,0 +1,40 @@
+# Grade 344-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/344-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A client's own metadata.evidence is overwritten and lost"
+triage = "real"
+reason = 'executed: probe in head export, canonical with metadata {"evidence":"https://ci/run/812"} merged -> metadata becomes {"evidence":2}, the URL is gone (consolidation.rs:503); same on main d79f67cd9'
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Peers end up with the evidence count but not the weight boost"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A merge that fails partway counts the evidence twice on retry"
+triage = "real"
+reason = "traced consolidation.rs:506-530 at head: metadata, set_merged, set_importance and set_superseded_by each commit separately (engine/memories.rs:513 tables.commit), no Store::transaction (db/store.rs:63); a retry after a partial merge reads before=2, after=3; still no transaction in consolidation.rs on main d79f67cd9"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "A reverted or abandoned decision counts as supporting evidence"
+triage = "real"
+reason = "executed: probe in head export, decision resolved as reverted keeps status active (vectors.rs:255 filters only status/live), merging it into a live memory gives evidence=2 and weight x1.0693; contradicts promotions.rs:77 'discredited: no longer grounds for anything built on it'; same on main d79f67cd9"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "No tests cover the changed sync and failure behaviour"
+triage = "real"
+reason = "traced tests/consolidate_test.rs at head: no outbox, partial-failure, foreign-evidence or reverted-member test; on main 411981c1f added the sync payload test but the other three are still absent"

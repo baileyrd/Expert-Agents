@@ -1,8 +1,12 @@
 """Turn an Eval-Kit store into one report per run, ready for grading. Pure.
 
 The store (`.evalkit/suite.jsonl` beside a suite) is append-only: a line per run and a
-line per judge verdict. When a run was repeated, its last line wins, as in Eval-Kit.
-Eval-Kit stores only successful runs; one that failed is retried by `evalkit run`.
+line per judge verdict, each under a content key that hashes the prompt, model, settings,
+case and sample. Records from an older prompt or model stay in the store under their old
+keys, so a run is taken only by the key the current suite gives its job: its report is
+then the current configuration's by construction. When a key was stored twice, its last
+line wins, as in Eval-Kit. Eval-Kit stores only successful runs; one that failed is
+retried by `evalkit run`.
 """
 
 from __future__ import annotations
@@ -10,6 +14,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any
+
+
+@dataclass(frozen=True)
+class Job:
+    """A run the current suite expects: Eval-Kit's content key and what it names."""
+    key: str
+    case: str  # case id within the suite
+    sample: int  # 0-based
 
 
 @dataclass(frozen=True)
@@ -27,17 +39,40 @@ class RunOutput:
 
 
 def run_outputs(store_lines: list[str], expert: str, variant: str, model: str,
-                prompt_sha: str) -> list[RunOutput]:
-    """The variant's runs, latest per case and sample, ordered by case then run."""
-    latest: dict[tuple[str, int], dict[str, Any]] = {}
+                prompt_sha: str, jobs: tuple[Job, ...]) -> list[RunOutput]:
+    """The stored run of each of the variant's *jobs*, ordered by case then run.
+
+    Refuses unless every job has a record under its key: a missing one means the store
+    holds only an older prompt's or model's run for it, which must not be relabelled.
+    """
+    records = _latest_by_key(store_lines)
+    missing = [j for j in jobs if j.key not in records]
+    if missing:
+        named = ", ".join(f"{j.case} run {j.sample + 1}" for j in missing[:5])
+        raise ValueError(f"{len(missing)} of {len(jobs)} runs have no record for the current "
+                         f"prompt, model and settings ({named}); run evalkit run first")
+    for job in jobs:
+        _check_matches(records[job.key], job, variant)
+    ordered = sorted(jobs, key=lambda j: (j.case, j.sample))
+    return [_output(records[j.key], expert, variant, model, prompt_sha) for j in ordered]
+
+
+def _latest_by_key(store_lines: list[str]) -> dict[str, dict[str, Any]]:
+    latest: dict[str, dict[str, Any]] = {}
     for line in store_lines:
         if not line.strip():
             continue
         record = json.loads(line)
-        if record.get("kind") == "verdict" or record["variant"] != variant:
-            continue
-        latest[(record["case"], int(record["sample"]))] = record
-    return [_output(r, expert, variant, model, prompt_sha) for _, r in sorted(latest.items())]
+        if record.get("kind") != "verdict":
+            latest[str(record["key"])] = record
+    return latest
+
+
+def _check_matches(record: dict[str, Any], job: Job, variant: str) -> None:
+    found = (record["variant"], record["case"], int(record["sample"]))
+    if found != (variant, job.case, job.sample):
+        raise ValueError(f"store key {job.key[:12]} holds {found}, expected "
+                         f"{(variant, job.case, job.sample)}; the store is not this suite's")
 
 
 def _output(record: dict[str, Any], expert: str, variant: str, model: str,
