@@ -82,10 +82,13 @@ def write_reports(args: argparse.Namespace) -> int:
     if variant is None:
         raise ValueError(f"{folder}/suite.toml has no variant {args.variant!r}")
     store = folder / ".evalkit" / "suite.jsonl"
+    if not store.exists():
+        raise ValueError(f"{store} does not exist; run evalkit first")
+    # The model and prompt are part of each job's key, so a run found under it was made
+    # by this model and by the prompt committed at this repo's (clean) HEAD.
     outputs = ex.run_outputs(store.read_text().splitlines(), args.expert, args.variant,
-                             str(variant.get("model") or "unrecorded"), _prompt_sha())
-    if not outputs:
-        raise ValueError(f"{store} has no runs of {args.variant!r}; run evalkit first")
+                             str(variant.get("model") or "unrecorded"), _prompt_sha(),
+                             _jobs(folder / "suite.toml", args.variant))
     taken = sorted(n for o in outputs for n in (f"{ex.stem(o)}-report.md", f"{ex.stem(o)}.toml")
                    if (out / n).exists())
     if taken:
@@ -96,6 +99,17 @@ def write_reports(args: argparse.Namespace) -> int:
         (out / f"{ex.stem(o)}.toml").write_text(ex.run_skeleton(o))
     print(f"wrote {len(outputs)} reports to {out}")
     return 0
+
+
+def _jobs(suite_toml: Path, variant: str) -> tuple[ex.Job, ...]:
+    """The variant's jobs and their keys, computed by Eval-Kit itself so they cannot drift."""
+    try:
+        from evalkit import plan, spec
+    except ModuleNotFoundError:
+        raise ValueError("bench extract needs the Eval-Kit that ran the suite on PYTHONPATH, "
+                         "to compute each run's content key") from None
+    jobs = plan.jobs(spec.load_suite(suite_toml))
+    return tuple(ex.Job(j.key, j.case.id, j.sample) for j in jobs if j.variant.id == variant)
 
 
 def _cases(expert: str) -> list[Case]:
