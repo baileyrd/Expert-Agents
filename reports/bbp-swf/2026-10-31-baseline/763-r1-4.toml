@@ -1,0 +1,47 @@
+# Grade 763-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/763-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "bbp pairs checks the binary running pairs, not the binary that ran each run"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Build SHA can be stale, so an uncommitted edit passes the pin"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "A run that closes within one poll of crossing the cap returns Ok(Closed)"
+match = "K4"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Unreadable harness output counts as $0 for the cap"
+triage = "fixed_since"
+reason = "executed at head 2b31b4e6: capped_run probe with \"printf '\\377' >&2\" before a $20 line under a $1 cap returns 'wall limit reached' (control with ASCII stderr: 'cost cap reached'); cause tokens.rs:322 read_to_string error -> without_output, moderator.rs:451 unwrap_or(0.0). Gone on main 069eedbcd: tokens.rs:788-814 errors on unreadable/invalid-UTF-8 logs and moderator.rs:1070-1083 fails closed on unreadable or no-stream-json turns"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "A run whose role printed no assistant message refuses the whole evaluation"
+triage = "fixed_since"
+reason = "executed at head 2b31b4e6: check_settings(control planner={m1}, treatment planner={}) -> Err('role planner used {\"m1\"} in the control and {} in the treatment'), and an empty mod_output (capped/wall run) makes spec_wall_ms error, so one failed run blocks bbp pairs. On main 069eedbcd pairs.rs:632-661 skips model checks for stopped runs (test a_stopped_run_needs_no_model_evidence_to_load); a non-stopped run with no model evidence is refused by design (K3 fix)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Design doc :322 still says the cap cannot stop a run in flight"
+triage = "fixed_since"
+reason = "traced at head: docs/bbp-concurrency-design.md:322. On main 069eedbcd that text is gone; :346 documents --max-usd as a live check"

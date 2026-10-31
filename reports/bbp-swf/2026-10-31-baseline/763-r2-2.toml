@@ -1,0 +1,33 @@
+# Grade 763-r2-2-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/763-r2"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Moderator kills each harness before it prints its result"
+triage = "fixed_since"
+reason = "traced moderator.rs:490-497 at fa4a8a8a: a running harness whose turn is no longer live is killed on the next poll with no grace, so a result printed after the ending tool call is lost (tokens.rs:498 'no result line' -> unknown_turns -> pairs.rs:89 fails); gone on main: 61b8a51f9 adds --end-grace-secs (moderator.rs:841 on main)"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Approved scores can be re-sealed after unused versions are seen"
+triage = "fixed_since"
+reason = "traced grade.rs:372-382 at fa4a8a8a: release_files writes release.json and unused.json unconditionally, join_files trusts whichever release.json it is given; gone on main: release.json opened with create_new and compared (grade.rs:384-398)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Evidence-run marker written before the moderator takes the task lock"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Two review_findings tests share a scratch dir and are flaky"
+triage = "real"
+reason = "executed: the head review_findings binary failed 6/15 parallel runs, 0/10 with --test-threads=1; both tests use scratch('completed-ttl-1h') (bbp-review-{tag}-{pid}, remove_dir_all); main's binary failed 6/20 (panics at :377, :213, :37), same scratch() on main"
