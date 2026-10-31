@@ -1,0 +1,9 @@
+expert = "remind-me"
+repo = "Rusty-Mill/rusty-remind-me"
+pr = 346
+title = "embedder: OpenAI-compatible /v1/embeddings backend (llama.cpp / llama-swap)"
+round = 2
+base = "d5528b1347054f348b3dac96f54619e603f4594c"
+head = "9daba9f88644bffd4c41612121cf5e1eeccda7e5"
+# A re-review: the reviewer gets round 1's key findings as its prior findings.
+prior = "346-r1"

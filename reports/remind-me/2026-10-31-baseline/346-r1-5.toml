@@ -1,0 +1,40 @@
+# Grade 346-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/346-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Release note says Ollama requests are unchanged, but Qwen3 queries change"
+triage = "real"
+reason = "traced embedder.rs:113-119 at head: qwen3-embed row is new (absent at base d5528b1), prefix_for/with_prefix is shared by OllamaEmbedder (:393), so Ollama qwen3-embedding queries gain the Instruct prefix while RELEASE_NOTES says Ollama requests are unchanged and omits the prefix; main's note still says 'otherwise unchanged' with no Qwen3 entry"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A non-integer response index is replaced by arrival order"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "A missing REMIND_ME_OPENAI_EMBED_MODEL is reported as an unreachable daemon"
+triage = "real"
+reason = "executed: embedding_status() with BACKEND=openai and model unset at head returns 'configured but not answering (unreachable daemon, or an unconfigured/unloadable ONNX model)', never naming REMIND_ME_OPENAI_EMBED_MODEL; same text on main (embedder.rs:1000)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "No test covers the new resolve_embedder arm or fingerprint entries"
+triage = "real"
+reason = "traced at head and main: no test sets BACKEND=openai through resolve_embedder; embedder_availability_cache_test.rs and open_reconcile_test.rs reference no OPENAI_EMBED_* variable (git grep on d79f67cd9), so dropping embedder.rs:829-830 or the openai arm turns nothing red"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "README feature list still names only two backends"
+triage = "real"
+reason = "traced README.md:18 at head: feature list says 'Ollama or an in-process ONNX bi-encoder' despite the new openai backend; identical on main d79f67cd9"

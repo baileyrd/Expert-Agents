@@ -1,0 +1,19 @@
+# Grade 343-r2-4-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r2"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A card followed by a space and a word starting with a digit is stored unredacted"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "prefixed() is quadratic on repeated prefixes, so one write can tie up a thread"
+triage = "real"
+reason = "executed: probe-343-r2 release build of head redact.rs: \"sk-\" x20000 (60 KB) 0.26 s, x40000 (120 KB) 1.15 s; \"glpat-\" 120 KB 0.66 s, 240 KB 2.08 s (about 4x per doubling); prefixed() (redact.rs:153-166) scans every anchor to the end of its run with no floor; same timings on main d79f67cd9 (xoxb- part predates the PR)"

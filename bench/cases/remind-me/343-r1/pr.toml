@@ -1,0 +1,7 @@
+expert = "remind-me"
+repo = "Rusty-Mill/rusty-remind-me"
+pr = 343
+title = "redact: catch provider API keys, Stripe, npm, PyPI, GitLab, Google keys and card numbers"
+round = 1
+base = "d5528b1347054f348b3dac96f54619e603f4594c"
+head = "abdd0b76add2f3c5cf61cb1533f225405d53f931"

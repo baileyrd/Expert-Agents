@@ -1,0 +1,19 @@
+# Grade 343-r2-5-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r2"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A trailing digit group glued to letters stops the whole card from being redacted"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A card stored as a JSON number survives the session archive scrub"
+triage = "real"
+reason = "executed: probe-343-r2 replica of boundary.rs:58-75 redact_strings with head redact(): {\"input\":{\"pan\":4111111111111111}} archived unchanged (hit=false) while the dialog's tool line (importer.rs summarize_tool_input -> input.to_string()) redacts it to {\"pan\":[REDACTED:card_number]}, breaking ADR-0029's 'neither the dialog nor its source returns a secret the capture redacted'; boundary.rs unchanged on main d79f67cd9"
