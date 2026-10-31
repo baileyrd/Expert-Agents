@@ -1,7 +1,7 @@
 # Bench
 
-A frozen test set of past PR heads with answer keys, and a scorer. The runner that
-produces reviewer output is not built yet (see [runner/](runner/README.md)).
+A frozen test set of past PR heads with answer keys, run by
+[Eval-Kit](https://github.com/baileyrd/Eval-Kit), and a scorer for the graded runs.
 
 ## A case
 
@@ -41,10 +41,55 @@ time when a run is graded, never added to the key after the fact.
 
 ## Running a trial
 
-Blind: a fresh worktree at `head`, the prompt and nothing else, with no access to
-later commits, `main` or the PR's comments. Freeze the prompt for the whole run and
-record this repo's commit SHA as `prompt_sha`, with the duration and token cost in the
-report. One run proves little; run each variant N times.
+Each expert's cases become an Eval-Kit suite under `suites/<expert>/`, generated and
+committed like `codex.md`, and checked by the tests to match the cases and prompt:
+
+```
+python3 -m bench suite <expert> [--model M] [--allow-domain D]...  # writes suite.toml, baseline.prompt.toml
+export EXPERT_AGENTS=$PWD TARGET=~/src/<target clone>             # read by the suite at run time
+unset ANTHROPIC_API_KEY
+python3 -m evalkit run   bench/suites/<expert>/suite.toml --yes   # 5 runs per case, then the judge
+python3 -m evalkit score bench/suites/<expert>/suite.toml --by-check
+python3 -m bench extract <expert> --out reports/<expert>/<date>-baseline/
+```
+
+**Blind by construction.**
+
+- **A checkout with nothing later.** Each run starts from a new repository fetched by
+  SHA from `$TARGET`: the head, its history and the base, no later commits. Its `origin`
+  is itself, holding only `refs/pull/<pr>/head`, so the prompts' pinning step works.
+- **No key the review can reach.** The run's input names the PR and its SHAs, and for a
+  re-review the prior round's findings by id and title. Judge checks hold the key; the
+  judge runs only after every review, and the suite and its store live in this repo,
+  which the run cannot read.
+- **A sandbox the reviewer cannot leave.** The suite's settings make Bash run in Claude
+  Code's sandbox or not at all, and deny `$EXPERT_AGENTS`, `$TARGET` and `~/.claude` to
+  Bash and to the Read tool. Edit, Write and the web tools are denied. An unset variable
+  fails the run instead of denying nothing.
+- **No network by default.** `--allow-domain` opens a host to sandboxed Bash, for
+  example the crates.io hosts for cargo. Opening `github.com` lets Bash read the live
+  review, so a run that does is not blind; say so in its report.
+
+**What a run records.** Eval-Kit keys each run by the prompt, model, case and
+settings, and stores it in `suites/<expert>/.evalkit/` (ignored by git). Re-running
+`evalkit run` only fills what is missing, so a changed prompt re-runs and an unchanged
+one costs nothing. `--model` is recorded in the suite; reports compare only when their
+models match. `bench extract` refuses uncommitted changes under `experts/` and
+`bench/suites/` and records this repo's commit as `prompt_sha`.
+
+**Recall, first pass.** Each key finding is one judge check, so `score --by-check`
+gives a per-finding hit rate. The score of record comes from the graded runs below,
+which also give precision and severity.
+
+**Variants and ablations.** A variant is the expert's prompt changed on a branch:
+`evalkit gate bench/suites/<expert>/suite.toml baseline@main baseline --max-drop 0.1`
+runs both sides and compares them. `evalkit ablate bench/suites/<expert>/suite.toml
+baseline` drops one section at a time (the prompt spec has one section per heading,
+named by its role in `expert.toml`).
+
+**Not carried over.** Oracle snapshots (`--oracle` in the old runner): a run reads
+no reference source, so citations to one are marked unverified. The baselines ran
+without oracles too.
 
 ## A graded run
 

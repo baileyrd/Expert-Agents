@@ -13,11 +13,11 @@ description: >-
   to "make an agent" or "recruit an expert" for a repo or domain, or when
   someone pastes a five-words-and-an-expert answer.
 metadata:
-  version: 1.2.0
+  version: 1.3.0
 compatibility: >-
   Run from an Expert-Agents checkout. Needs python3, git, a local clone of
-  the target repo, and gh or the GitHub MCP tools. Benching also needs Node
-  and a signed-in Claude Code login. The wrap-up retro uses the skill-retro
+  the target repo, and gh or the GitHub MCP tools. Benching also needs
+  Eval-Kit (baileyrd/Eval-Kit) and a signed-in Claude Code login. The wrap-up retro uses the skill-retro
   skill from baileyrd/skill_pack when installed.
 ---
 
@@ -33,7 +33,7 @@ The answer gives the persona and the axes. The defect classes come from the targ
 repo's own review fixes, never from general expertise: a reviewer grounded in what this
 repo's reviewers actually caught finds this repo's bugs, while a generic one restates
 textbook advice. Read `README.md`,
-`orchestrator/README.md`, `bench/README.md`, `bench/runner/README.md` and one existing
+`orchestrator/README.md`, `bench/README.md` and one existing
 expert (`experts/mux/prompt.md`) before starting.
 
 Copy this checklist and tick it off; each step says what "done" means.
@@ -132,11 +132,15 @@ KB. Create the branch once (`git switch -c expert/<name>`), then:
 ```
 python3 -m orchestrator codex <expert dir>      # codex.md from prompt.md
 python3 -m orchestrator check <expert dir> --target <clone>   # must report 0 problems
-git add experts/<name> bench/cases/<name> && git commit
+python3 -m bench suite <name> --model <model> [--allow-domain <host>]...   # Eval-Kit suite
+git add experts/<name> bench/cases/<name> bench/suites/<name> && git commit
 python3 -m unittest
 ```
 
-Commit before `unittest`: the runner's tests refuse uncommitted changes under `experts/`.
+`bench suite` turns the cases and the prompt into `bench/suites/<name>/`; the tests
+fail when it is stale, so rerun it after every prompt or case edit. `--model` is
+recorded in the suite and kept on later runs. Open a host only when the target's checks
+need it (crates.io for cargo), never `github.com`.
 If `check` reports problems or a test fails, fix the prompt and run them again;
 bench only on a clean `check`, since a leaked held-out commit invalidates every run.
 `check` refuses leftover TODOs, sections that differ from `expert.toml`, a Codex
@@ -146,41 +150,33 @@ prompt without its placeholders, and any held-out PR number or commit in either 
 ## 5. Bench
 
 Runs use the person's signed-in Claude Code login, never an API key, on a machine with
-the target clone, Node and the sandbox (`bench/runner/README.md`).
+the target clone, Eval-Kit and Claude Code's sandbox (`bench/README.md`, Running a trial):
 
-For a variant, first make sure the current prompt has runs on every case the variant
-will run: bench it, as committed on `main`, on any case its latest report lacks, so the
-comparison is like for like. Do this before installing the variant: the runner reads the
-prompt from the worktree's `experts/`, and `--variant` is only a label. Then, in a
-separate worktree on a local branch that is never pushed, commit the variant's
+```
+export EXPERT_AGENTS=$PWD TARGET=<clone>; unset ANTHROPIC_API_KEY
+python3 -m evalkit run   bench/suites/<name>/suite.toml --yes
+python3 -m evalkit score bench/suites/<name>/suite.toml --by-check
+python3 -m bench extract <name> --out reports/<name>/<date>-<variant>/
+```
+
+The suite runs every case 5 times so results compare with the baselines. Reports
+compare only when their models match, so keep the suite's model for a variant.
+
+For a variant, first run the current prompt, as committed on `main`, so its runs are in
+the store; then, on a local branch that is never pushed, commit the variant's
 `prompt.md`, `codex.md` and `expert.toml` over the expert's (`check` fails if the
-headings differ from the manifest) and bench it there:
+headings differ from the manifest), rerun `bench suite <name>`, commit, and compare:
 
 ```
-git worktree add -b bench-local/<name>-<variant> <wt> HEAD   # never pushed
-cp <variant files> <wt>/experts/<name>/ && git -C <wt> commit -am "bench: install <variant>"
-# run prepare below from <wt>; extract into this checkout's reports/
+git switch -c bench-local/<name>-<variant>    # never pushed
+python3 -m evalkit gate bench/suites/<name>/suite.toml baseline@main baseline --max-drop 0.1
+python3 -m bench extract <name> --out reports/<name>/<date>-<variant>/
 ```
 
-```
-npm ci --prefix bench/runner
-python3 -m bench.runner prepare bench/cases/<name>/<case> --target <clone> \
-    --out <work>/<case> --variant <variant> --repeat 5 --model <model>
-# run the printed eval command; then:
-python3 -m bench.runner extract <work>/<case>/grade/results.json \
-    --out reports/<name>/<date>-<variant>/
-```
-
-Use `--repeat 5` so results compare with the baselines. `--model` is required and
-recorded with every result; pass the same model for the current prompt and the variant,
-because reports compare only when their models match.
-
-If this session is not on such a machine, run `prepare` on each case anyway (it needs no
-login and proves the case SHAs), then stop: push, open the PR as a draft whose body holds
-the whole sequence above as a paste-ready prompt, and mark it ready once the report lands.
-For a variant that means the current prompt's missing runs first, then the worktree
-install, then the variant's runs; `--variant` alone would bench the current prompt under
-the variant's name. Commit the variant's files under
+If this session is not on such a machine, load the suite anyway (`python3 -m evalkit
+score bench/suites/<name>/suite.toml` needs no login and checks it parses), then stop:
+push, open the PR as a draft whose body holds the whole sequence above as a paste-ready
+prompt, and mark it ready once the report lands. For a variant, commit its files under
 `reports/<name>/<date>-<variant>/variant/` on the pushed branch so that machine has them.
 
 ## 6. Grade and report

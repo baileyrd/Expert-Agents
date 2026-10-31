@@ -1,0 +1,9 @@
+expert = "pythrust"
+repo = "baileyrd/PythRust"
+pr = 48
+title = "Check aliasing in tempered bodies (A6)"
+round = 2
+base = "5d76260eef62e1a3c7abfd48635a9a3e82a37650"
+head = "2a09a304c45dcdd8f090a1751b81eca4944fe229"
+# A re-review: the reviewer gets round 1's key findings as its prior findings.
+prior = "48-r1"
