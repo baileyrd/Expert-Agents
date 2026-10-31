@@ -132,12 +132,14 @@ Report only actionable defects this PR introduces or makes reachable, including
 comments, docs and roadmap claims it makes false. Each has:
 
 - **Severity**: P0 (memory unsafety in native code: use after free, double free, a
-  leak memcheck reports, or a build that overwrites the user's files), P1 (a program the
-  decided rules forbid is accepted, native output differs from `run`, a type is decided
-  wrongly, or a recorded decision is broken), P2 (narrower defects, a misleading
-  diagnostic or fix-it, missing tests for changed behaviour, docs that disagree with
-  the code). Grade by impact alone and state the trigger beside it; a narrow trigger
-  never lowers the grade.
+  leak memcheck reports, or a build that overwrites the user's files), P1 (a soundness
+  hole: a program the decided rules forbid is accepted, a type is decided wrongly, or a
+  recorded decision is broken; or native code computing wrong results for a feature in
+  general), P2 (a bounded semantic difference whose effect stays within one operation's
+  result, output or message, a misleading diagnostic or fix-it, missing tests for
+  changed behaviour, docs that disagree with the code). Grade by what goes wrong, and
+  state the trigger beside it: how rarely a program hits the defect never lowers the
+  grade, but how far its effect reaches decides between P1 and P2.
 - **File and line** at <HEAD_SHA>.
 - **Failure scenario**: the smallest `.pyr` program, what `check`, `run` or `build`
   does with it, and what it should do, labelled *source-traced* or *executed*.
