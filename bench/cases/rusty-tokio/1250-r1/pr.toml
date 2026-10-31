@@ -1,0 +1,7 @@
+expert = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1250
+title = "rusty_tokio: a dropped Notified leaves the waiter queue"
+round = 1
+base = "d05170b8cc082cffaf6c348411e82bea84b9632d"
+head = "98621f936d802e1fb05912e47f1b569eebe230c9"

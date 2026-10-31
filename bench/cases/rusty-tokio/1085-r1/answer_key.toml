@@ -1,0 +1,61 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1085#pullrequestreview-5645780942"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "watch wait_for runs the predicate under the channel lock, so a panic poisons it"
+files = ["crates/libs/async/rusty_tokio/src/sync/watch.rs"]
+fix = "a034f2120c45e00580ceadcfd8bef453895eb894"
+summary = """
+watch::Receiver::wait_for (watch.rs:191-192) calls the user predicate while the shared
+StdMutex guard is held. If it unwinds, later send/borrow/changed panic at
+lock().unwrap(), and handle Drop unwraps the same lock, risking a double panic. Tokio's
+wait_for contract says a predicate panic does not poison the channel.
+"""
+caught_if = "Names the wait_for predicate running while the watch lock is held, so a predicate panic poisons the channel (later lock().unwrap() or Drop panics)."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "wait_for inspects a rejected version twice"
+files = ["crates/libs/async/rusty_tokio/src/sync/watch.rs"]
+fix = "2a6e9dfda91768eb60bf11a3199b83a5000107ec"
+summary = """
+wait_for (watch.rs:191-197) marks a version seen only when the predicate matches. With a
+value sent before wait_for starts, the predicate returns false, changed() returns
+immediately for the same version, and the FnMut predicate runs again on it without a new
+send. Tokio marks the version seen before calling the predicate.
+(Raised in https://github.com/Rusty-Mill/rusty_mill/pull/1085#issuecomment-6404587377.)
+"""
+caught_if = "Names wait_for re-running the predicate on a version it already rejected because seen is updated only on a match."
+
+[[finding]]
+id = "K3"
+severity = "P1"
+title = "Stdout poll_flush is a no-op, so a small LSP response can sit in std's line buffer"
+files = ["crates/libs/async/rusty_tokio/src/io/stdio.rs", "crates/libs/protocol/rusty_lsp/src/server.rs"]
+fix = "2a6e9dfda91768eb60bf11a3199b83a5000107ec"
+summary = """
+Server::stdio now uses rusty_tokio::io::Stdout (server.rs:96-103), whose poll_flush is a
+no-op (stdio.rs:142-147); writes go through std stdout's line buffer and are never
+flushed. An LSP frame ends in compact JSON with no newline, so a client waiting for the
+initialize response can wait forever.
+(Raised in https://github.com/Rusty-Mill/rusty_mill/pull/1085#issuecomment-6404590715.)
+"""
+caught_if = "Names rusty_tokio Stdout's poll_flush not flushing std stdout, so a response without a trailing newline stays buffered."
+
+[[finding]]
+id = "K4"
+severity = "ungraded"
+title = "A dropped watch changed() wait leaves its waker registered"
+files = ["crates/libs/async/rusty_tokio/src/sync/watch.rs", "crates/libs/protocol/rusty_lsp/src/server.rs"]
+fix = "4399e88db651b23d9bcbc336347bae83efae1638"
+summary = """
+server.rs:435-450 makes a new writer_dead.changed() future each select iteration. The
+watch changed helper registers a cloned waker in shared state and dropping the future
+does not remove it, so while incoming messages keep winning the select, registrations
+grow for the connection's lifetime. tokio's watch unregisters on drop. Raised as a
+"migration concern" without a P grade.
+(Raised in https://github.com/Rusty-Mill/rusty_mill/pull/1085#issuecomment-6404598606.)
+"""
+caught_if = "Names watch changed() registrations not removed when the wait future is dropped, so repeated cancelled waits (e.g. a losing select! arm) accumulate wakers."

@@ -1,0 +1,26 @@
+# Grade 1066-r2-3-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1066-r2"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Change fragment says 8 of the tests fail on main; 9 of 11 do"
+triage = "real"
+reason = "executed: head tests/lock_cancel.rs run against base 9248ea8d5 sources -> 9 of 11 fail (fragment at 3280c75e says 8); still wrong on main 808d6ebd9: fragment says 13 tests/8 fail, main lock_cancel.rs on base fails 10"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "No test guards Semaphore::close setting outcomes under the lock"
+triage = "real"
+reason = "executed mutation at 3280c75e: moving the WAITER_CLOSED stores in close (semaphore.rs:272-274) after drop(guard) leaves all 11 lock_cancel tests passing; source trace of acquire_permits re-poll (PENDING + rewait None -> Pending with no waker registered) confirms the hang. main 808d6ebd9 lock_cancel.rs adds only the never-clones tests, still no concurrent close test (traced)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "'No code that can panic runs while state is held' is false (permit overflow, waker clone in enqueue/rewait/push_back)"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-1066-r2 at 3280c75e: add_permits(usize::MAX) panics at semaphore.rs:419 under state (available_permits stays 1 after), and a waker whose clone panics panics inside lock() enqueue (mutex.rs:40) under state; comment at mutex.rs:68/semaphore.rs:102 false. On main 808d6ebd9 clones moved out of the lock (6a2002133) but permits += n overflow under state remains (semaphore.rs:450) and the comment is unchanged"

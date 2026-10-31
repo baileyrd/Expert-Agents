@@ -1,0 +1,33 @@
+# Grade 1085-r2-1-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1085-r2"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Dropped changed()/wait_for futures leave their wakers; rusty_lsp run_loop leaks one per message"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "changed()/wait_for keep only the first waker, so a re-poll with a new waker is never woken"
+triage = "fixed_since"
+reason = "traced at 2a6e9dfda: watch.rs:229-232 pushes cx.waker() only while !registered, so a re-poll with waker B leaves A stored and send() wakes A only; origin/main 808d6ebd9 Changed future replaces the stored waker unless will_wake (watch.rs:262-269)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Stdout::flush hangs after a write future was dropped mid-flight holding stdout_lock"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "l13 Cargo.toml comment still calls rusty_lsp's runtime feature tokio-backed"
+triage = "real"
+reason = "traced at 2a6e9dfda: rusty_term/l13/Cargo.toml:17 says \"tokio-backed runtime feature\" while rusty_lsp/Cargo.toml:55 has runtime = [\"dep:rusty_tokio\"]; same comment on origin/main 808d6ebd9"

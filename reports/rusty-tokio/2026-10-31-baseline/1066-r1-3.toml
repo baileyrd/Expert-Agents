@@ -1,0 +1,26 @@
+# Grade 1066-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1066-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Removed/replaced wakers dropped under the Mutex/Semaphore state lock; re-entrant waker drop deadlocks"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Poison-recovery comment is false; a panicking waker drop in Claim::drop retain poisons before grant()"
+triage = "fixed_since"
+reason = "traced at b6a9c9f6a: mutex.rs:37/45/64 and semaphore.rs:86 + acquire_permits push run Waker::clone (vtable code) under state, and mutex.rs:55/semaphore.rs:128 drop wakers under it, so the 'no code that can panic' comment (mutex.rs:68, semaphore.rs:91) is false; on main 808d6ebd9, 3280c75ee moved drops and 6a2002133 moved clones out of the lock (Arc<Waker> handoff, clone before locking), so the comment now holds"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "No test covers close() storing WAITER_CLOSED under the lock"
+triage = "real"
+reason = "executed at b6a9c9f6a: moved the WAITER_CLOSED store loop in semaphore.rs:261-263 after drop(guard); cargo test -p rusty_tokio --test lock_cancel still 9/9 pass, so nothing guards the ordering; main 808d6ebd9 lock_cancel.rs has no new close test (only semaphore_close_still_fails_a_queued_waiter), gap still open"
