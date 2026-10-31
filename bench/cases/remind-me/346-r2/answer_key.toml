@@ -2,7 +2,7 @@ review = "https://github.com/Rusty-Mill/rusty-remind-me/pull/346#issuecomment-65
 
 [[finding]]
 id = "K1"
-severity = "P2"
+severity = "ungraded"
 title = "dechunk accepts a body truncated after the zero-size chunk"
 files = ["crates/remind_me_core/src/embedder.rs"]
 fix = "c881940154b7cfecf3f899b1908cbff956d6a2b8"
