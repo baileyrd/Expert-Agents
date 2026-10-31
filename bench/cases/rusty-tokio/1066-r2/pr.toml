@@ -1,0 +1,9 @@
+expert = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1066
+title = "fix(rusty_tokio): cancellation-safe Mutex and Semaphore waiters (#1064)"
+round = 2
+base = "9248ea8d51bb91cfe134ab3638b939fb2780141f"
+head = "3280c75ee19d93750bd973ee39f1d1dbf140a6cd"
+# A re-review: the reviewer gets round 1's key findings as its prior findings.
+prior = "1066-r1"

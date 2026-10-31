@@ -1,0 +1,40 @@
+# Grade 1250-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1250-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Lost wakeup when notify_one and the drop race on two threads"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Permit taken by enable is banked again, which tokio does not do"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-1250-r1-head (hand-polled, noop waker): notify_one; notified().enable()==true; drop; fresh notified() -> rusty_tokio head 98621f936 Ready, tokio 1.53.3 Pending, contradicting the 'as tokio does' doc at notify.rs:31-33; same on main 808d6ebd9 (probe-1250-r1-main, enable still sets registered at notify.rs:274-280)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Forwarded notify_last goes to the oldest waiter, not the newest"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-1250-r1-head: A,B,C queued, notify_last, drop C -> rusty_tokio head 98621f936 wakes A (release pop_front, notify.rs:286), tokio 1.53.3 wakes B; same on main 808d6ebd9 (release forwards via notify_one, notify.rs:300-304)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "cancellation_token.rs docs still say a dropped Notified stays queued"
+triage = "real"
+reason = "traced: cancellation_token.rs:7-13 says a dropped Notified stays in Notify's queue until the next notification, false after this PR's release() (notify.rs:273-293, head 98621f936); text unchanged on main 808d6ebd9"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Test coverage gaps: OwnedNotified Drop, notify_last forward, cross-thread"
+triage = "real"
+reason = "traced: at head 98621f936 none of the 4 new tests (notify.rs:385-435) use OwnedNotified drop, notify_last forwarding or threads; main 808d6ebd9 covers OwnedNotified drop and the window (notify.rs:450-510) but still has no notify_last-forward test and no cross-thread test"
