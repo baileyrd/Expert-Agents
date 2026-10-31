@@ -1,0 +1,12 @@
+# Grade 973-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/973-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "probe_ball_rest ball still rolling at ~340 uu/s; cannot measure sleep"
+match = "K1"
+quality = "caught"

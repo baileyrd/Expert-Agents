@@ -1,0 +1,25 @@
+case = "rocket-league/666-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Later connections evict the waiting game; bridge waits forever"
+triage = "real"
+reason = "link.rs:203-207 at head evicts candidates[0] (a silent game that dialled first) once 8 later peers arrive, and :233-235 keeps the timeout off; README:83-84 claims silent peers cannot keep the game out. Behaviour unchanged on main link.rs:237-243; main README:89-91 (2cc049473) now lists it as a known limitation"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "swap_remove makes drop-the-oldest arbitrary"
+match = "K5"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Partial frame then close is never dropped"
+match = "K4"
+quality = "caught"

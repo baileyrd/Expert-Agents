@@ -1,0 +1,32 @@
+case = "rocket-league/666-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Silent connections arriving after the game push it out; wait never ends"
+triage = "real"
+reason = "link.rs:203-207 at head evicts candidates[0] (a silent game that dialled first) once 8 later peers arrive, and :233-235 keeps the timeout off; README:83-84 claims silent peers cannot keep the game out. Behaviour unchanged on main link.rs:237-243; main README:89-91 (2cc049473) now lists it as a known limitation"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Per-connection accept/setsockopt error aborts the whole wait"
+triage = "real"
+reason = "link.rs:201-202 (?) and :214 (return Err) at head end wait_for_game on any accept error, e.g. WSAECONNRESET from accept on Windows for a peer reset before accept, contrary to 'a connection that closes is dropped'. Source-traced only (Linux reset-before-accept is fine per run 2); unchanged on main link.rs:309-310,319"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Accept loop has no per-pass budget"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Docs state a guarantee the code does not keep"
+triage = "real"
+reason = "README.md:83-84 and the change fragment at head say the oldest is dropped so silent connections cannot keep the game out; false when the game dials first (link.rs:203-207). Main README:86-91 (2cc049473) rewrote the claim and lists the game-first case as a limitation"
