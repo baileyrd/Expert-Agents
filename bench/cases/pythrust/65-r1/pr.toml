@@ -1,0 +1,7 @@
+expert = "pythrust"
+repo = "baileyrd/PythRust"
+pr = 65
+title = "M6: dicts, sets and views in native code"
+round = 1
+base = "5de8b6027190a0d8ba0e857cad338d7813fe0bc4"
+head = "36dcec7f7e704b62e0d9f13d5800bc9e78c2180b"

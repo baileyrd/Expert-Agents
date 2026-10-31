@@ -1,0 +1,15 @@
+review = "https://github.com/baileyrd/PythRust/pull/47#pullrequestreview-5686599733"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "A loose function forwarding its parameters bypasses the tempered call check"
+files = ["crates/pythrust-compiler/src/own/body.rs", "crates/pythrust-compiler/src/own/calls.rs"]
+fix = "c07816ef062afc36f3ddc1dd39e2d09ac6b656fd"
+summary = """
+Loose forward(xs, ys) calls tempered push(mut xs, ys). The outer forward(a, a) is not
+checked because forward is loose, and inside forward Param(0) and Param(1) start
+disjoint (body.rs:119-121, 182-183; calls.rs:51-52), so push receives one list twice.
+Parameter/global sharing passes through the same way.
+"""
+caught_if = "Names a loose (or untempered) wrapper passing aliased arguments through to a tempered mut/owned call, with the wrapper's parameters assumed disjoint."
