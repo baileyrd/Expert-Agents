@@ -1,0 +1,7 @@
+expert = "agent-cloud"
+repo = "baileyrd/agent_cloud"
+pr = 14
+title = "Each job's changed paths in the agent's history (ADR-019)"
+round = 1
+base = "e51a23df087ca9d9c056fd8727da71ba1b76cbc1"
+head = "bb1b6b382b44cb29d430f9bcfefb70881a556cc7"

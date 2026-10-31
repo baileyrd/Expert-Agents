@@ -16,6 +16,7 @@ replace CI, the D4 Windows run, owner confirmation or the merge queue.
 | [pythrust](experts/pythrust/) | baileyrd/PythRust | Pythrust's compiler: ownership inference, types, native backend |
 | [remind-me](experts/remind-me/) | Rusty-Mill/rusty-remind-me | rusty-remind-me, the shared memory every agent reads and writes |
 | [rusty-tokio](experts/rusty-tokio/) | Rusty-Mill/rusty_mill | rusty_tokio, our tokio replacement, and the migration onto it |
+| [agent-cloud](experts/agent-cloud/) | baileyrd/agent_cloud | agent_cloud, self-hosted Kata microVM sandboxes for agents (benched on 2 field-found cases) |
 | [general](experts/general/) | Rusty-Mill/rusty_mill | fallback for PRs outside every domain |
 
 ## Layout
