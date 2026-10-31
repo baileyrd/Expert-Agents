@@ -1,0 +1,16 @@
+review = "https://github.com/baileyrd/MediBoard/pull/3#pullrequestreview-5645460712"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "unconfirmed_count and the evidence gate depart from the frozen contract"
+files = ["src/paper_work/domain/claim.py"]
+fix = "39b9201f11cc429cc6df4b25eb9e453d57dc900a"
+summary = """
+domain/claim.py:154-157. _is_pending counts confirmed or corrected children of an
+unreviewed visit as pending and drops unreviewed children of a rejected visit, while
+contract/api.md defines unconfirmed_count as the number of unreviewed items in the
+category. The claim view's count and its evidence gate disagree with the frozen contract
+without an amendment.
+"""
+caught_if = "Names the claim count or review gate keying on the parent visit's status instead of the item's own status, contrary to contract/api.md's unconfirmed_count."

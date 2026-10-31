@@ -1,0 +1,14 @@
+review = "https://github.com/baileyrd/MediBoard/pull/6#pullrequestreview-5645473633"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Re-ingest replaces page text under reviewed rows"
+files = ["src/paper_work/ingest/ingest.py"]
+fix = "bf2454e19a70c182f85ec4fc3f4194851250d965"
+summary = """
+ingest/ingest.py:64-65,72-77. _upsert_pages replaces the source text before the
+reviewed-page guard runs. Re-ingesting changed text reports KEPT_REVIEWED but leaves a
+confirmed quote paired with page text that no longer contains it.
+"""
+caught_if = "Names page text being overwritten before (or regardless of) the reviewed-row guard, so reviewed evidence no longer matches its source."
