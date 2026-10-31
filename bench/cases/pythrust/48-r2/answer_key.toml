@@ -1,0 +1,29 @@
+review = "https://github.com/baileyrd/PythRust/pull/48#pullrequestreview-5686901416"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Different depths are assumed to be different lists"
+files = ["crates/pythrust-compiler/src/own/alias.rs"]
+fix = "b07c742a917f6837fc35fe45045fd61f5c92953f"
+summary = """
+alias.rs:478-482 keys a location by depth. f(mut pair: tuple[list[int], list[list[int]]])
+binds a = pair[0], b = pair[1][0], appends to a and reads len(b); f((xs, [xs])) puts one
+list at depths 1 and 2, so the change is missed. The global xs = [1]; rows = [xs] has the
+same hole at World depths 0 and 1.
+"""
+caught_if = "Names one list reachable at two different depths (tuple slot or global) being treated as two lists."
+
+[[finding]]
+id = "K2"
+severity = "P1"
+title = "A parameter and a global are assumed never to be the same list"
+files = ["crates/pythrust-compiler/src/own/alias.rs"]
+fix = "b07c742a917f6837fc35fe45045fd61f5c92953f"
+summary = """
+alias.rs:470-472 keeps Param and World disjoint. With saved = [1], a tempered
+f(mut xs: list[int]) binds other = saved, appends to xs and reads other; f(saved) passes
+the global as the parameter, so D4 misses it. A single argument means A5's pairwise
+check cannot catch it.
+"""
+caught_if = "Names a parameter that may be a module variable (global) being treated as disjoint from it."
