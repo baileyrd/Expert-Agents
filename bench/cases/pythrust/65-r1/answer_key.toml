@@ -1,0 +1,42 @@
+# The round-1 review is Codex's automated review; its inline findings carry P grades.
+review = "https://github.com/baileyrd/PythRust/pull/65#pullrequestreview-5720590836"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "A dict view does not carry the provenance of the lists it holds"
+files = ["crates/pythrust-compiler/src/own/body.rs"]
+fix = "95551dc62d887bc2381e5d0291a51856a532e056"
+summary = """
+body.rs:326-328: elements_hold_list recognises only Compound::List, so Rvalue::View's
+destination records no element origins. A tempered function taking d: dict[int, list[int]]
+without mut can take vs = d.values() and append to each value, and can return
+list(d.values()) despite D3.
+"""
+caught_if = "Names dict values/items views losing the ownership/alias provenance of their list elements, so mutation or return of a parameter's lists is missed."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "get's default is evaluated only when the key is missing"
+files = ["crates/pythrust-compiler/src/lower/table.rs"]
+fix = "95551dc62d887bc2381e5d0291a51856a532e056"
+summary = """
+lower/table.rs:221-225 lowers d.get(k, default_expr) with the default only on the miss
+branch. Python and run evaluate every argument first, so with d = {1: 10},
+d.get(1, default()) skips default()'s prints, changes or exceptions natively.
+"""
+caught_if = "Names the get default argument not being evaluated on a hit (evaluation order differs from CPython/run)."
+
+[[finding]]
+id = "K3"
+severity = "P2"
+title = "KeyError carries the converted key instead of the key as written"
+files = ["crates/pythrust-compiler/src/lower/table.rs"]
+fix = "95551dc62d887bc2381e5d0291a51856a532e056"
+summary = """
+lower/table.rs:137: a bool probing an int-keyed dict is converted to int before the
+KeyError is built, so catching d[True] on an empty dict[int, str] prints 1 natively where
+run and CPython print True.
+"""
+caught_if = "Names the native KeyError for a bool key of an int-keyed dict showing the int instead of True."

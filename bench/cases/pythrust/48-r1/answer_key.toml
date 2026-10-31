@@ -1,0 +1,29 @@
+review = "https://github.com/baileyrd/PythRust/pull/48#pullrequestreview-5686600543"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Different tuple slots are assumed to hold different lists"
+files = ["crates/pythrust-compiler/src/own/alias.rs"]
+fix = "2a09a304c45dcdd8f090a1751b81eca4944fe229"
+summary = """
+alias.rs:449-453 treats Field(0) and Field(1) of a parameter as disjoint. A tempered
+f(mut pair: tuple[list[int], list[int]]) binds a = pair[0], b = pair[1], appends to a and
+reads len(b); f((xs, xs)) passes one list in both slots, so D4 misses the change. A5's
+per-call check cannot help because it is one argument.
+"""
+caught_if = "Names two slots (or nested paths) of a tuple from outside the body being assumed disjoint, so a change through one is missed through the other."
+
+[[finding]]
+id = "K2"
+severity = "ungraded"
+title = "An exception holding a list turns off aliasing checks for the whole program"
+files = ["crates/pythrust-compiler/src/own/mod.rs"]
+fix = "2a09a304c45dcdd8f090a1751b81eca4944fe229"
+summary = """
+own/mod.rs:105-108: lowering an exception built with a list argument hits a lowering gap,
+so the analysis falls back to Conservative and clears every alias diagnostic. A tempered
+escape(xs) that raises ValueError(xs) and returns xs is no longer rejected by D3. The
+review called it an A6 completion blocker without a P grade.
+"""
+caught_if = "Names the conservative fallback (lowering gap) silently dropping aliasing/D3/D4 diagnostics when a program constructs an exception from a list."
