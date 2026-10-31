@@ -1,0 +1,7 @@
+expert = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1066
+title = "fix(rusty_tokio): cancellation-safe Mutex and Semaphore waiters (#1064)"
+round = 1
+base = "9248ea8d51bb91cfe134ab3638b939fb2780141f"
+head = "b6a9c9f6a6d240a355aede951e3e466f03ce3402"

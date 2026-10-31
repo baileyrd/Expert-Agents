@@ -1,0 +1,17 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1066#pullrequestreview-5644053437"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "Cancelled waiters and replaced wakers are destroyed while the state lock is held"
+files = ["crates/libs/async/rusty_tokio/src/sync/mutex.rs", "crates/libs/async/rusty_tokio/src/sync/semaphore.rs"]
+fix = "3280c75ee19d93750bd973ee39f1d1dbf140a6cd"
+summary = """
+The new cancellation cleanup drops waiters under the primitive's state lock (Mutex
+dequeue; Semaphore Claim::drop retain), and waker refresh drops the old Waker under the
+lock too. A Waker's last Arc drop runs user code: a Wake impl whose Drop calls
+add_permits(1) (or Mutex::try_lock) is queued as the only reference, the acquire future
+is dropped, retain destroys the Waker while holding sem.state, and add_permits deadlocks
+on the non-reentrant lock.
+"""
+caught_if = "Names a Waker (removed on cancel or replaced on refresh) being dropped while the Mutex/Semaphore state lock is held, so a waker destructor that re-enters the primitive deadlocks."
