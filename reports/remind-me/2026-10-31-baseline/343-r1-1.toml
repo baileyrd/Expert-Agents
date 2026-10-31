@@ -1,0 +1,33 @@
+# Grade 343-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Nested token prefixes produce overlapping ranges that panic replace()"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Repeated anchors make prefixed()/google_api_keys scans quadratic, holding the store lock"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-343r1 timing redact() on repeated sk- (50/100/200 KB: 0.27/1.2/3.7 s at head) and -AIza (0.12/0.49/1.6 s) - quadratic growth; main d79f67cd9 still 0.18/0.78/2.9 s and 0.13/0.42/1.5 s"
+
+[[finding]]
+id = "F3"
+severity = "P0"
+title = "Card numbers followed by expiry or CVV digits are stored unredacted"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "sk- rule redacts ordinary kebab-case branch names"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-343r1 (redact.rs at head via #[path]): feature/sk-1234-implement-the-new-sync-protocol-for-hub and sk-learn-compatible-estimator-interface-design -> [REDACTED:llm_api_key]; same output on main d79f67cd9"

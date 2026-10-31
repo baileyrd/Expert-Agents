@@ -1,0 +1,19 @@
+# Grade 343-r2-1-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r2"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A card followed by a digit group glued to letters is stored unredacted (K2 still open)"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Card rule comment claims Diners 4-6-4 support the network check rejects; docs omit the limits"
+triage = "real"
+reason = "executed: standalone build of head redact.rs (probe-343-r2): \"diners 30569309025904\" and \"diners 3056 930902 5904\" come back unchanged; is_card (redact.rs:323-333) accepts a leading 3 only as 34/37 with 15 digits, so the card_shaped [4,6,4] arm and the Diners claim in its doc comment (redact.rs:303-306) are dead; unchanged on main d79f67cd9"

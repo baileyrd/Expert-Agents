@@ -1,0 +1,40 @@
+# Grade 346-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/346-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "One process with the model unset deletes every stored vector"
+triage = "real"
+reason = "executed: probe test in head export (Database::open with BACKEND=openai, DIM=4 over planted {openai,Qwen3-Embedding-0.6B,4} vector) keeps 1 vector with model set, 0 after reopening with REMIND_ME_OPENAI_EMBED_MODEL unset (resolve_embedder returns model \"\", db/mod.rs:314-316 reconciles and clears); ADR-0002 addendum only skips the check when no backend is set; unchanged on main d79f67cd9"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Malformed response entries are accepted and can attach a vector to the wrong text"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Release notes say Ollama requests are unchanged, but some are not"
+triage = "real"
+reason = "traced embedder.rs:113-119 at head: qwen3-embed row is new (absent at base d5528b1), prefix_for/with_prefix is shared by OllamaEmbedder (:393), so Ollama qwen3-embedding queries gain the Instruct prefix while RELEASE_NOTES says Ollama requests are unchanged and omits the prefix; main's note still says 'otherwise unchanged' with no Qwen3 entry"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Docs and the status message are out of date"
+triage = "real"
+reason = "traced README.md:18 and embedder.rs:65 at head still name only Ollama/ONNX (README line unchanged on main); executed embedding_status() with openai and no model gives the 'unreachable daemon/ONNX' reason, same text on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Environment-driven setup has no tests"
+triage = "real"
+reason = "traced at head and main: no test sets BACKEND=openai through resolve_embedder; embedder_availability_cache_test.rs and open_reconcile_test.rs reference no OPENAI_EMBED_* variable (git grep on d79f67cd9), so dropping embedder.rs:829-830 or the openai arm turns nothing red"

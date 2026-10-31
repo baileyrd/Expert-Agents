@@ -1,0 +1,40 @@
+# Grade 344-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/344-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Peers receive the evidence count without the weight boost, so nodes diverge"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A merge is five separate commits; a partial merge inflates the count on retry"
+triage = "real"
+reason = "traced consolidation.rs:506-530 at head: metadata, set_merged, set_importance and set_superseded_by each commit separately (engine/memories.rs:513 tables.commit), no Store::transaction (db/store.rs:63); a retry after a partial merge reads before=2, after=3; still no transaction in consolidation.rs on main d79f67cd9"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "The evidence count lives in client-writable metadata, so it can be forged or erased"
+triage = "real"
+reason = 'executed: probe in head export, merge -> update metadata {"note":"x"} -> merge third dup: evidence=2 (should be 3), weight ratio 1.1434 vs f(3)=1.1099, so the boost compounds; same on main d79f67cd9'
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Docs and release notes disagree with the code"
+triage = "real"
+reason = "traced at head: consolidation.rs:373 omits metadata/base_weight; vitality.rs:111-113 says n absorbed duplicates while n includes the canonical; BASE_WEIGHT_MIN loses its doc; all unchanged on main d79f67cd9"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "No test covers the new behaviour in sync"
+triage = "fixed_since"
+reason = "traced tests/consolidate_test.rs at head: nothing decodes a queued payload; on main 411981c1f adds a sync-enabled regression that does"
