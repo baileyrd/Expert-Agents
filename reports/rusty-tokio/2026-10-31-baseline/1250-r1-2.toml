@@ -1,0 +1,9 @@
+# Grade 1250-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1250-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 2
+
+# No [[finding]] tables: the report (10 lines) is only a closing note about an unfinished cargo test run;
+# it has no "Blocking findings" section and no ### F items. Its one-line verdict mentions the K1 race
+# ("a notify_one can still be lost when another thread drops a Notified") but that is not a graded finding.

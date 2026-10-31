@@ -1,0 +1,26 @@
+# Grade 1085-r2-2-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1085-r2"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Dropped changed()/wait_for futures leave their wakers; rusty_lsp read loop leaks one per message"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Stdout deadlocks when an abandoned write (or flush) holds stdout_lock and the other op runs"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "stdio State docs say one in-flight op per handle, but Stdout now has two states"
+triage = "fixed_since"
+reason = "traced at 2a6e9dfda: stdio.rs:51 \"One in-flight operation at a time per handle\" while Stdout has state and flush fields (stdio.rs:119-122); origin/main 808d6ebd9 Stdout holds a single op: Option<InFlight> (stdio.rs:120-122), so the doc holds again"
