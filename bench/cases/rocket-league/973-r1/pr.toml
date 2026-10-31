@@ -1,0 +1,7 @@
+expert = "rocket-league"
+repo = "Rusty-Mill/rusty_mill"
+pr = 973
+title = "Add tape-bot probes for the ball speed cap and a ball at rest"
+round = 1
+base = "15296ea5bb670d14acb22df4f856fadec3e8280a"
+head = "1f2ec4af1f652400ea4dda8e5093a121cdb86646"
