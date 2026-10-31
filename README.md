@@ -22,6 +22,7 @@ replace CI, the D4 Windows run, owner confirmation or the merge queue.
 
 ```
 experts/<name>/      prompt.md (Claude subagent), codex.md (Codex), expert.toml
+developers/          expert developers: write code in a domain, reviewed by its expert
 bench/cases/         frozen cases: pr.toml pins a PR head; answer_key.toml lists its known findings
 bench/suites/        Eval-Kit suites generated from the cases (python3 -m bench suite <expert>)
 bench/scorer/        recall, precision and severity agreement against the key
