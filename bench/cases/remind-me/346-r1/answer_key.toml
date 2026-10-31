@@ -1,0 +1,28 @@
+review = "https://github.com/Rusty-Mill/rusty-remind-me/pull/346#issuecomment-6503886946"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "A malformed index falls back to array position"
+files = ["crates/remind_me_core/src/embedder.rs"]
+fix = "9daba9f88644bffd4c41612121cf5e1eeccda7e5"
+summary = """
+embedder.rs:480-483 uses .get("index").and_then(as_u64).map_or(position, ..), so a missing,
+null, string, fractional or negative index is taken as the entry's position. A one-item
+response with index -1 is accepted, and reordered malformed entries attach vectors to the
+wrong inputs.
+"""
+caught_if = "Names an invalid or missing response index being accepted (defaulting to position) instead of rejected, risking vectors attached to the wrong input."
+
+[[finding]]
+id = "K2"
+severity = "ungraded"
+title = "Chunked /v1/embeddings responses are not decoded"
+files = ["crates/remind_me_core/src/embedder.rs"]
+fix = "9daba9f88644bffd4c41612121cf5e1eeccda7e5"
+summary = """
+The shared post_json parser does not decode Transfer-Encoding: chunked, so a valid chunked
+response fails JSON parsing in the new backend. The review asked to support it or document
+the restriction; it gave no grade ("transport compatibility note").
+"""
+caught_if = "Names the hand-rolled HTTP client not handling chunked transfer encoding for the embeddings response."

@@ -1,0 +1,14 @@
+review = "https://github.com/Rusty-Mill/rusty-remind-me/pull/346#issuecomment-6505801657"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "dechunk accepts a body truncated after the zero-size chunk"
+files = ["crates/remind_me_core/src/embedder.rs"]
+fix = "c881940154b7cfecf3f899b1908cbff956d6a2b8"
+summary = """
+embedder.rs:384-385 returns success on reading the zero-size chunk line, so a body ending
+in "0\\r\\n" without the final CRLF, or with an incomplete trailer section, is accepted
+despite the documented rejection of truncated responses.
+"""
+caught_if = "Names the chunk decoder succeeding at the last-chunk line without requiring the trailer section's terminating CRLF."

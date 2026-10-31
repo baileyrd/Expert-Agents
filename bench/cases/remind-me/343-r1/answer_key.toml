@@ -1,0 +1,27 @@
+review = "https://github.com/Rusty-Mill/rusty-remind-me/pull/343#issuecomment-6503858244"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Overlapping prefixed-token matches panic in replace()"
+files = ["crates/remind_me_core/src/redact.rs"]
+fix = "9ef2ec3a6eaf1fd7fe8b6edd6da5bad0f77337bb"
+summary = """
+redact.rs:136-148. "sk-<32 a>-sk-<32 b>" matches (0,71) and (36,71): the first run swallows
+the second prefix, which still matches after the hyphen. replace() slices text[71..36] and
+panics at the write boundary. Same shape for nested glpat- and github_pat_ tokens.
+"""
+caught_if = "Names overlapping or nested secret matches reaching replace() unsorted/uncoalesced, causing a panic or bad slice."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "A card number next to other digits escapes redaction"
+files = ["crates/remind_me_core/src/redact.rs"]
+fix = "9ef2ec3a6eaf1fd7fe8b6edd6da5bad0f77337bb"
+summary = """
+redact.rs:225-246. The scanner greedily joins space-separated digit groups, so
+"4111111111111111 12/30" becomes an 18-digit candidate that fails length validation and
+the PAN is stored unredacted. Two adjacent card numbers fail the same way.
+"""
+caught_if = "Names a valid card number left unredacted because neighbouring digits (expiry, a second card) join its candidate."
