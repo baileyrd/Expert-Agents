@@ -12,13 +12,17 @@ this log tracks commits against `main`.
 Six sandboxed runs (three prompts, v1.1.0 against v1.0.0) agreed on these.
 
 - **Fixed:** step 4 commits the expert before `python3 -m unittest`; the runner's tests
-  refuse uncommitted changes under `experts/`, so the old order always failed once.
+  refuse uncommitted changes under `experts/`, so the old order always failed once. The branch
+  is created once, outside the repeatable codex/check/commit/test loop.
 - **Added:** held-out findings must not be restated as general rules, which `check`
   cannot see; reread the prompt against each answer key.
 - **Added:** a fallback when review threads cannot be read (cite the quoting fix commit,
   severity ungraded).
-- **Added:** off-machine handoff runs `prepare` first, opens a draft PR, and commits a
-  variant's files where the bench machine can get them.
+- **Added:** off-machine handoff runs `prepare` first, opens a draft PR, and hands over
+  the whole sequence: for a variant, the current prompt's missing runs, the worktree
+  install (now with commands), then the variant's runs. The variant's files are
+  committed under `reports/<name>/<date>-<variant>/variant/` so the bench machine has
+  them; `--variant` is only a label.
 
 ## v1.1.0 — Brought up to the skill_pack authoring standard
 **2026-10-30**
