@@ -13,7 +13,7 @@ description: >-
   to "make an agent" or "recruit an expert" for a repo or domain, or when
   someone pastes a five-words-and-an-expert answer.
 metadata:
-  version: 1.1.0
+  version: 1.2.0
 compatibility: >-
   Run from an Expert-Agents checkout. Needs python3, git, a local clone of
   the target repo, and gh or the GitHub MCP tools. Benching also needs Node
@@ -76,7 +76,12 @@ reviewed head as `bench/README.md` says (`pr.toml`, `answer_key.toml`, every key
 citing the review and its fix commit). Reuse existing cases under
 `bench/cases/<name>/`. These PRs are held out: the prompt must never name them, their
 commits, or their findings' specifics, because a prompt that has seen the answer key
-scores recall it would not have on a new PR.
+scores recall it would not have on a new PR. That includes a finding restated as a
+general rule: `check` catches PR numbers and commits only, so reread the finished prompt
+against each `answer_key.toml` finding.
+
+If the review threads cannot be read, cite the fix commit whose message quotes the
+review, mark the severity ungraded, and say so in the report.
 
 ## 3. Scaffold and ground
 
@@ -122,15 +127,17 @@ after `tools` (effort, isolation, the read-only guard) as generated.
 - **Checks**: the target's real commands for the scope.
 
 Match the existing experts' voice: short declarative sentences, no filler, about 8 to 11
-KB. Then:
+KB. Create the branch once (`git switch -c expert/<name>`), then:
 
 ```
 python3 -m orchestrator codex <expert dir>      # codex.md from prompt.md
 python3 -m orchestrator check <expert dir> --target <clone>   # must report 0 problems
+git add experts/<name> bench/cases/<name> && git commit
 python3 -m unittest
 ```
 
-If `check` reports problems or a test fails, fix the prompt and run all three again;
+Commit before `unittest`: the runner's tests refuse uncommitted changes under `experts/`.
+If `check` reports problems or a test fails, fix the prompt and run them again;
 bench only on a clean `check`, since a leaked held-out commit invalidates every run.
 `check` refuses leftover TODOs, sections that differ from `expert.toml`, a Codex
 prompt without its placeholders, and any held-out PR number or commit in either prompt
@@ -139,9 +146,7 @@ prompt without its placeholders, and any held-out PR number or commit in either 
 ## 5. Bench
 
 Runs use the person's signed-in Claude Code login, never an API key, on a machine with
-the target clone, Node and the sandbox (`bench/runner/README.md`). If this session is
-not on such a machine, stop here: commit, push, and hand the person the commands below
-as a paste-ready prompt.
+the target clone, Node and the sandbox (`bench/runner/README.md`).
 
 For a variant, first make sure the current prompt has runs on every case the variant
 will run: bench it, as committed on `main`, on any case its latest report lacks, so the
@@ -149,7 +154,13 @@ comparison is like for like. Do this before installing the variant: the runner r
 prompt from the worktree's `experts/`, and `--variant` is only a label. Then, in a
 separate worktree on a local branch that is never pushed, commit the variant's
 `prompt.md`, `codex.md` and `expert.toml` over the expert's (`check` fails if the
-headings differ from the manifest) and bench it there.
+headings differ from the manifest) and bench it there:
+
+```
+git worktree add -b bench-local/<name>-<variant> <wt> HEAD   # never pushed
+cp <variant files> <wt>/experts/<name>/ && git -C <wt> commit -am "bench: install <variant>"
+# run prepare below from <wt>; extract into this checkout's reports/
+```
 
 ```
 npm ci --prefix bench/runner
@@ -163,6 +174,14 @@ python3 -m bench.runner extract <work>/<case>/grade/results.json \
 Use `--repeat 5` so results compare with the baselines. `--model` is required and
 recorded with every result; pass the same model for the current prompt and the variant,
 because reports compare only when their models match.
+
+If this session is not on such a machine, run `prepare` on each case anyway (it needs no
+login and proves the case SHAs), then stop: push, open the PR as a draft whose body holds
+the whole sequence above as a paste-ready prompt, and mark it ready once the report lands.
+For a variant that means the current prompt's missing runs first, then the worktree
+install, then the variant's runs; `--variant` alone would bench the current prompt under
+the variant's name. Commit the variant's files under
+`reports/<name>/<date>-<variant>/variant/` on the pushed branch so that machine has them.
 
 ## 6. Grade and report
 
