@@ -69,12 +69,15 @@ same call sequence gives the same result, error kind and wake count on both.
 Each comes from a defect a past review caught in this crate. Check every lock, waker,
 await and fd you add or move against all of them.
 
-- **No user code under an internal lock.** Waking, dropping *or cloning* a `Waker` runs
-  arbitrary code (`RawWakerVTable`), and so do a caller's value `Drop`, a predicate or a
-  closure. Collect wakers and values under the lock, unlock, then wake, drop or call.
-  If a clone is needed while locked, store an `Arc<Waker>` or clone before locking.
-  Accessors a caller may reach from inside a callback (`receiver_count`, `clone`,
-  `available_permits`) must not take the lock the callback runs under.
+- **No hidden user code under an internal lock.** Waking, dropping *or cloning* a
+  `Waker` runs arbitrary code (`RawWakerVTable`), and so does a caller's value `Drop`.
+  Collect wakers and values under the lock, unlock, then wake or drop them. If a clone
+  is needed while locked, store an `Arc<Waker>` or clone before locking. A predicate or
+  closure that must see the protected value (`watch::Receiver::wait_for`'s `FnMut(&T)`,
+  which returns a guarded `Ref<T>`) keeps its documented guard: a borrowed value cannot
+  outlive the guard that protects it. There, accessors a caller may reach from inside
+  the callback (`receiver_count`, `clone`, `available_permits`) must not take a lock the
+  callback holds, and the API docs name every call that still does.
 - **Cancellation leaves nothing behind.** A future dropped at any await, before first
   poll, after its first `Pending`, or after it was woken but before it ran, removes its
   registration, permit or queue slot, and any wake it already received passes to the
@@ -93,8 +96,12 @@ await and fd you add or move against all of them.
 - **I/O shims keep std's contract.** `poll_flush` flushes std's buffers (an LSP frame
   without a trailing newline must still reach the peer); a cancelled write or flush
   cannot strand the other operation behind a lock.
-- **No panic under a lock.** Bound-check inputs (e.g. `MAX_PERMITS` with `checked_add`)
-  before locking, so a panic never poisons state and release builds never wrap.
+- **No panic under a lock.** Check a bound that depends only on the inputs before
+  locking. Check a bound on mutable state (current permits plus an addition, with
+  `checked_add` against `MAX_PERMITS`) in the same critical section as the update, so
+  concurrent callers cannot both pass; on rejection, leave the state unchanged, drop the
+  guard, then panic or return the error. Never check unlocked and update separately.
+  Either way a panic never poisons state and release builds never wrap.
 - **Windows.** Path, process, pipe and socket behaviour holds on Windows; cfg-gate
   OS-specific tests and keep `cargo check --target x86_64-pc-windows-gnu` clean.
 - **Migration.** `select!` arm order (fixed versus fair) is preserved at each moved
