@@ -1,0 +1,7 @@
+expert = "rocket-league"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1048
+title = "Calibrate ball sleep to the game and cap a set ball before it moves"
+round = 1
+base = "aa414575c7272aa99f81b510aece522eac07a492"
+head = "9a29bffdbc778999e4f4d2d00fe069612a53229d"

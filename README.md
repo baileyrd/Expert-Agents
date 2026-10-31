@@ -15,6 +15,7 @@ replace CI, the D4 Windows run, owner confirmation or the merge queue.
 | [mill-board](experts/mill-board/) | Rusty-Mill/rusty_mill | Mill Board, the kanban agents and people share |
 | [pythrust](experts/pythrust/) | baileyrd/PythRust | Pythrust's compiler: ownership inference, types, native backend |
 | [remind-me](experts/remind-me/) | Rusty-Mill/rusty-remind-me | rusty-remind-me, the shared memory every agent reads and writes |
+| [rocket-league](experts/rocket-league/) | Rusty-Mill/rusty_mill | the Rocket League family: Bullet physics port, captures and probes, game bridge, replay parser |
 | [general](experts/general/) | Rusty-Mill/rusty_mill | fallback for PRs outside every domain |
 
 ## Layout

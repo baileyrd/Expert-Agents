@@ -1,0 +1,17 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1048#pullrequestreview-5643311278"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "Claimed linear sleep-threshold upper bound is not established by the recordings"
+files = ["crates/apps/rocket_league/rusty_bullet/tools/rb_tape_bot/fixture_checks.py", "crates/apps/rocket_league/crates/rb_physics_bullet/src/body.rs", "crates/apps/rocket_league/rusty_bullet/docs/specifications/physics/RB-PHYSICS-001-physics-core-port.md"]
+fix = "fa11956575ab7560a5cdc0c677f3ca628e8fa42d"
+summary = """
+fixture_checks.py:222-226 takes rest_80's final minimum speed (68.521 uu/s) as an upper bound
+on the linear sleep threshold, and body.rs and the spec promote the interval (40.0, 68.5].
+That ignores the 2 s dwell: a threshold of 70 still gives no sleep, since the speed crosses it
+only near the end (72.911 two seconds before). And sleep needs linear and angular speed under
+their thresholds together; the angular threshold is only bounded above 0.438 while rest_80
+spins at 0.751 or more, so "no sleep" cannot bound the linear threshold alone.
+"""
+caught_if = "Names the linear upper bound as unsupported because it ignores the dwell window or the joint linear/angular sleep condition (an unfrozen ball cannot bound one threshold alone)."
