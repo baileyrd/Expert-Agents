@@ -1,0 +1,9 @@
+expert = "remind-me"
+repo = "Rusty-Mill/rusty-remind-me"
+pr = 343
+title = "redact: catch provider API keys, Stripe, npm, PyPI, GitLab, Google keys and card numbers"
+round = 2
+base = "d5528b1347054f348b3dac96f54619e603f4594c"
+head = "9ef2ec3a6eaf1fd7fe8b6edd6da5bad0f77337bb"
+# A re-review: the reviewer gets round 1's key findings as its prior findings.
+prior = "343-r1"

@@ -1,0 +1,40 @@
+# Grade 346-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/346-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A missing REMIND_ME_OPENAI_EMBED_MODEL wipes every stored vector on open"
+triage = "real"
+reason = "executed: probe test in head export (Database::open with BACKEND=openai, DIM=4 over planted {openai,Qwen3-Embedding-0.6B,4} vector) keeps 1 vector with model set, 0 after reopening with REMIND_ME_OPENAI_EMBED_MODEL unset (resolve_embedder returns model \"\", db/mod.rs:314-316 reconciles and clears); ADR-0002 addendum only skips the check when no backend is set; unchanged on main d79f67cd9"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Response entries with a malformed index fall back to arrival order"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Non-numeric embedding components quietly become 0.0"
+triage = "real"
+reason = "executed: fake /v1/embeddings server returning embedding [null,null] -> OpenAiEmbedder::embed returns Ok([[0.0,0.0]]) at head (checked_vector embedder.rs:376 unwrap_or(0.0)); pre-existing on the Ollama path but the PR routes the new backend through it; still unwrap_or(0.0) on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Release note says Ollama requests are unchanged, but the Qwen3 prefix changes them"
+triage = "real"
+reason = "traced embedder.rs:113-119 at head: qwen3-embed row is new (absent at base d5528b1), prefix_for/with_prefix is shared by OllamaEmbedder (:393), so Ollama qwen3-embedding queries gain the Instruct prefix while RELEASE_NOTES says Ollama requests are unchanged and omits the prefix; main's note still says 'otherwise unchanged' with no Qwen3 entry"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Status names the wrong cause; resolver and fingerprint changes untested"
+triage = "real"
+reason = "executed: embedding_status() with BACKEND=openai and no model returns the 'unreachable daemon ... ONNX model' reason without naming REMIND_ME_OPENAI_EMBED_MODEL; and no test covers the openai resolver arm or the new fingerprint entries (git grep OPENAI_EMBED in cache/reconcile tests is empty at head and main d79f67cd9)"

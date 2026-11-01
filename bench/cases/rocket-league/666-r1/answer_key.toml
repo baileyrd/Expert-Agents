@@ -1,0 +1,62 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/666#issuecomment-6151780864"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "Startup ordering deadlocks the live runner against a menu-silent game"
+files = ["crates/apps/rocket_league/crates/rb_rl_game_bridge/src/bin/rb_rl_bridge.rs", "crates/apps/rocket_league/rusty_bullet/tools/rl_live_test/rl-lib.ps1"]
+fix = "2cc04947368cd1bb0ae05adc4adc1a7c91808818"
+summary = """
+rb_rl_bridge.rs:175-194 waits for game traffic before printing "serving bots on".
+rl-lib.ps1:82-86 waits for that line, and run-live-test.ps1 loads the first map only after.
+The game is silent in the menu, so startup times out at 300 s.
+"""
+caught_if = "Names the readiness line now waiting on game traffic while the runner waits on that line before loading the map (the silent game never speaks)."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "A ready game is evicted before its frame is checked"
+files = ["crates/apps/rocket_league/crates/rb_rl_game_bridge/src/link.rs"]
+fix = "2cc04947368cd1bb0ae05adc4adc1a7c91808818"
+summary = """
+link.rs:203-219: with the game queued first holding a complete valid frame, then eight
+silent peers, the accept drain evicts the game for room before any candidate is inspected.
+"""
+caught_if = "Names eviction of the oldest connection happening before waiting candidates are checked, so a game with a valid first frame can be dropped."
+
+[[finding]]
+id = "K3"
+severity = "P2"
+title = "Unbounded accept drain starves candidate checks and the timeout"
+files = ["crates/apps/rocket_league/crates/rb_rl_game_bridge/src/link.rs"]
+fix = "2cc04947368cd1bb0ae05adc4adc1a7c91808818"
+summary = """
+link.rs:198-216 accepts until WouldBlock with no budget; a continuously replenished backlog
+keeps the loop accepting, so no candidate is checked and the timeout never runs.
+"""
+caught_if = "Names the accept loop draining until WouldBlock without a bound, starving checks or the timeout."
+
+[[finding]]
+id = "K4"
+severity = "P2"
+title = "EOF behind buffered partial bytes is never detected"
+files = ["crates/apps/rocket_league/crates/rb_rl_game_bridge/src/link.rs"]
+fix = "2cc04947368cd1bb0ae05adc4adc1a7c91808818"
+summary = """
+link.rs:143-155 uses peek only. A peer that sends one header byte or part of a payload and
+then closes stays "waiting" forever and keeps suppressing the idle timeout.
+"""
+caught_if = "Names a connection with a partial frame then close staying waiting forever (peek cannot see EOF behind buffered bytes), blocking the timeout."
+
+[[finding]]
+id = "K5"
+severity = "P2"
+title = "swap_remove breaks oldest-first eviction"
+files = ["crates/apps/rocket_league/crates/rb_rl_game_bridge/src/link.rs"]
+fix = "2cc04947368cd1bb0ae05adc4adc1a7c91808818"
+summary = """
+link.rs:226-228: rejecting the oldest junk with swap_remove moves the newest (possibly the
+silent game) to index 0, so the next overflow evicts it while older peers remain.
+"""
+caught_if = "Names swap_remove reordering the waiting list so oldest-first eviction drops the wrong (newer) connection."

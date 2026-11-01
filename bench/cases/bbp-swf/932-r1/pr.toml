@@ -1,0 +1,7 @@
+expert = "bbp-swf"
+repo = "Rusty-Mill/rusty_mill"
+pr = 932
+title = "bbp mcp: session servers and the wait tool (event-based step 3a)"
+round = 1
+base = "1703450af78b2c70ecd0c4b18f8fa5c3ec117235"
+head = "e0137a43f74e089ac0bf241bcff62494cca47c77"

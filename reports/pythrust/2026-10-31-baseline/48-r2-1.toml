@@ -1,0 +1,19 @@
+# Grade 48-r2-1-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A tuple can hold the same list at two depths, and the check misses it"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Nothing tests the native refusal of an exception holding a list"
+triage = "fixed_since"
+reason = "source trace: the message 'does not support an exception holding a list' appears only in codegen/mod.rs:1031; no test in own/tests.rs, lower/tests.rs or conformance.rs asserts it, and build_native (conformance.rs:447-461) treats any refusal as skip; build of /home/baileyrd/src/pythrust-grade/probes/48-r2/exc_list.pyr is refused at head; fixed on main (conformance.rs build_refuses_an_exception_that_may_close_a_cycle asserts the refusal)"

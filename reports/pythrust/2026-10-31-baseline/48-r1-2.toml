@@ -1,0 +1,54 @@
+# Grade 48-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A change through a value read from either of two names (conditional, or) is never reported"
+triage = "real"
+reason = "executed probes/48-r1/cond.pyr and orexpr.pyr: check accepts at head, run and CPython print 4; cond_ctl.pyr (b.append) rejected; on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "An unrelated lowering gap (raise ValueError(xs)) turns off D3 and D4 for every tempered function"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A later read of a global after a change through a local name for it is not seen"
+triage = "fixed_since"
+reason = "executed probes/48-r1/glob_read.pyr: b = G; b.append(2); return len(G) accepted by check at head, run and CPython print 2; fixed on main (D4 error naming module variable G as used later)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The D3 fix-it fails on nested lists"
+triage = "real"
+reason = "executed probes/48-r1/d3_nested.pyr suggests return list(rows); d3_nested_fixed.pyr applying it gives a new D3 error; on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The D4 fix-it copies at the changed name, which fails when the other name is optional"
+triage = "real"
+reason = "executed probes/48-r1/d4_opt.pyr suggests a = list(b); d4_opt_fixed.pyr applying it is a type error (list of list[int] | None); on main"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "An error about a for loop where there is no loop"
+triage = "real"
+reason = "executed probes/48-r1/forloop_msg.pyr: return h(rows[0], grow(rows)) reports 'changes a list while a for loop over it is running' with no loop; on main"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Module doc points to own::calls, which does not exist"
+triage = "fixed_since"
+reason = "source trace: alias.rs:15 names own::calls, own/ at head has only alias, body, modes, mod, tests and A5 is unticked; fixed on main (A5 landed, own/calls.rs exists)"

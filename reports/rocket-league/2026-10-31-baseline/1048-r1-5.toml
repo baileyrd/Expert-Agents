@@ -1,0 +1,26 @@
+# Grade 1048-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/1048-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Linear bracket does not follow: joint thresholds and dwell ignored"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Stated cause of rest_40 residual is false"
+triage = "real"
+reason = "executed simulate_scenario(probe_ball_rest_40) at head: speed 40.000 -> 40.231 on tick 1 (spin 0.4384 -> 0.4319, v/w = 93.15), stays >= 40 to frame 32, freezes at 273 vs game 242; spin set for BALL_R 91.25 (gen_probes.py:162,176) vs BALL_RADIUS 93.15 (body.rs:112), so decay rate is not the cause. Still on main: RB-PHYSICS-001:2213-2215, golden_captures.rs:178"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Error figures in docs do not match head"
+triage = "real"
+reason = "executed golden harness (compare_scenario_recorded) at head: rest_20 ball max 1.441 (PR 1.6), fast_6500 mean 5.680 (PR 5.4), max 56.84 (PR 55); bounds 1.8/7.1 = measured x1.25 (golden_captures.rs:192,220); fragment lines 7-8,11 and RB-PHYSICS-001:2212,4008. Still on main: changes/2026-10-25-rl-ball-sleep-calibration.md:8, RB-PHYSICS-001:2212,4009"

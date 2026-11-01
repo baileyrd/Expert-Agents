@@ -1,0 +1,33 @@
+# Grade 47-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/47-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A list stored through a module variable by a function is missed at a later module-level call"
+triage = "real"
+reason = "executed: probes/47-r1/module_callee_store.pyr and module_callee_store_param.pyr pass check at head (exit 0) while the inline module_inline_store.pyr is rejected; run, build and CPython all print [[1], [1]], so add receives row inside rows; roadmap A5 documents only the in-function imprecision, not this; on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Two parameters are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Docs contradict each other on owned and overstate the analysis as erring toward the error"
+triage = "real"
+reason = "traced at head: grammar.md:209 D2 says only mut, grammar.md:180 and code count owned (probes/47-r1/owned_read.pyr rejected); roadmap.md:73 claims imprecision errs toward the error, but module_callee_store.pyr and k1_loose_wrapper.pyr are accepted; on main (D2 at grammar.md:227 unchanged, roadmap text unchanged while module_callee_store.pyr still passes)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The copy fix-it does not say which argument to copy and fails for nested lists"
+triage = "real"
+reason = "executed: probes/47-r1/fixit_nested_copy_ys.pyr (push(a, list([a]))) still rejected with the same 'pass a copy' message; fixit_copy_mut.pyr (push(list(a), [a])) passes and run prints [1], the change lost; on main"

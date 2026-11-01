@@ -1,0 +1,26 @@
+# Grade 47-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/47-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A callee that stores into a module list is not modelled in module code, so the shared list is missed"
+triage = "real"
+reason = "executed: probes/47-r1/module_callee_store.pyr and module_callee_store_param.pyr pass check at head (exit 0) while the inline module_inline_store.pyr is rejected; run, build and CPython all print [[1], [1]], so add receives row inside rows; roadmap A5 documents only the in-function imprecision, not this; on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A loose function's parameters are assumed to hold different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "No test covers a callee writing module values or a loose caller forwarding parameters"
+triage = "real"
+reason = "traced own/tests.rs at head: shared_call tests cover append, loops, rebinding, tuples, globals read in a function; none has a callee storing a module list or forwarded parameters (calls_from_any_caller_are_checked even asserts the param case Ok); on main (module-callee route still untested; forwarding now covered by modes_shared_forward)"

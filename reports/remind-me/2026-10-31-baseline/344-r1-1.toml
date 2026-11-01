@@ -1,0 +1,40 @@
+# Grade 344-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/344-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "The boosted base_weight never reaches the outbox, so peers diverge"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "evidence is a caller-writable key: metadata replace compounds the boost, forged counts inflate, the sum overflows"
+triage = "real"
+reason = 'executed: probe in head export, merge -> update metadata {"note":"x"} -> merge third dup: evidence=2 (should be 3), weight ratio 1.1434 vs f(3)=1.1099, so the boost compounds; same on main d79f67cd9; overflow probe panics too'
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A partly applied merge double-counts evidence when retried"
+triage = "real"
+reason = "traced consolidation.rs:506-530 at head: metadata, set_merged, set_importance and set_superseded_by each commit separately (engine/memories.rs:513 tables.commit), no Store::transaction (db/store.rs:63); a retry after a partial merge reads before=2, after=3; still no transaction in consolidation.rs on main d79f67cd9"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "Concurrent merges on two nodes lose evidence under LWW metadata"
+triage = "real"
+reason = "traced consolidation.rs:497-506 at head with ADR-0004:39 (metadata shallow-merges, LWW winner takes the key): A merges X+Y and B merges X+Z, both write evidence=2, after sync Y and Z are superseded by X but X says 2; the ADR settles LWW, not a lossy counter; unchanged on main d79f67cd9"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Stale consolidate doc comment and no sync-path test"
+triage = "real"
+reason = "traced consolidation.rs:373 at head: 'updates the canonical's content/access_count/tags/vitality' omits metadata and base_weight; line unchanged on main d79f67cd9 (the sync test part was added by 411981c1f)"

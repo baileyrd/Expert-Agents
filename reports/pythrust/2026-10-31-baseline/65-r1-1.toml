@@ -1,0 +1,33 @@
+# Grade 65-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/65-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A dict view held in a variable or copied with list() loses the dict's lists in the own analysis"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Native d.get(k, default) evaluates default only on a miss"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Native KeyError for a missing bool key shows 1 instead of True"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The D4 diagnostic calls a set or dict 'a list'"
+triage = "real"
+reason = "executed probes/65-r1/d4_msg_{set,dict,dict2}.pyr: check at head rejects a set .add, a callee growing a dict and a dict store inside loops over them with 'changes a list while a for loop over it is running' (alias.rs:666 subject() falls back to 'a list'); on main"

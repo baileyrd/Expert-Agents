@@ -1,0 +1,33 @@
+# Grade 48-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "List +, += and * (or a loose raise ValueError(xs)) turn off D3/D4 for the whole program though A6 is marked done"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A callee that changes a module list goes unseen"
+triage = "fixed_since"
+reason = "executed probes/48-r1/callee_glob.pyr and callee_glob_loop.pyr: check accepts at head, run and CPython print 2 and 7; callee_glob_ctl.pyr (inline G.append) rejected; fixed on main (D4 error 'changes a list through bump')"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A temporary read from two names is excused for both"
+triage = "real"
+reason = "executed probes/48-r1/cond.pyr: (a if c else b).append(2) accepted by check at head, run and CPython print 4; cond_ctl.pyr rejected; on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Any live temporary is reported as a for loop"
+triage = "real"
+reason = "executed probes/48-r1/forloop_msg.pyr (mut grow on a call argument, no loop): reports 'while a for loop over it is running'; on main"

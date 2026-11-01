@@ -1,0 +1,33 @@
+# Grade 343-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A second token prefix inside a match crashes every write path"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Common pasted card formats (card plus expiry/CVV) are not redacted"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Space-separated lists of numbers are redacted as card numbers"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-343r1: 'PRs 4012 4013 4015 4028 merged' -> 'PRs [REDACTED:card_number] merged' at head and on main d79f67cd9 ('Ran 4 1 2 ... 0 items' is redacted at head but no longer on main)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "sk- plus 32 base64url characters matches long hyphenated slugs"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-343r1 (redact.rs at head via #[path]): feature/sk-1234-implement-the-new-sync-protocol-for-hub and sk-learn-compatible-estimator-interface-design -> [REDACTED:llm_api_key]; same output on main d79f67cd9"

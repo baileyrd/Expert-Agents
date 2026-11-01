@@ -1,0 +1,7 @@
+expert = "remind-me"
+repo = "Rusty-Mill/rusty-remind-me"
+pr = 344
+title = "consolidate: count the evidence behind merged memories"
+round = 1
+base = "d5528b1347054f348b3dac96f54619e603f4594c"
+head = "95528f017e2db1caef65aeee2154995333588067"

@@ -1,0 +1,47 @@
+# Grade 344-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/344-r1"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "A merge overwrites the canonical's own metadata.evidence"
+triage = "real"
+reason = 'executed: probe in head export, canonical with metadata {"evidence":"https://ci/run/812"} merged -> metadata becomes {"evidence":2}, the URL is gone (consolidation.rs:503); same on main d79f67cd9'
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "The boosted weight never leaves the node, so peers diverge"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "The merge is not atomic and the new counter is not safe to retry"
+triage = "real"
+reason = "traced consolidation.rs:506-530 at head: metadata, set_merged, set_importance and set_superseded_by each commit separately (engine/memories.rs:513 tables.commit), no Store::transaction (db/store.rs:63); a retry after a partial merge reads before=2, after=3; still no transaction in consolidation.rs on main d79f67cd9"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Replacing or reverting metadata drops evidence but keeps the boost"
+triage = "real"
+reason = 'executed: probe in head export, merge -> update metadata {"note":"x"} -> merge third dup: evidence=2 (should be 3), weight ratio 1.1434 vs f(3)=1.1099, so the boost compounds; same on main d79f67cd9'
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "evidence from any writer is trusted, and the sum can overflow"
+triage = "real"
+reason = 'executed: probe in head export, canonical with metadata {"evidence":u64::MAX} plus one member -> consolidate panics with add overflow in .sum() (consolidation.rs:498, debug test build); same on main d79f67cd9'
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Docs disagree with the code (consolidate doc, vitality constants, tool text, release note)"
+triage = "real"
+reason = "traced at head: consolidation.rs:373 omits metadata/base_weight; vitality.rs:107-117 puts EVIDENCE_* between BASE_WEIGHT_MAX and BASE_WEIGHT_MIN so the 'Ceiling and floor' doc no longer covers MIN; both unchanged on main d79f67cd9"

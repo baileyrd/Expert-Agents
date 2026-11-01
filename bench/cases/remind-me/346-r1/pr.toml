@@ -1,0 +1,7 @@
+expert = "remind-me"
+repo = "Rusty-Mill/rusty-remind-me"
+pr = 346
+title = "embedder: OpenAI-compatible /v1/embeddings backend (llama.cpp / llama-swap)"
+round = 1
+base = "d5528b1347054f348b3dac96f54619e603f4594c"
+head = "8c7e55a64821d8f411b8578d76dfa81c4b43b3b8"

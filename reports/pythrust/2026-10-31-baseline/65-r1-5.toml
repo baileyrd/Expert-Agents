@@ -1,0 +1,33 @@
+# Grade 65-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/65-r1"
+variant = "baseline"
+prompt_sha = "91b7e979713d73e9e758e39bfcd026e6b9a1f09b"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A held dict view loses its link to the dict's values, so D2 and D3 miss mutations"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Native d.get(k, default) evaluates default only when the key is missing"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Native KeyError for a missing bool key reports the converted int"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The bool-key-into-int-dict backend refusal has no test"
+triage = "fixed_since"
+reason = "source trace at head: no .rs test mentions 'a bool key stored in an int-keyed dict' (lower/table.rs:118) or dict_bool_key, which is outside NATIVE; probe probes/65-r1/bool_key_store.pyr confirms build refuses it; fixed on main (the refusal is gone, main builds and prints {1: 'b'}; the remaining generic-code refusal is tested by build_refuses_a_bool_key_stored_in_generic_code)"

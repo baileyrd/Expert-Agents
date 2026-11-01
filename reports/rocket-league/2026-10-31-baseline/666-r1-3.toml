@@ -1,0 +1,25 @@
+case = "rocket-league/666-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Silent real game closed as the oldest; bridge waits forever"
+triage = "real"
+reason = "link.rs:203-207 at head evicts candidates[0] (a silent game that dialled first) once 8 later peers arrive, and :233-235 keeps the timeout off; README:83-84 claims silent peers cannot keep the game out. Behaviour unchanged on main link.rs:237-243; main README:89-91 (2cc049473) now lists it as a known limitation"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Premise that the game is silent until a map loads is unevidenced"
+triage = "fixed_since"
+reason = "link.rs:186, bin/rb_rl_bridge.rs:175-176, README:83 at head say the game says nothing until a map loads; tests/live_capture.rs:38-40 shows two idle menu messages before GameSpawn. Main c2016e24c corrected docs to 'first message at the splash, before any map' (README:84-86, link.rs:278)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Fragment and README claim more than the code does"
+triage = "real"
+reason = "README.md:83-84 and the change fragment at head say the oldest is dropped so silent connections cannot keep the game out; false when the game dials first (link.rs:203-207). Main README:86-91 (2cc049473) rewrote the claim and lists the game-first case as a limitation"

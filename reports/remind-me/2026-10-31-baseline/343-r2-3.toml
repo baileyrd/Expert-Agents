@@ -1,0 +1,19 @@
+# Grade 343-r2-3-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r2"
+variant = "baseline"
+prompt_sha = "9ebbf17270d0951f7da4838b44f4b1ca5ffbb629"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A card followed by a word that starts with a digit is stored unredacted"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A digit group before a card pushes the greedy window left and leaves the card's tail visible"
+triage = "real"
+reason = "executed: probe-343-r2 on head redact.rs: \"ref 4000 0000 0000 4111 1111 1111 1111\" -> \"ref [REDACTED:card_number] 1111 1111 1111\" and \"ref 4008 4111 1111 1111 1111\" -> \"ref [REDACTED:card_number] 1111\"; cards_in (redact.rs:275-301) takes the earliest valid window and skips past it; identical output on main d79f67cd9"

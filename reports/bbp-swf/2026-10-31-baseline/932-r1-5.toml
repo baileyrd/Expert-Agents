@@ -1,0 +1,5 @@
+# Grade 932-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/932-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 5
