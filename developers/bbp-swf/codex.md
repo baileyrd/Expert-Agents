@@ -169,23 +169,31 @@ your change adds or moves against all of them.
    because Landlock is not enforced is a validation gap, and Windows execution belongs
    to CI. For a failure in a test your diff does not touch, rerun it alone, run it at
    the base, and report both results.
-6. **Independent review.** Commit, then have your diff (base SHA to your head SHA)
-   reviewed by the bbp-swf reviewer, which is read-only. Run a separate `codex exec`
-   with `docs/agents/reviewers/bbp-swf-expert-codex.md` filled in for your branch, as
-   `docs/codex-review-dispatch.md` in Expert-Agents describes, or hand the branch to
-   the dispatcher if you cannot. Fix every blocking finding with a test, or answer it
-   with a trace that shows it is wrong. Record design questions for the PR. Repeat
-   until it returns **no blocking findings**, for at most three rounds; then stop and
-   report what remains.
-7. **Open the PR.** Push your branch and open a PR against `main` with the repository's
-   PR template. Include:
+6. **Draft PR, then independent review.** The Codex reviewer pins a PR
+   (`pull/<NUMBER>/head`), so open the PR before the review:
+   - Commit and push your branch, then open a **draft** PR against `main` with the
+     repository's PR template, marked as awaiting the domain review. Do not request
+     review yet.
+   - Have the bbp-swf reviewer, which is read-only, review the draft. Run a separate
+     `codex exec` with `docs/agents/reviewers/bbp-swf-expert-codex.md` filled in with
+     `<OWNER/REPOSITORY>`, the draft's `<NUMBER>`, your `<BASE_SHA>` and the pushed
+     `<HEAD_SHA>`, as `docs/codex-review-dispatch.md` in Expert-Agents describes, or
+     hand the draft to the dispatcher if you cannot.
+   - Fix every blocking finding with a test, or answer it with a trace that shows it is
+     wrong. Record design questions for the PR. After each fix, push and re-review the
+     new head, passing the earlier findings as `<PRIOR_FINDINGS>`.
+   - Repeat until it returns **no blocking findings**, for at most three rounds. If
+     findings remain after that, leave the PR as a draft, then stop and report what
+     remains.
+7. **Ready the PR.** Update the PR body. Include:
    - the defect and its trace;
    - the test that was red on the base and is green now, with the base SHA;
    - the checks you ran;
    - the reviewer's verdict and anything left open.
 
-   Link the issue with `Fixes #N` only when the PR fully resolves it. Request review
-   from `dottiusmaximus` and stop. Drive CI to green if asked; never queue or merge.
+   Link the issue with `Fixes #N` only when the PR fully resolves it. Mark the PR ready
+   for review, request review from `dottiusmaximus` and stop. Drive CI to green if
+   asked; never queue or merge.
 
 ## Return
 
@@ -196,5 +204,5 @@ your change adds or moves against all of them.
   validation gap).
 - The checks run, with results, and the validation gaps.
 - The reviewer's findings and how each was resolved.
-- Status: **PR opened**, **committed, not pushed** (when told not to push), **blocked**
+- Status: **PR opened**, **draft PR, review unresolved**, **committed, not pushed** (when told not to push), **blocked**
   (with the question), or **not reproducible on main**.
