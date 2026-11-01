@@ -1,0 +1,22 @@
+# Source of truth for the pythrust developer. Target repos receive copies (see sync/).
+# A developer writes code; unlike experts/, it is not read-only. It pairs with the
+# read-only experts/pythrust reviewer, which reviews every diff it makes.
+# Held out: the reviewer's bench cases (PythRust PRs 47, 48 and 65) and the issues its
+# baseline filed (#70-#73), so a fix bench or trial on them stays blind.
+name = "pythrust"
+version = 1
+kind = "developer"
+reviewer = "experts/pythrust"
+source = "Written from experts/pythrust (interview, grounding) and PythRust's docs"
+
+[[prompt]]
+file = "prompt.md"
+kind = "claude-subagent"
+target_repo = "baileyrd/PythRust"
+target_path = ".claude/agents/pythrust-developer.md"
+
+[[prompt]]
+file = "codex.md"
+kind = "codex"
+target_repo = "baileyrd/PythRust"
+target_path = "docs/agents/developers/pythrust-developer-codex.md"
