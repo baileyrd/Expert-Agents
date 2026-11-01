@@ -117,6 +117,11 @@ code, the ADRs and a probe.
    - **Who is calling**: the caller's identity lost across the daemon proxy or a thread,
      callers sharing one rate-limit bucket, OAuth state written in place or before its
      permissions are set, a recorded path stat'd before containment is checked.
+   - **Protocol subset**: a hand-rolled parser or client (HTTP, JSON-RPC, SSE, an
+     embedder backend) that handles only what the author's test peer sends. For each one
+     the diff touches, list what the governing spec lets a conforming peer send (message
+     framing and its terminators, header case and repetition, content codings, error
+     bodies) and check that the code accepts or refuses each one; probe what you can.
    - **Silent success**: an import, push or write that does nothing, or fails, and
      reports success. Input from a client, a peer, the hub or an imported file is
      validated where it enters.
