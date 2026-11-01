@@ -1,0 +1,47 @@
+# Grade 1048-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/1048-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Ball sleep thresholds applied to cars without evidence; wob_0_500 car regresses, bound raised"
+triage = "real"
+reason = "executed: head copy with cars on the old 20/0.5/0.5 sleep thresholds (ball unchanged): wob_0_500 car 7.19/33.39 -> 4.15/27.79, every ball number unchanged, demo_4 car 2.84/5.06 -> 2.93/6.12; cars share the ball constants (world.rs:1528-1530) and the wob_0_500 car bound rose to (9.0, 41.7). Main: body.rs:105-109, world.rs:1532-1534, wob_0_500 car 7.40/33.88 under the same bound. Still on main; same root cause as #1312 (cars sleep on unmeasured ball thresholds), new evidence (wob_0_500 regression absorbed by the raised bound)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Linear bracket (40.0, 68.5] ignores the 2 s dwell and the joint linear/angular condition"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "rest_40 residual blamed on decay; real cause is first-tick spin-up"
+triage = "real"
+reason = "executed: head probe (compare_scenario_recorded, RB_FORCE_ALIGN=0,0): port ball 40.000 -> 40.231 uu/s on tick 1 (game 39.981), first under 40 at tick 33, zeroed at tick 273 vs game 242; spin set for 91.25 (gen_probes.py) on the 93.15 ball (body.rs:112), so decay rate is not the cause. Main's FR-161 (f2bb268a9) removed the residual (0.29/0.36) but the decay explanation is still at RB-PHYSICS-001:2213-2215, golden_captures.rs:177-178 and the 2026-10-25 fragment. Still on main; duplicates #1313"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Quoted errors are tape-mode numbers, not the recorded-input gate"
+triage = "real"
+reason = "executed: golden harness at head: rest_20 ball max 1.441 (docs 1.6), fast_6500 mean 5.680 (5.4), max 56.84 (55); bounds 1.8/7.1/71.1 = measured x1.25; rb-verify --against without --recorded-inputs gives 1.6/5.4/55.2 (tape mode). Text unchanged at changes/2026-10-25-rl-ball-sleep-calibration.md:8,11 and RB-PHYSICS-001:2213,4009. Still on main; duplicates #1313"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Edited doc comments put the end-of-tick cap before the move"
+triage = "real"
+reason = "traced: world.rs:1213 (step doc) and :272-274 (clamp_ball_velocity doc) say the end cap runs before sleep evaluation and transform integration, but clamp_ball_velocity (:1537) runs after integrate_transform_and_refresh_inertia (:1532), and it is now called twice per step (:1284, :1537). Same at main world.rs:1218, :277. Still on main; duplicates #1313"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Parity doc contradicts itself on the ball cap"
+triage = "real"
+reason = "traced: PHYSICS-PARITY-VS-ROCKETSIM.md:91 still says the 6000 uu/s ball cap is untested (captures reach 3,541) while the PR-edited :78 says the fast_* batch settled it; same lines on main. Still on main; duplicates #1313"

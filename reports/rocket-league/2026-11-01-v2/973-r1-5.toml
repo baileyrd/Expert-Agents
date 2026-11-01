@@ -1,0 +1,19 @@
+# Grade 973-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/973-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "probe_ball_rest cannot bring the ball to rest; 339.9 uu/s at the last frame"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Fragment says the rolling threshold is unmeasured; repo records a game measurement"
+triage = "fixed_since"
+reason = "executed: head changes/2026-10-24-rl-ball-cap-and-rest-probes.md:7 says neither the cap nor the rolling and sleep thresholds have been measured, while rusty_bullet/docs/research/PHYSICS-PARITY-VS-ROCKETSIM.md:71,90 records the game rolling transition at 547.4-547.5 uu/s from probe_ball_roll; fixed on main (f7f3a591c rewrites the fragment to claim only the cap and rest thresholds unmeasured, gen_probes.py:158 drops rolling; checked at 8f27bb992); not among #1309-#1313"
