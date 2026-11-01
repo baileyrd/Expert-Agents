@@ -1,0 +1,26 @@
+# Grade 932-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/932-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "An action composed before the grant was seen still acts in that turn (pipelined post behind wait)"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A session server outlives its client by up to the wait timeout (600 s)"
+triage = "real"
+reason = "executed at head: probe closes stdin 0.3 s into an 8 s wait the planner cannot satisfy; bbp mcp exited 7.7 s later; on main the wait loop (mcp.rs:574-598) and serve_on (mcp.rs:803-834) are unchanged and never poll stdin - still on main"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "No tests for the 600 s timeout cap, non-integer timeout fallback, or a session principal with no role"
+triage = "real"
+reason = "traced tests/mcp_e2e.rs at head: only timeout_s 5/1/60 and no role-less session; on main mcp_e2e.rs uses timeout_s 5/1/60/5 only and no such tests exist - still on main"

@@ -1,0 +1,19 @@
+# Grade 932-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/932-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A call sent before the grant acts in the granted turn"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Changed behaviour without tests: launcher refusal of a session binding; session replay after the turn ends"
+triage = "real"
+reason = "traced at head: launchers.rs:206-209 refusal has no test in launchers/tests.rs or tests/provider_launchers.rs, and mcp_e2e.rs:590-676 never replays an op in a session; on main the session-replay half is covered (mcp_e2e.rs:673-680 'R15 replay') but the launcher refusal (launchers.rs:249) is still untested - still on main in part"

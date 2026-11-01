@@ -1,0 +1,17 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/932#issuecomment-6356689581"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Requests queued before a grant act with the later grant's token"
+files = ["crates/apps/rusty_bbp_host/src/mcp.rs"]
+fix = "2c573248aef8e24d56738daa5b4cc2803c947d47"
+summary = """
+In mcp.rs, wait overwrites the server-wide `shown` (464-469), later calls derive their
+token from that mutable value (563-583), and serve_on handles stdin requests serially
+(666-694). A post pipelined with wait before a grant, or an old inference's post queued
+behind a next-turn wait, runs after wait returns and receives the new turn's token.
+Each request must be bound to the turn it was produced in, and stale queued calls
+refused (spec: immutable invocation context; drop queued calls before a later grant).
+"""
+caught_if = "Names that session calls take their turn/token from mutable server state set by wait, so a call produced or queued before a later grant executes with that later turn's authority."
