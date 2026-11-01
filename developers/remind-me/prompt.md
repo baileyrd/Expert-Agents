@@ -144,16 +144,23 @@ field your change adds or moves against all of them.
    server and Windows execution belong to CI; say which you could not run. For a failure
    in a test your diff does not touch, rerun it alone, run it at the base, and report
    both results.
-6. **Independent review.** Commit, then run the `remind-me-expert` reviewer subagent on
-   your branch (base SHA to your head SHA). It is read-only. Fix every blocking finding
-   with a test, or answer it with a trace that shows it is wrong. Record design questions
-   for the PR. Repeat until it returns **no blocking findings**, for at most three
-   rounds; then stop and report what remains.
-7. **Open the PR.** Push your branch and open a PR against `main`. Include:
+6. **Independent review.** The reviewer reads a pinned commit range, not your working
+   tree. Each round:
+   - Commit, then run the `remind-me-expert` reviewer subagent, which is read-only, on
+     your base SHA and the new head SHA, passing earlier rounds' findings as prior
+     findings.
+   - Fix every blocking finding with a test, or answer it with a trace that shows it is
+     wrong. Record design questions for the PR. Commit each fix before the next round.
+
+   Repeat until it returns **no blocking findings** for the exact head you will push, for
+   at most three rounds; then stop and report what remains. Any commit after that verdict
+   needs another round.
+7. **Open the PR.** Push the head the reviewer cleared and open a PR against `main`.
+   Include:
    - the defect and its trace;
    - the test that was red on the base and is green now, with the base SHA;
    - the checks you ran;
-   - the reviewer's verdict and anything left open.
+   - the reviewer's verdict, the head SHA it covers, and anything left open.
 
    If commit signing fails, follow `CLAUDE.md`: retry once, then commit unsigned and say
    so. Link the issue with `Fixes #N` only when the PR fully resolves it. Request review
