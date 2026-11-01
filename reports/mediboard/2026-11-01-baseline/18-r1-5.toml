@@ -1,0 +1,54 @@
+# Grade 18-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/18-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Re-import can move a review onto a different measurement"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "insulin_delivery and physical_effort aggregated the wrong way"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Rounded page text hides changes on re-import"
+match = "K5"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Oversized correction value gives 500 instead of 422"
+triage = "real"
+reason = "executed: probes/18-r1/probe_api.py on seed_health data; PATCH /api/measurement/2 with value 2**63, 10**400 or 10**30 returns 500 (8000.5 returns 200); store/review.py:45 _number accepts any int and only IntegrityError is caught; on main (same 500s)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Export read with no size, nesting or source limits"
+triage = "real"
+reason = "traced: export.py:53 opens the zip member with no size/ratio cap, root.clear() at :83 frees only direct children of <HealthData> (executed probe: one nested <Workout> with 400k children peaks 202-290 MB vs 15 MB flat), and domain/health.py:158 adds an accumulator per distinct sourceName; on main (zip size/ratio cap added in dc0be3c; nested and per-source growth remain)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Contract change has no recorded approval"
+triage = "fixed_since"
+reason = "traced: contract/api.md:3 says changes need Nano's approval and commit 27b56fe says 'Contract v2 (needs Nano's approval)', while docs/designs/apple-health-import.md records only scope answers; fixed on main (design doc records Nano's approval of contract v3, which carries the measurement contract, commit 3b9dc18)"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "README no longer matches the code"
+triage = "fixed_since"
+reason = "traced: README.md:16-20 at head says Settings 'runs extract and ingest' and has no health step, health_export path, health/ layout row or schema-upgrade note; fixed on main (cae4b96 README documents the health step, health_export, Layout row and the upgrade; db.py hint still says ingest but ingest does upgrade)"

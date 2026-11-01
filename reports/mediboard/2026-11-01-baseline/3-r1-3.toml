@@ -1,0 +1,12 @@
+# Grade 3-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/3-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "unconfirmed_count keys on the visit status instead of the item's own unreviewed status"
+match = "K1"
+quality = "caught"
