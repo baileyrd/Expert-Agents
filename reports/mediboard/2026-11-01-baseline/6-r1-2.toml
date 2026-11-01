@@ -1,0 +1,54 @@
+# Grade 6-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/6-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "New page text replaces the old text under extracted and confirmed facts"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Record text from a model reply can be stored in page_error.error"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: a result with an unexpected key named with a synthetic sentinel stores page_error.error = schema: $: missing [], unexpected [<sentinel>]; contract/README.md:39-40 and schema.sql:141 say error never holds record text; on main (same output)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Condition names from config.toml appear in an exception message"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: parse_category_map with a bad category raises conditions.<synthetic key>: unknown category (conditions.py:23), uncaught in ingest/__main__.py; on main (conditions.py still formats the key into the message)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "An oversized integer in one model reply aborts the whole ingest"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: bp sys 10**20 (and 1e20) raises OverflowError at ingest.py:129 and the run rolls back with 0 pages stored, valid page 2 included; on main (same)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Provider dedupe drops non-ASCII names and merges distinct people"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: Cyrillic and CJK names key to None, Dr. José Núñez keys to ez jos n, Dr. Kim Do and Kim, DO both key to kim; on main (providers.py unchanged)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Two-digit years produce future visit dates with no flag"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: parse_visit_date 1/5/28 and 5/21/29 with pivot 30 return a future date with no flag, while models.py:38 defines AMBIGUOUS as covering a 2-digit year near the pivot; the pivot mapping itself is documented (config.toml:21) but the flag promise is not met; on main (dates.py unchanged)"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "lab_result is untested in the review gate"
+triage = "real"
+reason = "traced: tests/test_ingest.py:125 parametrizes test_reviewed_rows_survive_reingest over visit, finding, medication_event, bp_reading only and the sole lab test drops the table, so lab_result in _CHILDREN is unexercised; on main (test_ingest.py:133 same list)"

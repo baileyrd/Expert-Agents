@@ -1,0 +1,54 @@
+# Grade 6-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/6-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Re-ingest reuses row ids for different facts"
+triage = "fixed_since"
+reason = "executed: probes/6-r1/probe.py at head: page 2 finding id 2 (knee pain) becomes id 2 (hypertension) after a re-extraction, and an unchanged rerun moves visit ids 1,2 to 3,4; fixed on main (contract v3, 2a23805, AUTOINCREMENT: the new finding gets id 3; renumbering on unchanged rerun remains)"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Page text is replaced under reviewed rows"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A config key (a condition name) is echoed into an exception"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: parse_category_map with a bad category raises conditions.<synthetic key>: unknown category (conditions.py:23), uncaught in ingest/__main__.py; on main (conditions.py still formats the key into the message)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "One hostile line aborts the whole ingest run"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: bp sys 10**20 raises OverflowError and rolls back to 0 pages, and a 100000-deep nested line raises RecursionError out of effective_lines since parse_line catches only JSONDecodeError; on main (same)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Superseded conditions and providers are never removed"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: after a re-extraction replaces a page, the old condition stays with 0 findings and the misread provider stays with 0 visits; on main (same)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Duplicate category keys are accepted silently"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: {Sleep Apnea: sleep_apnea, sleep apnea.: other} yields one entry, last wins, no error (conditions.py:24); on main (same)"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "config.toml is read twice per run"
+triage = "real"
+reason = "traced: ingest/__main__.py:23-25 loads config.toml via load_config then reopens it for [conditions], so a save between reads mixes versions; on main (__main__.py:26-28 still reads twice)"

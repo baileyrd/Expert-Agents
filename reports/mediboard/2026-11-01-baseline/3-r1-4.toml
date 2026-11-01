@@ -1,0 +1,19 @@
+# Grade 3-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/3-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "unconfirmed_count keys on the visit status instead of the item's own unreviewed status"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "No test covers formula defusing of a cell starting with +"
+triage = "real"
+reason = "executed: probes/3-r1/mut-3-r1, dropping \"+\" from _FORMULA_PREFIXES leaves the suite at 102 passed, 1 skipped; test_csv_shape_and_formula_defusing covers =, - and @ only; on main (same mutation in probes/3-r1/mut-main leaves results unchanged, 556 passed with the same 2 unrelated admin-API failures, and no test uses a leading +)"

@@ -1,0 +1,61 @@
+# Grade 18-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/18-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Review can land on a different row after a Health re-import"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Unzipped export not covered by git, PHI guard or deny list"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Contract changed without Nano's recorded approval"
+triage = "fixed_since"
+reason = "traced: contract/api.md:3 says changes need Nano's approval and commit 27b56fe says 'Contract v2 (needs Nano's approval)', while docs/designs/apple-health-import.md records only scope answers; fixed on main (design doc records Nano's approval of contract v3, which carries the measurement contract, commit 3b9dc18)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "insulin_delivery and physical_effort use the wrong aggregation"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Rounded page text hides small values and blocks re-import updates"
+match = "K5"
+quality = "caught"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Oversized whole number in a correction returns 500"
+triage = "real"
+reason = "executed: probes/18-r1/probe_api.py on seed_health data; PATCH /api/measurement/2 with value 2**63, 10**400 or 10**30 returns 500 (8000.5 returns 200); store/review.py:45 _number accepts any int and only IntegrityError is caught; on main (same 500s)"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Archive read without size/ratio caps; one large element held in memory"
+triage = "real"
+reason = "executed: probes/18-r1/probe_export.py nested/flat and probe_nested_xml.py; 400k children inside one <Workout> peak ~290 MB (zip) / 202 MB (bare xml) vs ~15 MB flat, since root.clear() frees only direct children of <HealthData> (export.py:79-83) and no size/ratio cap exists at head; on main (zip size/ratio cap added in dc0be3c, but nested-element memory still 202 MB on a bare xml)"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "README and error hint out of date"
+triage = "fixed_since"
+reason = "traced: README.md:16-20 at head says Settings 'runs extract and ingest' and has no health step, health_export path, health/ layout row or schema-upgrade note; fixed on main (cae4b96 README documents the health step, health_export, Layout row and the upgrade; db.py hint still says ingest but ingest does upgrade)"

@@ -1,0 +1,39 @@
+review = "https://github.com/baileyrd/MediBoard/pull/5#pullrequestreview-5645473425"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Model-written JSON keys reach schema errors and runner logs"
+files = ["src/paper_work/extract/validate.py", "src/paper_work/extract/runner.py"]
+fix = "20ab8b2d85e5d0778d777e14445a000bff24bc54"
+summary = """
+extract/validate.py:30-31, runner.py:76. Unexpected keys in the model's JSON are copied
+into the schema exception and the runner's warning. A key can carry record text, so PHI
+lands in logs and the jsonl error records.
+"""
+caught_if = "Names model-controlled keys or values copied into validation errors, warnings or logs, leaking record text."
+
+[[finding]]
+id = "K2"
+severity = "P1"
+title = "Multiline CONDITIONS MENTIONED summary is only stripped to the first newline"
+files = ["src/paper_work/extract/page.py"]
+fix = "20ab8b2d85e5d0778d777e14445a000bff24bc54"
+summary = """
+extract/page.py:15-17. The MULTILINE regex that removes the summary field stops at the
+first newline, so the listed conditions on later lines stay in the model input and can
+pass quote grounding as if the page documented them.
+"""
+caught_if = "Names the CONDITIONS MENTIONED (summary/decoy) strip leaving continuation lines in the model input."
+
+[[finding]]
+id = "K3"
+severity = "P2"
+title = "Whitespace-only quote passes grounding"
+files = ["src/paper_work/extract/validate.py"]
+fix = "20ab8b2d85e5d0778d777e14445a000bff24bc54"
+summary = """
+extract/validate.py:42-47. Normalizing a whitespace-only quote yields the empty string,
+which is a substring of every page, so an ungrounded finding validates.
+"""
+caught_if = "Names an empty or whitespace-only quote matching any source page in the grounding check."

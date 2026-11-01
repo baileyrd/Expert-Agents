@@ -1,0 +1,7 @@
+expert = "mediboard"
+repo = "baileyrd/MediBoard"
+pr = 5
+title = "T1: extraction pipeline (prompt v2, client, validator, resumable runner, eval)"
+round = 1
+base = "866e4bd0c4cb65227c0da2e675ff931e6b6371d0"
+head = "0dd1eced4b32e416430e5cbbac5163f085c22ef7"

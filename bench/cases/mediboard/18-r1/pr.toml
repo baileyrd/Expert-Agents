@@ -1,0 +1,7 @@
+expert = "mediboard"
+repo = "baileyrd/MediBoard"
+pr = 18
+title = "Apple Health import: export.zip to daily measurements (contract v2)"
+round = 1
+base = "0fa26d7cd4b7f3b6459eb7a578528af73d764145"
+head = "27b56fe16d4cb560841e972e68ca3b4f798181e0"

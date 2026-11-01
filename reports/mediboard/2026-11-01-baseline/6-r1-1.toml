@@ -1,0 +1,47 @@
+# Grade 6-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/6-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A reviewed fact stays cited to a page whose text has been replaced"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Re-ingest renumbers rows and can reuse an old id for a different fact"
+triage = "fixed_since"
+reason = "executed: probes/6-r1/probe.py at head: page 2 finding id 2 (knee pain) becomes id 2 (hypertension) after a re-extraction, and an unchanged rerun moves visit ids 1,2 to 3,4; fixed on main (contract v3, 2a23805, AUTOINCREMENT: the new finding gets id 3; renumbering on unchanged rerun remains)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Text from the model reaches page_error.error"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: a result with an unexpected key named with a synthetic sentinel stores page_error.error = schema: $: missing [], unexpected [<sentinel>]; contract/README.md:39-40 and schema.sql:141 say error never holds record text; on main (same output)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "One oversized integer aborts the whole ingest"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: bp sys 10**20 (and 1e20) raises OverflowError at ingest.py:129 and the run rolls back with 0 pages stored, valid page 2 included; on main (same)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "A surname that matches a title is dropped and the visit loses its provider"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: provider_key(\"Dr. Do\") is None and the visit stores provider_id NULL (visit has no raw provider column); \"Dr. Kim Do\" and \"Dr. Kim, MD\" both key to kim; on main (providers.py unchanged)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Rows from superseded extractions stay"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: after a re-extraction replaces a page, the old condition stays with 0 findings and the misread provider stays with 0 visits; on main (same)"

@@ -1,0 +1,7 @@
+expert = "mediboard"
+repo = "baileyrd/MediBoard"
+pr = 6
+title = "T2: normalize and ingest extractions into SQLite"
+round = 1
+base = "866e4bd0c4cb65227c0da2e675ff931e6b6371d0"
+head = "5fc60c1cb4245172941758ef75880c20d87ca868"

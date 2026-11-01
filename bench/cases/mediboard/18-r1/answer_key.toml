@@ -1,0 +1,76 @@
+# Post-merge source review; fixes landed through PR #20.
+review = "https://github.com/baileyrd/MediBoard/pull/18#issuecomment-6422558543"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Re-import reuses integer ids, so a stale review lands on a different measurement"
+files = ["src/paper_work/health/ingest.py"]
+fix = "2a238050ec4112bd52d4f97341b1bc1d6d0bcc70"
+summary = """
+health/ingest.py:60-62. A changed unreviewed day is deleted and reinserted, and SQLite
+reuses the freed integer ids. Synthetic day: heart_rate id 1, steps id 2; a re-import that
+adds body_mass (sorted first) gives it id 1, and a tab opened before the import PATCHes
+measurement/1 onto body_mass. The server-instance guard does not change during an import.
+"""
+caught_if = "Names delete-and-reinsert (or id reuse) on re-import letting a review from an earlier page load apply to a different row."
+
+[[finding]]
+id = "K2"
+severity = "P1"
+title = "Bare export.xml is not covered by the PHI guard or .gitignore"
+files = [".gitignore", "scripts/phi_guard.py", "src/paper_work/health/export.py"]
+fix = "d869fa9ff3c0c56a797af6298e5d14424d95700e"
+summary = """
+health/export.py:48-51 accepts a bare XML export, but .gitignore and phi_guard only
+protect the zip. A root export.xml, or a localized name, can be committed.
+"""
+caught_if = "Names a supported raw Health export format (XML) that .gitignore/phi_guard do not block."
+
+[[finding]]
+id = "K3"
+severity = "P2"
+title = "physical_effort and insulin_delivery aggregation reversed"
+files = ["src/paper_work/domain/health.py"]
+fix = "d869fa9ff3c0c56a797af6298e5d14424d95700e"
+summary = """
+domain/health.py:21-27,66-68 sums physical_effort as cumulative and averages
+insulin_delivery as discrete. HealthKit defines the reverse.
+"""
+caught_if = "Names physical_effort or insulin_delivery aggregated with the wrong kind (sum vs mean) against HealthKit."
+
+[[finding]]
+id = "K4"
+severity = "P2"
+title = "Workout minutes count paused time"
+files = ["src/paper_work/health/export.py"]
+fix = "d869fa9ff3c0c56a797af6298e5d14424d95700e"
+summary = """
+health/export.py:140-147 ignores duration/durationUnit and uses end - start, so a
+paused workout inflates exercise minutes.
+"""
+caught_if = "Names workout duration taken from start/end instead of the exported duration and unit."
+
+[[finding]]
+id = "K5"
+severity = "P2"
+title = "Change detection compares rounded text"
+files = ["src/paper_work/health/ingest.py", "src/paper_work/domain/health.py"]
+fix = "d869fa9ff3c0c56a797af6298e5d14424d95700e"
+summary = """
+health/ingest.py:51-54 compares day.text(), and domain/health.py:120-126 rounds values
+to 2 decimals, so 0.971 -> 0.974 is treated as unchanged and the new value is dropped.
+"""
+caught_if = "Names re-import change detection on rounded display text missing a real value change."
+
+[[finding]]
+id = "K6"
+severity = "P2"
+title = "BP readings truncated to HH:MM before dedup"
+files = ["src/paper_work/health/export.py", "src/paper_work/domain/health.py"]
+fix = "d869fa9ff3c0c56a797af6298e5d14424d95700e"
+summary = """
+health/export.py:137 reduces the timestamp to HH:MM before dedup at domain/health.py:166,
+merging distinct equal readings in the same minute and dropping the UTC offset.
+"""
+caught_if = "Names blood pressure timestamps truncated (minute or offset) so distinct readings merge or lose identity."

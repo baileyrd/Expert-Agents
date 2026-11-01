@@ -1,0 +1,7 @@
+expert = "mediboard"
+repo = "baileyrd/MediBoard"
+pr = 3
+title = "T6: claim view, treatment gaps, CSV export"
+round = 1
+base = "866e4bd0c4cb65227c0da2e675ff931e6b6371d0"
+head = "b9dcf05dc4eecaca7db8987355b44186f5128388"
