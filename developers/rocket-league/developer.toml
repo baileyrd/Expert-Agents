@@ -1,0 +1,27 @@
+# Source of truth for the rocket-league developer. Target repos receive copies (see sync/).
+# A developer writes code; unlike experts/, it is not read-only. It pairs with the
+# read-only experts/rocket-league reviewer, which reviews every diff it makes.
+# Held out: the reviewer's bench cases (rusty_mill PRs 1048, 973, 999 and 666, their
+# heads, fixes and 666's round-2 commit). None is cited, so a fix bench or trial on them
+# stays blind. Three invariants share classes with their keys through earlier, unrelated
+# fixes ("bytes bounded" ~ 999 K1 and 666 K3, "framing" ~ 666 K4, "claims follow the
+# evidence" ~ 1048 K1). "Claims follow the evidence ... measured from the harness" also
+# restates rusty_mill #1313, so a trial on #1309-#1313 tests rule-following for that one,
+# not finding new bugs; the other four are not encoded as rules.
+name = "rocket-league"
+version = 1
+kind = "developer"
+reviewer = "experts/rocket-league"
+source = "Written from experts/rocket-league (interview, grounding) and its 2026-10-31 baseline"
+
+[[prompt]]
+file = "prompt.md"
+kind = "claude-subagent"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = ".claude/agents/rocket-league-developer.md"
+
+[[prompt]]
+file = "codex.md"
+kind = "codex"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = "docs/agents/developers/rocket-league-developer-codex.md"
