@@ -1,8 +1,11 @@
 # Source of truth for the pythrust developer. Target repos receive copies (see sync/).
 # A developer writes code; unlike experts/, it is not read-only. It pairs with the
 # read-only experts/pythrust reviewer, which reviews every diff it makes.
-# Held out: the reviewer's bench cases (PythRust PRs 47, 48 and 65) and the issues its
-# baseline filed (#70-#73), so a fix bench or trial on them stays blind.
+# Excluded from the prompt: the exact cases and fixes of the reviewer's bench (PythRust
+# PRs 47, 48 and 65) and of the issues its baseline filed (#70-#73). The prompt still
+# names the defect classes they belong to, so a fix bench or trial on them measures
+# applying a disclosed class, not blind discovery, unless shown otherwise. Any score
+# published from them carries this caveat.
 name = "pythrust"
 version = 1
 kind = "developer"
