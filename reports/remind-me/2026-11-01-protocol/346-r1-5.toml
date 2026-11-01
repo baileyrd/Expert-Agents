@@ -1,0 +1,5 @@
+# Grade 346-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/346-r1"
+variant = "baseline"
+prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
+run = 5
