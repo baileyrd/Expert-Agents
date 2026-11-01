@@ -1,0 +1,24 @@
+# Source of truth for the mux developer. Target repos receive copies (see sync/).
+# A developer writes code; unlike experts/, it is not read-only. It pairs with the
+# read-only experts/mux reviewer, which reviews every diff it makes.
+# Held out: the reviewer's bench case (rusty_mill PR 1251, head 55d4bbf92 and fix
+# 70559a857). Neither is cited, so a fix bench or trial on it stays blind. Its two keys
+# share classes (lost reply, lease kept when unused) with invariants grounded in later,
+# unrelated fixes; see the PR that added this file.
+name = "mux"
+version = 1
+kind = "developer"
+reviewer = "experts/mux"
+source = "Written from experts/mux and rusty_mux's review-fix commits on main up to 7d27acc40"
+
+[[prompt]]
+file = "prompt.md"
+kind = "claude-subagent"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = ".claude/agents/mux-developer.md"
+
+[[prompt]]
+file = "codex.md"
+kind = "codex"
+target_repo = "Rusty-Mill/rusty_mill"
+target_path = "docs/agents/developers/mux-developer-codex.md"
