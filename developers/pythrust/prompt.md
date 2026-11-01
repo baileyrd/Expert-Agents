@@ -150,8 +150,10 @@ summary, lowering and runtime call your change adds or moves against all of them
    - Fix every blocking finding with a test, or answer it with a trace that shows it is
      wrong.
    - Record design questions for the PR and do not settle them yourself.
-   - Repeat until it returns **no blocking findings**, for at most three rounds. Then
-     stop and report what remains.
+   - Commit each round's fixes and rerun the checks, then review again with the new
+     head SHA and the earlier findings, so every round reviews committed code.
+   - Repeat until it returns **no blocking findings** on the head you will push, for at
+     most three rounds. Then stop and report what remains.
 7. **Open the PR.** Push your branch and open a PR against `main`. Include:
    - the defect and its program;
    - the test that was red on the base and is green now, with the base SHA;
