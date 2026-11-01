@@ -1,6 +1,6 @@
 """Grade a developer's fix-bench runs by executing tests. Runs git and cargo.
 
-For each stored run, in a scratch worktree of the target clone at the case's base:
+For each stored run, each step in a fresh export of the case's base (no `.git`):
 
 - **fixed**: the run's changed files applied, then the held-back test files from the
   real fix on top; the case's test command passes.
@@ -14,8 +14,14 @@ A run is **solved** when it is fixed and suite_green. Eval-Kit's trace keeps the
 each file the run added or changed (not deletions, not files over 200 kB); a file it
 could not keep makes the run unreconstructable and it is reported as such.
 
-Every cargo command runs inside the sandbox in `bench.fix.sandbox`: a run's files are
-model output, and its build scripts and tests are code.
+A run's files are model output, and its build scripts and tests are code, so:
+
+- dependencies are fetched on the host only from the unmodified export, before any run
+  file is written; cargo never runs on the host after that;
+- run files are written only to plain relative paths, never through a symlink;
+- every test command runs in the sandbox in `bench.fix.sandbox`, and each step gets a
+  fresh tree and is deleted after, so nothing on the host reads or writes a tree the
+  model's code has run in. Each step gets its own target dir.
 """
 
 from __future__ import annotations
@@ -71,26 +77,21 @@ def grade_run(case: FixCase, run: int, key: str, files: list, clone: Path, work:
     g = Grade(case.id, run, key)
     kept, lost = source_files(files)
     g.changed = sorted(kept)
-    if lost:
-        g.note = f"unreconstructable: {', '.join(lost)}"
+    bad = [p for p in kept if not safe_path(p)]
+    if lost or bad:
+        g.note = f"unreconstructable: {', '.join(lost)}" if lost else f"rejected paths: {bad}"
         return g
     if not kept:
         g.note = "no source changes"
         g.fixed = g.suite_green = False
         return g
-    tree = work / f"{case.id.split('/')[1]}-{run}"
-    target = _target(work, case)
-    with _worktree(clone, case.base, tree):
-        tests = own_tests(kept)
-        if tests:
-            _write(tree, tests)
-            g.red_at_base = not _ok(suite, tree, target, timeout)
-            _git(tree, "checkout", "-q", "--", ".")
-            _git(tree, "clean", "-qfd")
-        _write(tree, kept)
-        g.suite_green = _ok(suite, tree, target, timeout)
-        _write(tree, held_back(case, clone))
-        g.fixed = _ok(list(case.test), tree, target, timeout)
+    name = work / f"{case.id.split('/')[1]}-{run}"
+    tests = own_tests(kept)
+    if tests:
+        g.red_at_base = not _phase(clone, case.base, f"{name}-red", tests, suite, timeout)
+    g.suite_green = _phase(clone, case.base, f"{name}-suite", kept, suite, timeout)
+    g.fixed = _phase(clone, case.base, f"{name}-fixed", {**kept, **held_back(case, clone)},
+                     list(case.test), timeout)
     return g
 
 
@@ -103,57 +104,81 @@ def held_back(case: FixCase, clone: Path) -> dict[str, str]:
 
 def check_case(case: FixCase, clone: Path, work: Path, timeout: int) -> tuple[bool, bool]:
     """Is the case valid? Held-back tests fail at the base and pass at the fix."""
-    tree = work / f"check-{case.id.split('/')[1]}"
-    target = _target(work, case)
-    with _worktree(clone, case.base, tree):
-        _write(tree, held_back(case, clone))
-        red = not _ok(list(case.test), tree, target, timeout)
-        _git(tree, "checkout", "-q", case.fix, "--", ".")
-        green = _ok(list(case.test), tree, target, timeout)
+    name = work / f"check-{case.id.split('/')[1]}"
+    tests = held_back(case, clone)
+    red = not _phase(clone, case.base, f"{name}-base", tests, list(case.test), timeout)
+    green = _phase(clone, case.fix, f"{name}-fix", tests, list(case.test), timeout)
     return red, green
 
 
-def _target(work: Path, case: FixCase) -> Path:
-    target = work / f"target-{case.id.split('/')[1]}"
-    target.mkdir(parents=True, exist_ok=True)
-    return target
+def safe_path(rel: str) -> bool:
+    """A relative path inside the tree: no absolute path, `..`, empty part or `.git`."""
+    parts = rel.split("/")
+    return bool(rel) and not rel.startswith("/") and "\\" not in rel and all(
+        p not in ("", ".", "..", ".git") for p in parts)
 
 
-class _worktree:
-    def __init__(self, clone: Path, sha: str, path: Path):
-        self.clone, self.sha, self.path = clone, sha, path
+def _phase(clone: Path, sha: str, name: str, files: dict[str, str], argv: list[str],
+           timeout: int) -> bool:
+    """One grading step in a fresh tree and target dir: export `sha`, fetch its
+    dependencies on the host (trusted inputs only, before any model file lands), write
+    `files`, run `argv` in the sandbox, delete both. Nothing on the host touches the tree
+    after the sandbox ran, and no build output carries over between steps or runs."""
+    tree, target = Path(name), Path(f"{name}-target")
+    _export(clone, sha, tree)
+    shutil.rmtree(target, ignore_errors=True)
+    target.mkdir(parents=True)
+    try:
+        _fetch(tree, target, timeout)
+        _write(tree, files)
+        return _sandboxed(argv, tree, target, timeout)
+    finally:
+        shutil.rmtree(tree, ignore_errors=True)
+        shutil.rmtree(target, ignore_errors=True)
 
-    def __enter__(self) -> Path:
-        if self.path.exists():
-            self._remove()
-        _git(self.clone, "worktree", "add", "-q", "--detach", str(self.path), self.sha)
-        return self.path
 
-    def __exit__(self, *exc: object) -> None:
-        self._remove()
-
-    def _remove(self) -> None:
-        subprocess.run(["git", "worktree", "remove", "--force", str(self.path)], cwd=self.clone,
-                       capture_output=True, check=False)
-        shutil.rmtree(self.path, ignore_errors=True)
+def _export(clone: Path, sha: str, tree: Path) -> None:
+    """A plain copy of `sha` (no `.git`), so no host git ever runs in a graded tree."""
+    shutil.rmtree(tree, ignore_errors=True)
+    tree.mkdir(parents=True)
+    archive = subprocess.Popen(["git", "archive", sha], cwd=clone, stdout=subprocess.PIPE)
+    untar = subprocess.run(["tar", "-x", "-m", "-C", str(tree)], stdin=archive.stdout,
+                           capture_output=True, check=False)
+    if archive.stdout:
+        archive.stdout.close()
+    if archive.wait() != 0 or untar.returncode != 0:
+        raise ValueError(f"exporting {sha[:12]} failed: {untar.stderr.decode().strip()}")
 
 
 def _write(tree: Path, files: dict[str, str]) -> None:
+    """Write `files` under `tree`, refusing unsafe paths and any symlink on the way."""
+    root = tree.resolve()
     for rel, text in files.items():
-        target = tree / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text, encoding="utf-8")
+        if not safe_path(rel):
+            raise ValueError(f"refusing to write {rel!r}: not a plain relative path")
+        here = root
+        for part in rel.split("/")[:-1]:
+            here = here / part
+            if here.is_symlink():
+                raise ValueError(f"refusing to write {rel!r}: {here} is a symlink")
+            here.mkdir(exist_ok=True)
+        fd = os.open(root / rel, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
 
 
-def _ok(argv: list[str], tree: Path, target: Path, timeout: int) -> bool:
-    """Fetch dependencies on the host (no code runs), then run `argv` in the sandbox."""
+def _fetch(tree: Path, target: Path, timeout: int) -> None:
+    """Download the dependencies of an unmodified export: trusted manifests, no model file."""
+    subprocess.run(["cargo", "fetch"], cwd=tree,
+                   env={**os.environ, "CARGO_TARGET_DIR": str(target)},
+                   capture_output=True, timeout=timeout, check=False)
+
+
+def _sandboxed(argv: list[str], tree: Path, target: Path, timeout: int) -> bool:
     bwrap = sandbox.bwrap()
     cargo_home, rustup_home = sandbox.toolchain()
-    host = {**os.environ, "CARGO_TARGET_DIR": str(target)}
+    wrapped = sandbox.wrap(argv, tree, target, cargo_home, rustup_home, bwrap)
     try:
-        subprocess.run(["cargo", "fetch"], cwd=tree, env=host, capture_output=True,
-                       timeout=timeout, check=False)
-        wrapped = sandbox.wrap(argv, tree, target, cargo_home, rustup_home, bwrap)
         return subprocess.run(wrapped, cwd=tree, capture_output=True, timeout=timeout,
                               check=False).returncode == 0
     except subprocess.TimeoutExpired:

@@ -1,5 +1,6 @@
 import io
 import json
+import shutil
 import subprocess
 import tempfile
 import tomllib
@@ -146,6 +147,79 @@ class SandboxTest(unittest.TestCase):
         with unittest.mock.patch("shutil.which", return_value=None):
             with self.assertRaises(ValueError):
                 sandbox.bwrap()
+
+
+class HostSafetyTest(unittest.TestCase):
+    """Grading's host-side steps never follow model-made paths or run model config."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.outside = self.root / "outside"
+        self.outside.mkdir()
+        self.sentinel = self.outside / "t.rs"
+        self.sentinel.write_text("SENTINEL")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_safe_path_rejects_absolute_traversing_and_git_paths(self):
+        for bad in ("/etc/passwd", "../x.rs", "a/../../x.rs", "a//b.rs", ".git/config",
+                    "a/.git/hooks/pre-commit", "", "./a.rs", "a\\b.rs"):
+            self.assertFalse(grade.safe_path(bad), bad)
+        self.assertTrue(grade.safe_path("crates/x/tests/t.rs"))
+
+    def test_write_refuses_a_symlinked_directory_or_file(self):
+        tree = self.root / "tree"
+        (tree / "crates").mkdir(parents=True)
+        (tree / "crates" / "x").symlink_to(self.outside)  # as code in the sandbox could
+        with self.assertRaises(ValueError):
+            grade._write(tree, {"crates/x/t.rs": "pwned"})
+        (tree / "f.rs").symlink_to(self.sentinel)
+        with self.assertRaises(OSError):
+            grade._write(tree, {"f.rs": "pwned"})
+        with self.assertRaises(ValueError):
+            grade._write(tree, {"../outside/t.rs": "pwned"})
+        self.assertEqual(self.sentinel.read_text(), "SENTINEL")
+
+    def test_each_phase_is_a_fresh_tree_fetched_before_any_run_file(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        base = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=base, fix=base, seed="seed.patch",
+                                  held_back=["crates/x/tests/t.rs"]), "PATCH",
+                       {"crates/x/tests/t.rs": "held back"})
+        events = []
+
+        def fetch(tree, target, timeout):
+            events.append(("fetch", (tree / "crates/x/src/lib.rs").read_text()))
+
+        def run(argv, tree, target, timeout):
+            events.append(("run", sorted(str(p.relative_to(tree)) for p in tree.rglob("*.rs"))))
+            # hostile code: leave the held-back path pointing outside the tree
+            shutil.rmtree(tree / "crates/x/tests", ignore_errors=True)
+            (tree / "crates/x/tests").symlink_to(self.outside)
+            return True
+
+        files = [("crates/x/src/lib.rs", "fn fixed() {}\n"), ("crates/x/tests/mine.rs", "t")]
+        with unittest.mock.patch.object(grade, "_fetch", fetch), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            g = grade.grade_run(c, 1, "k", files, repo, self.root / "work", ["cargo"], 10)
+        self.assertEqual([e[0] for e in events], ["fetch", "run"] * 3)
+        for kind, content in events:
+            if kind == "fetch":
+                self.assertEqual(content, "fn ok() {}\n")  # the export, before run files
+        self.assertIn("crates/x/tests/t.rs", events[-1][1])  # held back written last phase
+        self.assertTrue(g.fixed)
+        self.assertEqual(self.sentinel.read_text(), "SENTINEL")
+        self.assertEqual(sorted(p.name for p in (self.root / "work").iterdir()), [])
+
+    def test_unsafe_run_paths_are_rejected_before_anything_runs(self):
+        c = parse_case("s/c", raw())
+        g = grade.grade_run(c, 1, "k", [("../../x.rs", "x")], self.root, self.root / "w",
+                            ["cargo"], 10)
+        self.assertIn("rejected", g.note)
+        self.assertFalse(g.solved)
 
 
 class SeedTest(unittest.TestCase):

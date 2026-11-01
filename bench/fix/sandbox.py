@@ -10,9 +10,11 @@ runs in a bubblewrap sandbox with:
   target dir writable, a private /tmp, cargo's credential files masked. Nothing else of
   `$HOME` is mounted, so the target clone, this repo and `~/.claude` are not reachable.
 
-Dependencies are fetched first, outside the sandbox, by `cargo fetch` (it downloads and
-runs nothing), and the sandboxed command runs `--offline`. Grading fails closed: with no
-bubblewrap on PATH it refuses to run.
+Dependencies are fetched on the host only from an unmodified export of a trusted commit,
+before any run file is written (`bench.fix.grade._phase`), since a model-written manifest
+or `.cargo/config.toml` could make cargo run a program. The sandboxed command runs
+offline, so a run that needs dependencies the base does not fetch fails to build. Grading
+fails closed: with no bubblewrap on PATH it refuses to run.
 """
 
 from __future__ import annotations

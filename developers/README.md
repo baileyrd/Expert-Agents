@@ -47,11 +47,15 @@ and `bench/fix/`. A case set names one developer; every command takes the set.
   - **red at base**: the run's own test files (under `tests/`) fail at the base; `null`
     when its tests live in `#[cfg(test)]` modules;
   - **solved** = fixed and suite green.
-  Grading runs the model's code (build scripts, tests), so every cargo command runs in
+  Grading runs the model's code (build scripts, tests), so every test command runs in
   bubblewrap (`bench/fix/sandbox.py`): no network, an empty environment, only the
-  scratch tree, its target dir, the toolchain and the system dirs mounted. Dependencies
-  are fetched beforehand by `cargo fetch`, which runs nothing. Without `bwrap` grading
-  refuses to run. Only the current suite's runs are graded: each is taken by Eval-Kit's
+  scratch tree, its target dir, the toolchain and the system dirs mounted. Each step gets
+  a fresh export of the commit (no `.git`), deleted after it runs, with its own fresh
+  target dir. On the host, dependencies are fetched only from that unmodified export
+  before any run file lands, and run files are written only to plain relative paths,
+  never through a symlink; nothing on the host touches a tree after model code ran in
+  it. A run needing dependencies the base does not have fails to build offline. Without
+  `bwrap` grading refuses to run. Only the current suite's runs are graded: each is taken by Eval-Kit's
   content key (prompt, model, settings, case, sample), every one must be present, and the
   grades file records the set, variant, model and prompt-spec hash.
   Secondary, by hand: diff size against the real fix, and reviewer findings on the diff.
