@@ -20,6 +20,7 @@ Then run it like the reviewer bench (bench/README.md):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -27,7 +28,10 @@ import tomllib
 from dataclasses import asdict
 from pathlib import Path
 
+from bench import extract as ex
+from bench.__main__ import suite_jobs
 from bench.fix import grade as gr
+from bench.fix import sandbox
 from bench.fix import seed as sd
 from bench.fix.model import FixCase, parse_case, prompt_toml, suite_toml
 
@@ -35,7 +39,11 @@ ROOT = Path(__file__).resolve().parents[2]
 DEVELOPERS = ROOT / "developers"
 CASES = ROOT / "bench" / "fixcases"
 SUITES = ROOT / "bench" / "suites"
-CRATE = {"rusty-tokio": "rusty_tokio"}
+# Each developer's suite command, run in the grading sandbox (bench/fix/sandbox.py). The
+# skipped tests need a multicast route, which the sandbox's fresh network namespace lacks;
+# they pass outside it and fail at every commit inside it.
+SUITE = {"rusty-tokio": ["cargo", "test", "-p", "rusty_tokio", "--", "--skip",
+                         "udp_multicast_v4"]}
 TEST_TIMEOUT_S = 1200
 
 
@@ -100,17 +108,28 @@ def check(args: argparse.Namespace) -> int:
 
 
 def grade(args: argparse.Namespace) -> int:
+    """Grade the current suite's runs only: each taken by its content key, all required."""
     by_id = {c.id.split("/", 1)[1]: c for c in cases(args.developer)}
-    store = SUITES / f"{args.developer}-dev" / ".evalkit" / "suite.jsonl"
+    folder = SUITES / f"{args.developer}-dev"
+    jobs = suite_jobs(folder / "suite.toml", args.variant)
+    lines = (folder / ".evalkit" / "suite.jsonl").read_text().splitlines()
+    records = ex.current_records(lines, jobs, args.variant)
+    suite_cmd = SUITE[developer_of(list(by_id.values()))]
+    sandbox.bwrap()  # fail closed before any work
     grades = []
-    crate = CRATE[developer_of(list(by_id.values()))]
-    for (case_id, run), files in sorted(gr.store_runs(store, args.variant).items()):
-        g = gr.grade_run(by_id[case_id], run, files, args.clone.resolve(), _work(args),
-                         crate, TEST_TIMEOUT_S)
+    for job, record in records:
+        g = gr.grade_run(by_id[job.case], job.sample + 1, job.key,
+                         record["trace"].get("files") or [], args.clone.resolve(),
+                         _work(args), suite_cmd, TEST_TIMEOUT_S)
         grades.append(g)
         print(f"{g.case} run {g.run}: solved {g.solved} (fixed {g.fixed}, suite green "
               f"{g.suite_green}, own test red at base {g.red_at_base}) {g.note}".rstrip())
-    args.out.write_text(json.dumps([{**asdict(g), "solved": g.solved} for g in grades], indent=2) + "\n")
+    suite = _toml(folder / "suite.toml")
+    out = {"set": args.developer, "variant": args.variant,
+           "model": suite["variant"][args.variant]["model"],
+           "prompt_spec_sha256": _sha(folder / suite["variant"][args.variant]["subject"]),
+           "grades": [{**asdict(g), "solved": g.solved} for g in grades]}
+    args.out.write_text(json.dumps(out, indent=2) + "\n")
     return 0
 
 
@@ -155,6 +174,10 @@ def _work(args: argparse.Namespace) -> Path:
 def _domains(current: dict) -> tuple[str, ...]:
     text = current.get("settings")
     return tuple(json.loads(text)["sandbox"]["network"]["allowedDomains"]) if text else ()
+
+
+def _sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
 
 
 def _toml(path: Path) -> dict:

@@ -5,25 +5,28 @@ For each stored run, in a scratch worktree of the target clone at the case's bas
 - **fixed**: the run's changed files applied, then the held-back test files from the
   real fix on top; the case's test command passes.
 - **red_at_base**: only the run's own changed test files (under a `tests/` directory)
-  applied to the base; the case's test crate fails to pass with them. `None` when the
+  applied to the base; the developer's suite command fails with them. `None` when the
   run added no such file (its tests may live in `#[cfg(test)]` modules, which cannot be
   separated from the fix).
-- **suite_green**: with the run's changes alone, `cargo test -p <crate>` passes.
+- **suite_green**: with the run's changes alone, the developer's suite command passes.
 
 A run is **solved** when it is fixed and suite_green. Eval-Kit's trace keeps the text of
 each file the run added or changed (not deletions, not files over 200 kB); a file it
 could not keep makes the run unreconstructable and it is reported as such.
+
+Every cargo command runs inside the sandbox in `bench.fix.sandbox`: a run's files are
+model output, and its build scripts and tests are code.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from bench.fix import sandbox
 from bench.fix.model import FixCase
 
 SKIP_TOP = {"target", ".git", ".claude"}
@@ -33,6 +36,7 @@ SKIP_TOP = {"target", ".git", ".claude"}
 class Grade:
     case: str
     run: int
+    key: str = ""  # Eval-Kit's content key of the graded run (prompt, model, settings, case)
     fixed: bool | None = None
     red_at_base: bool | None = None
     suite_green: bool | None = None
@@ -62,9 +66,9 @@ def own_tests(files: dict[str, str]) -> dict[str, str]:
     return {p: t for p, t in files.items() if "/tests/" in f"/{p}"}
 
 
-def grade_run(case: FixCase, run: int, files: list, clone: Path, work: Path,
-              crate: str, timeout: int) -> Grade:
-    g = Grade(case.id, run)
+def grade_run(case: FixCase, run: int, key: str, files: list, clone: Path, work: Path,
+              suite: list[str], timeout: int) -> Grade:
+    g = Grade(case.id, run, key)
     kept, lost = source_files(files)
     g.changed = sorted(kept)
     if lost:
@@ -75,18 +79,18 @@ def grade_run(case: FixCase, run: int, files: list, clone: Path, work: Path,
         g.fixed = g.suite_green = False
         return g
     tree = work / f"{case.id.split('/')[1]}-{run}"
-    env = {**os.environ, "CARGO_TARGET_DIR": str(work / f"target-{case.id.split('/')[1]}")}
+    target = _target(work, case)
     with _worktree(clone, case.base, tree):
         tests = own_tests(kept)
         if tests:
             _write(tree, tests)
-            g.red_at_base = not _ok(["cargo", "test", "-p", crate], tree, env, timeout)
+            g.red_at_base = not _ok(suite, tree, target, timeout)
             _git(tree, "checkout", "-q", "--", ".")
             _git(tree, "clean", "-qfd")
         _write(tree, kept)
-        g.suite_green = _ok(["cargo", "test", "-p", crate], tree, env, timeout)
+        g.suite_green = _ok(suite, tree, target, timeout)
         _write(tree, held_back(case, clone))
-        g.fixed = _ok(list(case.test), tree, env, timeout)
+        g.fixed = _ok(list(case.test), tree, target, timeout)
     return g
 
 
@@ -100,26 +104,19 @@ def held_back(case: FixCase, clone: Path) -> dict[str, str]:
 def check_case(case: FixCase, clone: Path, work: Path, timeout: int) -> tuple[bool, bool]:
     """Is the case valid? Held-back tests fail at the base and pass at the fix."""
     tree = work / f"check-{case.id.split('/')[1]}"
-    env = {**os.environ, "CARGO_TARGET_DIR": str(work / f"target-{case.id.split('/')[1]}")}
+    target = _target(work, case)
     with _worktree(clone, case.base, tree):
         _write(tree, held_back(case, clone))
-        red = not _ok(list(case.test), tree, env, timeout)
+        red = not _ok(list(case.test), tree, target, timeout)
         _git(tree, "checkout", "-q", case.fix, "--", ".")
-        green = _ok(list(case.test), tree, env, timeout)
+        green = _ok(list(case.test), tree, target, timeout)
     return red, green
 
 
-def store_runs(store: Path, variant: str) -> dict[tuple[str, int], list]:
-    """Each run's changed files, latest per case and sample (Eval-Kit's last line wins)."""
-    out: dict[tuple[str, int], list] = {}
-    for line in store.read_text().splitlines():
-        if not line.strip():
-            continue
-        record = json.loads(line)
-        if record.get("kind") == "verdict" or record.get("variant") != variant:
-            continue
-        out[(record["case"], int(record["sample"]) + 1)] = record["trace"].get("files") or []
-    return out
+def _target(work: Path, case: FixCase) -> Path:
+    target = work / f"target-{case.id.split('/')[1]}"
+    target.mkdir(parents=True, exist_ok=True)
+    return target
 
 
 class _worktree:
@@ -148,10 +145,17 @@ def _write(tree: Path, files: dict[str, str]) -> None:
         target.write_text(text, encoding="utf-8")
 
 
-def _ok(argv: list[str], cwd: Path, env: dict[str, str], timeout: int) -> bool:
+def _ok(argv: list[str], tree: Path, target: Path, timeout: int) -> bool:
+    """Fetch dependencies on the host (no code runs), then run `argv` in the sandbox."""
+    bwrap = sandbox.bwrap()
+    cargo_home, rustup_home = sandbox.toolchain()
+    host = {**os.environ, "CARGO_TARGET_DIR": str(target)}
     try:
-        return subprocess.run(argv, cwd=cwd, env=env, capture_output=True,
-                              timeout=timeout, check=False).returncode == 0
+        subprocess.run(["cargo", "fetch"], cwd=tree, env=host, capture_output=True,
+                       timeout=timeout, check=False)
+        wrapped = sandbox.wrap(argv, tree, target, cargo_home, rustup_home, bwrap)
+        return subprocess.run(wrapped, cwd=tree, capture_output=True, timeout=timeout,
+                              check=False).returncode == 0
     except subprocess.TimeoutExpired:
         return False
 

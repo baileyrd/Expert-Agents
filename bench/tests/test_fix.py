@@ -4,10 +4,12 @@ import subprocess
 import tempfile
 import tomllib
 import unittest
+import unittest.mock
 from contextlib import redirect_stderr
 from pathlib import Path
 
-from bench.fix import grade, seed
+from bench import extract
+from bench.fix import grade, sandbox, seed
 from bench.fix.__main__ import CASES, cases, developer_of, main
 from bench.fix.model import parse_case, settings, suite_toml, task_input
 
@@ -68,6 +70,82 @@ class ModelTest(unittest.TestCase):
                       [parse_case("s/c", raw(developer=""))]):
             with self.assertRaises(ValueError):
                 developer_of(found)
+
+
+def _record(key, case, sample, files, variant="baseline"):
+    return json.dumps({"key": key, "variant": variant, "case": case, "sample": sample,
+                       "cli_version": "x", "trace": {"files": files, "final_text": ""}})
+
+
+class StoreTest(unittest.TestCase):
+    JOBS = (extract.Job("k-new", "c", 0),)
+
+    def test_takes_the_run_under_the_current_key_not_the_latest_line(self):
+        lines = [_record("k-new", "c", 0, [["a.rs", "new"]]),
+                 _record("k-old", "c", 0, [["a.rs", "stale"]])]  # same case and sample, later
+        [(job, record)] = extract.current_records(lines, self.JOBS, "baseline")
+        self.assertEqual(job.key, "k-new")
+        self.assertEqual(record["trace"]["files"], [["a.rs", "new"]])
+
+    def test_refuses_a_missing_run_an_empty_store_or_no_jobs(self):
+        for lines, jobs in (([_record("k-old", "c", 0, [])], self.JOBS), ([], self.JOBS),
+                            ([_record("k-new", "c", 0, [])], ())):
+            with self.assertRaises(ValueError):
+                extract.current_records(lines, jobs, "baseline")
+
+    def test_refuses_a_key_that_names_another_case(self):
+        with self.assertRaises(ValueError):
+            extract.current_records([_record("k-new", "other", 0, [])], self.JOBS, "baseline")
+
+
+class SandboxTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        self.cargo, self.rustup = root / "cargo", root / "rustup"
+        self.cargo.mkdir()
+        self.rustup.mkdir()
+        (self.cargo / "credentials.toml").write_text("token = 'secret'")
+        self.tree, self.target = root / "tree", root / "target"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def wrap(self):
+        return sandbox.wrap(["cargo", "test"], self.tree, self.target, self.cargo,
+                            self.rustup, "/usr/bin/bwrap")
+
+    def test_no_network_no_host_env_and_the_command_last(self):
+        cmd = self.wrap()
+        for flag in ("--unshare-all", "--clearenv", "--die-with-parent"):
+            self.assertIn(flag, cmd)
+        self.assertEqual(cmd[-3:], ["--", "cargo", "test"])
+        env = {cmd[i + 1]: cmd[i + 2] for i, a in enumerate(cmd) if a == "--setenv"}
+        self.assertEqual(env["CARGO_NET_OFFLINE"], "true")
+        self.assertEqual(env["HOME"], "/tmp")
+        self.assertNotIn("ANTHROPIC_API_KEY", env)
+
+    def test_mounts_only_the_tree_target_toolchain_and_system_dirs(self):
+        cmd = self.wrap()
+        writable = [cmd[i + 1] for i, a in enumerate(cmd) if a == "--bind"]
+        self.assertEqual(writable, [str(self.tree), str(self.target)])
+        mounted = {cmd[i + 2] for i, a in enumerate(cmd) if a in ("--bind", "--ro-bind",
+                                                                 "--ro-bind-try")}
+        allowed = {*sandbox.SYSTEM_DIRS, str(self.cargo), str(self.rustup), str(self.tree),
+                   str(self.target), str(self.cargo / "credentials.toml")}
+        self.assertLessEqual(mounted, allowed)
+        self.assertNotIn("/", mounted)
+        self.assertNotIn(str(Path.home()), mounted)
+
+    def test_masks_cargo_credentials(self):
+        cmd = self.wrap()
+        i = cmd.index(str(self.cargo / "credentials.toml"))
+        self.assertEqual(cmd[i - 2:i], ["--ro-bind", "/dev/null"])
+
+    def test_fails_closed_without_bubblewrap(self):
+        with unittest.mock.patch("shutil.which", return_value=None):
+            with self.assertRaises(ValueError):
+                sandbox.bwrap()
 
 
 class SeedTest(unittest.TestCase):

@@ -41,10 +41,19 @@ and `bench/fix/`. A case set names one developer; every command takes the set.
 - **Grade** (`python3 -m bench.fix grade`, executed, not judged): the run's changed files
   are applied to the base in a scratch worktree, then:
   - **fixed**: with the held-back tests on top, the case's test command passes;
-  - **suite green**: with the run's changes alone, `cargo test -p <crate>` passes;
+  - **suite green**: with the run's changes alone, the developer's suite command passes
+    (`SUITE` in `bench/fix/__main__.py`; for rusty-tokio, `cargo test -p rusty_tokio`
+    minus two multicast tests the sandbox cannot run);
   - **red at base**: the run's own test files (under `tests/`) fail at the base; `null`
     when its tests live in `#[cfg(test)]` modules;
   - **solved** = fixed and suite green.
+  Grading runs the model's code (build scripts, tests), so every cargo command runs in
+  bubblewrap (`bench/fix/sandbox.py`): no network, an empty environment, only the
+  scratch tree, its target dir, the toolchain and the system dirs mounted. Dependencies
+  are fetched beforehand by `cargo fetch`, which runs nothing. Without `bwrap` grading
+  refuses to run. Only the current suite's runs are graded: each is taken by Eval-Kit's
+  content key (prompt, model, settings, case, sample), every one must be present, and the
+  grades file records the set, variant, model and prompt-spec hash.
   Secondary, by hand: diff size against the real fix, and reviewer findings on the diff.
 - **Cases** (rusty-tokio): four fixes from the reviewer's grounding, `mpsc-cancelled-send`
   (7096ee85c), `mpsc-waker-under-lock` (23b28c0f9), `rwlock-queue` (7ba275a35) and
@@ -62,8 +71,9 @@ and `bench/fix/`. A case set names one developer; every command takes the set.
   (`held_back/<path>`); `fix` is the clean commit. `python3 -m bench.fix seed` builds each
   seeded commit in the clone: no parent, fixed author and date, so every clone gets the SHA
   the case pins as `base`, and a run's checkout has no history that shows the diff. Each
-  hidden test was checked red at the seeded commit and green at `main`; the existing
-  `rusty_tokio` suite stays green on every seed but noted in the case's `source`.
+  hidden test was checked red at the seeded commit and green at `main`. The existing
+  `rusty_tokio` suite stays green on six seeds; it hangs on `once-cell-cancel-waiters`
+  every time and on `duplex-shutdown-eof` about one run in ten (noted in each `source`).
 
 ```
 export PYTHONPATH=~/src/eval-kit EXPERT_AGENTS=$PWD TARGET=<rusty_mill clone>; unset ANTHROPIC_API_KEY
