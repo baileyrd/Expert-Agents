@@ -202,11 +202,13 @@ all of them.
      cannot, hand the draft to the dispatcher.
    - Fix every blocking finding with a test, or answer it with a trace that shows it is
      wrong. Record design questions for the PR.
-   - After each fix, push and re-review the new head, passing the earlier findings as
-     `<PRIOR_FINDINGS>`.
+   - The reviewer reads the pushed PR head, not your working tree. After each round of
+     fixes, commit and push, then re-review with the new `<HEAD_SHA>`, passing the
+     earlier findings as `<PRIOR_FINDINGS>`.
    - Repeat until it returns **no blocking findings**, for at most three rounds. If
      findings remain after that, leave the PR as a draft, then stop and report what
-     remains.
+     remains. The verdict you report must cover the PR's final head; if you push anything
+     after it, review again.
 7. **Ready the PR.** Update the PR body. Include:
    - the defect and its trace;
    - the test that was red on the base and is green now, with the base SHA;

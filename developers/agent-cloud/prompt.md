@@ -202,8 +202,11 @@ all of them.
    - Fix every blocking finding with a test, or answer it with a trace that shows it is
      wrong.
    - Record design questions for the PR.
+   - The reviewer reads commits, not your working tree. Commit each round of fixes, then
+     re-review from the base SHA to the new head SHA, passing the earlier findings.
    - Repeat until it returns **no blocking findings**, for at most three rounds. Then
-     stop and report what remains.
+     stop and report what remains. The verdict you report must cover the exact head you
+     push; if you change anything after it, review again.
 7. **Open the PR.** Push your branch and open a PR against `main`. Include:
    - the defect and its trace;
    - the test that was red on the base and is green now, with the base SHA;
