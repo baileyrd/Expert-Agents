@@ -180,11 +180,16 @@ them.
    sshd and a real network change are validation gaps for CI and the manual checks
    (`docs/projects/mux/*-MANUAL-CHECK-*.md`). For a failure in a test your diff does not
    touch, rerun it alone, run it at the base, and report both results.
-6. **Independent review.** Commit, then run the `mux-expert` reviewer subagent on your
-   branch (base SHA to your head SHA). It is read-only. Fix every blocking finding with a
-   test, or answer it with a trace that shows it is wrong. Record design questions for
-   the PR. Repeat until it returns **no blocking findings**, for at most three rounds;
-   then stop and report what remains.
+6. **Independent review.** The reviewer reviews a pinned commit range, never the
+   working tree:
+   - Commit, then run the `mux-expert` reviewer subagent on your branch, base SHA to
+     your head SHA. It is read-only.
+   - Fix every blocking finding with a test, or answer it with a trace that shows it is
+     wrong. Record design questions for the PR.
+   - Commit each round's fixes, then re-review the new head SHA, passing the earlier
+     findings.
+   - Repeat until it returns **no blocking findings** on the exact head you will push,
+     for at most three rounds; then stop and report what remains.
 7. **Open the PR.** Push your branch and open a PR against `main` with the repository's
    PR template. Include:
    - the defect and its trace;
