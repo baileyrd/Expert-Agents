@@ -1,0 +1,13 @@
+diff --git a/crates/libs/async/rusty_tokio/src/io/buffered.rs b/crates/libs/async/rusty_tokio/src/io/buffered.rs
+index 4ae1d561b..5a3ca1aa8 100644
+--- a/crates/libs/async/rusty_tokio/src/io/buffered.rs
++++ b/crates/libs/async/rusty_tokio/src/io/buffered.rs
+@@ -75,7 +75,7 @@ impl<R: AsyncRead + Unpin> AsyncRead for BufReader<R> {
+         // nothing currently buffered bypasses the buffer entirely --
+         // reading through it first would just be an extra copy for no
+         // benefit, the same shortcut `std::io::BufReader` uses.
+-        if self.pos == self.cap && buf.remaining() >= self.buf.len() {
++        if buf.remaining() >= self.buf.len() {
+             let result = Pin::new(&mut self.inner).poll_read(cx, buf);
+             self.discard_buffer();
+             return result;

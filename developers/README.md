@@ -25,8 +25,8 @@ flush contract, and counts in change fragments must be measured.
 
 ## Measuring a developer: the fix bench
 
-The developer counterpart of `bench/cases/`, in `bench/fixcases/<developer>/<case>/case.toml`
-and `bench/fix/`.
+The developer counterpart of `bench/cases/`, in `bench/fixcases/<set>/<case>/case.toml`
+and `bench/fix/`. A case set names one developer; every command takes the set.
 
 - **Case**: a past fix commit in the target repo, pinned at its parent (`base`). The
   task is the defect written as a bug report: symptom and trace, never the fix. The fix
@@ -54,6 +54,16 @@ and `bench/fix/`.
   The fixes behind #1064, #1250, 1066-r2 K1 and 1085-r1 K3 are named outright and are not
   used. New issues (like #1302-#1305, already taken in the
   [trials](rusty-tokio/trials-2026-10-31.md)) remain the blind test.
+- **Seeded cases** (`rusty-tokio-seeded`, the blind set): eight bugs planted in clean
+  `main` (069eedbcd) in code the prompt never names: `oneshot`, `broadcast`, `OnceCell`,
+  `duplex`, `Interval`, `timeout`, `BufReader` and `BufWriter`. They cover a stale waker,
+  lost wakeups on close and on cancel, a boundary off-by-one, a poll-order parity bug and
+  two data-loss bugs. A case holds its `seed.patch` and its hidden tests
+  (`held_back/<path>`); `fix` is the clean commit. `python3 -m bench.fix seed` builds each
+  seeded commit in the clone: no parent, fixed author and date, so every clone gets the SHA
+  the case pins as `base`, and a run's checkout has no history that shows the diff. Each
+  hidden test was checked red at the seeded commit and green at `main`; the existing
+  `rusty_tokio` suite stays green on every seed but noted in the case's `source`.
 
 ```
 export PYTHONPATH=~/src/eval-kit EXPERT_AGENTS=$PWD TARGET=<rusty_mill clone>; unset ANTHROPIC_API_KEY
@@ -62,6 +72,13 @@ python3 -m bench.fix check rusty-tokio --clone $TARGET --work ~/bench-work/fixbe
 python3 -m evalkit run bench/suites/rusty-tokio-dev/suite.toml --yes --jobs 2
 python3 -m bench.fix grade rusty-tokio --clone $TARGET --work ~/bench-work/fixbench \
     --out reports/rusty-tokio-dev/<date>-baseline.json
+
+# the seeded set: plant the commits first
+python3 -m bench.fix seed rusty-tokio-seeded --clone $TARGET
+python3 -m bench.fix check rusty-tokio-seeded --clone $TARGET --work ~/bench-work/fixbench
+python3 -m evalkit run bench/suites/rusty-tokio-seeded-dev/suite.toml --yes --jobs 2
+python3 -m bench.fix grade rusty-tokio-seeded --clone $TARGET --work ~/bench-work/fixbench \
+    --out reports/rusty-tokio-dev/<date>-seeded.json
 ```
 
 Builds are large: run with `TMPDIR` and `CLAUDE_CODE_TMPDIR` on disk, not a RAM-backed

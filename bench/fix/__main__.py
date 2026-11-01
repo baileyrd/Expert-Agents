@@ -1,26 +1,34 @@
-"""Fix-bench commands: measure a developer (developers/<name>/) on past fixes.
+"""Fix-bench commands: measure a developer (developers/<name>/) on a case set.
 
-  python3 -m bench.fix suite <developer> [--model M] [--allow-domain D]... [--check]
-      Write bench/suites/<developer>-dev/: the Eval-Kit suite and the prompt spec.
-  python3 -m bench.fix check <developer> --clone <target clone> --work <dir>
+A case set is a folder bench/fixcases/<set>/; every case in it names the same developer.
+`rusty-tokio` replays past fixes; `rusty-tokio-seeded` plants blind bugs (bench/fix/seed.py).
+
+  python3 -m bench.fix suite <set> [--model M] [--allow-domain D]... [--check]
+      Write bench/suites/<set>-dev/: the Eval-Kit suite and the prompt spec.
+  python3 -m bench.fix seed <set> --clone <target clone> [--write]
+      Seeded sets: build each seeded commit in the clone and check it is the pinned base
+      (--write pins it instead). Run before check, grade or the Eval-Kit run.
+  python3 -m bench.fix check <set> --clone <target clone> --work <dir>
       Validate each case: its held-back tests fail at the base and pass at the fix.
-  python3 -m bench.fix grade <developer> --clone <target clone> --work <dir> --out <file.json>
+  python3 -m bench.fix grade <set> --clone <target clone> --work <dir> --out <file.json>
       Execute every stored run (see bench/fix/grade.py) and write the grades.
 
 Then run it like the reviewer bench (bench/README.md):
-  python3 -m evalkit run bench/suites/<developer>-dev/suite.toml --yes --jobs 2
+  python3 -m evalkit run bench/suites/<set>-dev/suite.toml --yes --jobs 2
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import tomllib
 from dataclasses import asdict
 from pathlib import Path
 
 from bench.fix import grade as gr
+from bench.fix import seed as sd
 from bench.fix.model import FixCase, parse_case, prompt_toml, suite_toml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -47,9 +55,11 @@ def write_suite(args: argparse.Namespace) -> int:
     if not model:
         raise ValueError("--model is required for a new suite; it is recorded in the suite")
     domains = tuple(args.allow_domain) if args.allow_domain else _domains(current)
-    prompt = (DEVELOPERS / args.developer / "prompt.md").read_text()
-    files = {"suite.toml": suite_toml(args.developer, cases(args.developer), model, domains),
-             "baseline.prompt.toml": prompt_toml(args.developer, prompt)}
+    found = cases(args.developer)
+    developer = developer_of(found)
+    prompt = (DEVELOPERS / developer / "prompt.md").read_text()
+    files = {"suite.toml": suite_toml(args.developer, found, model, domains),
+             "baseline.prompt.toml": prompt_toml(developer, prompt)}
     if args.check:
         stale = sorted(n for n, t in files.items()
                        if not (out / n).exists() or (out / n).read_text() != t)
@@ -62,6 +72,21 @@ def write_suite(args: argparse.Namespace) -> int:
         (out / name).write_text(text)
     print(f"wrote {out}/suite.toml and baseline.prompt.toml")
     return 0
+
+
+def seed(args: argparse.Namespace) -> int:
+    bad = 0
+    for case in (c for c in cases(args.developer) if c.seeded):
+        sha = sd.plant(case, args.clone.resolve())
+        if sha == case.base:
+            print(f"{case.id}: {sha} ok")
+        elif args.write:
+            _pin_base(case, sha)
+            print(f"{case.id}: pinned base {sha}")
+        else:
+            bad += 1
+            print(f"{case.id}: built {sha}, case pins {case.base}  MISMATCH")
+    return 1 if bad else 0
 
 
 def check(args: argparse.Namespace) -> int:
@@ -78,9 +103,10 @@ def grade(args: argparse.Namespace) -> int:
     by_id = {c.id.split("/", 1)[1]: c for c in cases(args.developer)}
     store = SUITES / f"{args.developer}-dev" / ".evalkit" / "suite.jsonl"
     grades = []
+    crate = CRATE[developer_of(list(by_id.values()))]
     for (case_id, run), files in sorted(gr.store_runs(store, args.variant).items()):
         g = gr.grade_run(by_id[case_id], run, files, args.clone.resolve(), _work(args),
-                         CRATE[args.developer], TEST_TIMEOUT_S)
+                         crate, TEST_TIMEOUT_S)
         grades.append(g)
         print(f"{g.case} run {g.run}: solved {g.solved} (fixed {g.fixed}, suite green "
               f"{g.suite_green}, own test red at base {g.red_at_base}) {g.note}".rstrip())
@@ -88,12 +114,34 @@ def grade(args: argparse.Namespace) -> int:
     return 0
 
 
-def cases(developer: str) -> list[FixCase]:
-    folder = CASES / developer
+def cases(case_set: str) -> list[FixCase]:
+    folder = CASES / case_set
     if not folder.is_dir():
-        raise ValueError(f"{developer} has no fix cases under {folder}")
-    return [parse_case(f"{developer}/{d.name}", _toml(d / "case.toml"))
-            for d in sorted(folder.iterdir()) if d.is_dir()]
+        raise ValueError(f"{case_set} has no fix cases under {folder}")
+    return [_load(f"{case_set}/{d.name}", d) for d in sorted(folder.iterdir()) if d.is_dir()]
+
+
+def developer_of(found: list[FixCase]) -> str:
+    names = {c.developer for c in found}
+    if len(names) != 1 or "" in names:
+        raise ValueError(f"a case set names exactly one developer, found {sorted(names)}")
+    return names.pop()
+
+
+def _load(case_id: str, folder: Path) -> FixCase:
+    raw = _toml(folder / "case.toml")
+    if not raw.get("seed"):
+        return parse_case(case_id, raw)
+    hidden = {p: (folder / "held_back" / p).read_text() for p in raw.get("held_back") or []}
+    return parse_case(case_id, raw, (folder / raw["seed"]).read_text(), hidden)
+
+
+def _pin_base(case: FixCase, sha: str) -> None:
+    path = CASES / case.id / "case.toml"
+    text, n = re.subn(r'(?m)^base = "[0-9a-f]{40}"$', f'base = "{sha}"', path.read_text())
+    if n != 1:
+        raise ValueError(f"{path}: expected one base line")
+    path.write_text(text)
 
 
 def _work(args: argparse.Namespace) -> Path:
@@ -120,15 +168,20 @@ def _parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(required=True)
     s = sub.add_parser("suite", help="generate a developer's Eval-Kit suite")
     s.set_defaults(command=write_suite)
-    s.add_argument("developer")
+    s.add_argument("developer", metavar="set")
     s.add_argument("--model")
     s.add_argument("--allow-domain", action="append", default=[], metavar="DOMAIN")
     s.add_argument("--check", action="store_true")
+    d = sub.add_parser("seed", help="build seeded commits in the clone")
+    d.set_defaults(command=seed)
+    d.add_argument("developer", metavar="set")
+    d.add_argument("--clone", type=Path, required=True, help="the target repo clone")
+    d.add_argument("--write", action="store_true", help="pin the built SHA as each case's base")
     for name, fn, helptext in (("check", check, "validate the cases"),
                                ("grade", grade, "execute and grade stored runs")):
         c = sub.add_parser(name, help=helptext)
         c.set_defaults(command=fn)
-        c.add_argument("developer")
+        c.add_argument("developer", metavar="set")
         c.add_argument("--clone", type=Path, required=True, help="the target repo clone")
         c.add_argument("--work", type=Path, required=True, help="scratch dir outside this repo")
         if name == "grade":

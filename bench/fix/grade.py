@@ -85,9 +85,16 @@ def grade_run(case: FixCase, run: int, files: list, clone: Path, work: Path,
             _git(tree, "clean", "-qfd")
         _write(tree, kept)
         g.suite_green = _ok(["cargo", "test", "-p", crate], tree, env, timeout)
-        _write(tree, {p: _git(clone, "show", f"{case.fix}:{p}") for p in case.held_back})
+        _write(tree, held_back(case, clone))
         g.fixed = _ok(list(case.test), tree, env, timeout)
     return g
+
+
+def held_back(case: FixCase, clone: Path) -> dict[str, str]:
+    """The held-back test files: from the case dir if seeded, else from the fix commit."""
+    if case.seeded:
+        return dict(case.hidden)
+    return {p: _git(clone, "show", f"{case.fix}:{p}") for p in case.held_back}
 
 
 def check_case(case: FixCase, clone: Path, work: Path, timeout: int) -> tuple[bool, bool]:
@@ -95,7 +102,7 @@ def check_case(case: FixCase, clone: Path, work: Path, timeout: int) -> tuple[bo
     tree = work / f"check-{case.id.split('/')[1]}"
     env = {**os.environ, "CARGO_TARGET_DIR": str(work / f"target-{case.id.split('/')[1]}")}
     with _worktree(clone, case.base, tree):
-        _write(tree, {p: _git(clone, "show", f"{case.fix}:{p}") for p in case.held_back})
+        _write(tree, held_back(case, clone))
         red = not _ok(list(case.test), tree, env, timeout)
         _git(tree, "checkout", "-q", case.fix, "--", ".")
         green = _ok(list(case.test), tree, env, timeout)

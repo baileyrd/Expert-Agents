@@ -1,0 +1,14 @@
+diff --git a/crates/libs/async/rusty_tokio/src/io/buffered.rs b/crates/libs/async/rusty_tokio/src/io/buffered.rs
+index 4ae1d561b..557544cca 100644
+--- a/crates/libs/async/rusty_tokio/src/io/buffered.rs
++++ b/crates/libs/async/rusty_tokio/src/io/buffered.rs
+@@ -232,8 +232,7 @@ impl<W: AsyncWrite + Unpin> AsyncWrite for BufWriter<W> {
+         Pin::new(&mut self.get_mut().inner).poll_flush(cx)
+     }
+ 
+-    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+-        ready!(self.as_mut().poll_flush_buf(cx))?;
++    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+         Pin::new(&mut self.get_mut().inner).poll_shutdown(cx)
+     }
+ }

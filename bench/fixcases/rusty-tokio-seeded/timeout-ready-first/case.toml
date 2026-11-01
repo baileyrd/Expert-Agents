@@ -1,0 +1,18 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
+base = "2013f6b828cb1b222922017c3dd1e3f8bee82ae9"
+source = "seeded: blind bug in code the developer prompt never names"
+seed = "seed.patch"
+held_back = ["crates/libs/async/rusty_tokio/tests/heldback_timeout_ready_first.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_timeout_ready_first"]
+task = """
+Bug: in rusty_tokio, `time::timeout` and `time::timeout_at` report `Err(Elapsed)` for a
+future that is already complete when the deadline has passed by the time it is polled.
+
+Repro: `timeout(Duration::ZERO, async { 5 }).await` returns `Err(Elapsed)`. Under paused
+time, a future that becomes ready at the same instant as the deadline also loses.
+
+Expected, as in tokio: a future that can complete returns `Ok(value)`; `Elapsed` only
+when it is still pending at the deadline. Fix it in `crates/libs/async/rusty_tokio`.
+"""

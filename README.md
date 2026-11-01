@@ -23,7 +23,7 @@ replace CI, the D4 Windows run, owner confirmation or the merge queue.
 experts/<name>/      prompt.md (Claude subagent), codex.md (Codex), expert.toml
 developers/<name>/   write-side agents that fix issues and open PRs, paired with a reviewer (developers/README.md)
 bench/cases/         frozen cases: pr.toml pins a PR head; answer_key.toml lists its known findings
-bench/fixcases/      a developer's cases: past fixes pinned at their parent, tests held back (bench/fix/)
+bench/fixcases/      a developer's case sets: past fixes or seeded bugs, tests held back (bench/fix/)
 bench/suites/        Eval-Kit suites generated from the cases (python3 -m bench suite <expert>)
 bench/scorer/        recall, precision and severity agreement against the key
 reports/<expert>/    committed results, <date>-<variant>.md, graded runs beside them

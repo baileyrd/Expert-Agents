@@ -1,0 +1,19 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
+base = "a3f11e44b0bec35faaebaf5009f074cc97b10bd9"
+source = "seeded: blind bug in code the developer prompt never names"
+seed = "seed.patch"
+held_back = ["crates/libs/async/rusty_tokio/tests/heldback_once_cell_cancel_waiters.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_once_cell_cancel_waiters"]
+task = """
+Bug: in rusty_tokio, `sync::OnceCell::get_or_init` can hang forever. If the task running
+the initializer is aborted (or its future is dropped) while the initializer is pending,
+the other tasks already waiting in `get_or_init` on the same cell never make progress.
+
+A `get_or_init` call made after the abort, with no one else waiting, works.
+
+Expected, as in tokio: when the running initializer is cancelled, one of the waiting
+callers takes over and runs its own initializer, and the rest receive that value. Fix it
+in `crates/libs/async/rusty_tokio`.
+"""

@@ -1,0 +1,20 @@
+diff --git a/crates/libs/async/rusty_tokio/src/sync/once_cell.rs b/crates/libs/async/rusty_tokio/src/sync/once_cell.rs
+index a2de649e0..0a10b7abd 100644
+--- a/crates/libs/async/rusty_tokio/src/sync/once_cell.rs
++++ b/crates/libs/async/rusty_tokio/src/sync/once_cell.rs
+@@ -263,14 +263,7 @@ struct ResetGuard<'a, T> {
+ impl<T> Drop for ResetGuard<'_, T> {
+     fn drop(&mut self) {
+         if self.armed {
+-            let wakers = {
+-                let mut guard = self.cell.inner.lock().unwrap();
+-                guard.state = State::Uninit;
+-                std::mem::take(&mut guard.wakers)
+-            };
+-            for waker in wakers {
+-                waker.wake();
+-            }
++            self.cell.inner.lock().unwrap().state = State::Uninit;
+         }
+     }
+ }
