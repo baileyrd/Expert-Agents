@@ -39,11 +39,17 @@ ROOT = Path(__file__).resolve().parents[2]
 DEVELOPERS = ROOT / "developers"
 CASES = ROOT / "bench" / "fixcases"
 SUITES = ROOT / "bench" / "suites"
-# Each developer's suite command, run in the grading sandbox (bench/fix/sandbox.py). The
-# skipped tests need a multicast route, which the sandbox's fresh network namespace lacks;
-# they pass outside it and fail at every commit inside it.
-SUITE = {"rusty-tokio": ["cargo", "test", "-p", "rusty_tokio", "--", "--skip",
-                         "udp_multicast_v4"]}
+# Each developer's suite command, run in the grading sandbox (bench/fix/sandbox.py). It
+# must pass at every case base unmodified, or suite_green and red_at_base mean nothing.
+# Skipped, rusty-tokio:
+# - `udp_multicast`: v4 and v6 multicast tests need a multicast route, which the
+#   sandbox's fresh network namespace lacks (v6 has one on some hosts, not on baileyAi);
+# - `update_waker_after_shutdown_wakes_immediately_instead_of_hanging_forever`: hangs
+#   intermittently at the rwlock-queue base 6c09ab3cf, unmodified (baileyAi, 2026-11-01).
+SUITE = {"rusty-tokio": ["cargo", "test", "-p", "rusty_tokio", "--",
+                         "--skip", "udp_multicast",
+                         "--skip", "update_waker_after_shutdown_wakes_immediately_instead_of"
+                         "_hanging_forever"]}
 TEST_TIMEOUT_S = 1200
 # The whole suite from a fresh target dir: a full debug build plus every test, on a box
 # that may be running other jobs. 1200 s timed some of these out (2026-11-01).
@@ -104,9 +110,14 @@ def check(args: argparse.Namespace) -> int:
     bad = 0
     for case in cases(args.developer):
         red, green = gr.check_case(case, args.clone.resolve(), _work(args), TEST_TIMEOUT_S)
-        ok = red and green
+        suite = gr.check_suite(case, args.clone.resolve(), _work(args),
+                               SUITE[developer_of([case])], SUITE_TIMEOUT_S)
+        ok = red and green and suite.passed
         bad += not ok
-        print(f"{case.id}: red at base {red}, green at fix {green}{'' if ok else '  INVALID'}")
+        print(f"{case.id}: red at base {red}, green at fix {green}, suite green at base "
+              f"{suite.passed}{'' if ok else '  INVALID'}")
+        if suite.detail:
+            print("  suite: " + suite.detail.replace("\n", "\n    "))
     return 1 if bad else 0
 
 

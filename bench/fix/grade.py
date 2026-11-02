@@ -133,6 +133,14 @@ def check_case(case: FixCase, clone: Path, work: Path, timeout: int) -> tuple[bo
     return red, green
 
 
+def check_suite(case: FixCase, clone: Path, work: Path, suite: list[str],
+                timeout: int) -> Outcome:
+    """Does the developer's suite pass at the case base, unmodified? If not, every run's
+    suite_green is false and red_at_base true whatever the run did."""
+    name = work / f"check-{case.id.split('/')[1]}-suite"
+    return _phase(clone, case.base, str(name), {}, suite, timeout)
+
+
 def safe_path(rel: str) -> bool:
     """A relative path inside the tree: no absolute path, `..`, empty part or `.git`."""
     parts = rel.split("/")

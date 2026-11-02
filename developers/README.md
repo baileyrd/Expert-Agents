@@ -43,7 +43,8 @@ and `bench/fix/`. A case set names one developer; every command takes the set.
   - **fixed**: with the held-back tests on top, the case's test command passes;
   - **suite green**: with the run's changes alone, the developer's suite command passes
     (`SUITE` in `bench/fix/__main__.py`; for rusty-tokio, `cargo test -p rusty_tokio`
-    minus two multicast tests the sandbox cannot run);
+    minus the multicast tests the sandbox cannot run and one timer test that hangs at an
+    old base; `check` verifies the suite passes at every case base unmodified);
   - **red at base**: the run's own test files (under `tests/`) fail at the base; `null`
     when its tests live in `#[cfg(test)]` modules;
   - **solved** = fixed and suite green.

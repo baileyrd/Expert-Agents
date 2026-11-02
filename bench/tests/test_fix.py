@@ -266,6 +266,23 @@ class FailureDetailTest(unittest.TestCase):
         self.assertEqual([t for _, t in seen], [99, 10])  # suite gets its own timeout
         self.assertFalse(g.solved)
 
+    def test_check_suite_runs_the_suite_at_the_unmodified_base(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        base = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=base, fix=base))
+        seen = []
+
+        def run(argv, tree, target, timeout):
+            seen.append((argv, sorted(str(q.relative_to(tree)) for q in tree.rglob("*.rs"))))
+            return grade.Outcome(False, "test net::v6 ... FAILED")
+
+        with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            out = grade.check_suite(c, repo, self.root / "work", ["suite"], 30)
+        self.assertEqual(seen, [(["suite"], ["crates/x/src/lib.rs"])])
+        self.assertEqual(out, grade.Outcome(False, "test net::v6 ... FAILED"))
+
 
 class SeedTest(unittest.TestCase):
     PATCH = """diff --git a/src/lib.rs b/src/lib.rs
