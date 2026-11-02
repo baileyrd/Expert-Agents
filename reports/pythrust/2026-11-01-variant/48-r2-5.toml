@@ -1,0 +1,54 @@
+# Grade 48-r2-5-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Two slots at different depths are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A parameter and a module variable are assumed to be different lists, and changes through module variables are not modelled"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A temporary read from several variables hides every one of them"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/cond.pyr: check accepts at head, run and CPython print 4, control rejected; on main"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "Any lowering gap anywhere still turns off D3 and D4 for every tempered function"
+triage = "design_question"
+reason = "executed /home/claude/grade/probes/48-r2/gap_print.pyr: accepted at head and main, but its trigger is the x = print(7)/def print gap that roadmap A3 keeps as a fixture with a whole-program fallback, and grammar.md:64 says the conservative analysis diagnoses nothing"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The D4 fix-it suggests copying the wrong list"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/fixit_slot.pyr: suggests 'a = list(b)'; applied (/home/claude/grade/probes/48-r2/fixit_slot_applied.pyr) it compiles and prints 32 where the original prints 22 in CPython; same on main"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "The D3 fix-it return list(xs) is offered for parameters it cannot copy"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/d3_opt.pyr and d3_tuple.pyr: suggest 'return list(xs)' / 'return list(t)'; applied (d3_opt_applied.pyr, d3_tuple_applied.pyr) both fail to type-check at head and on main"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "The native refusal of an exception holding a list has no test"
+triage = "fixed_since"
+reason = "source trace: the refusal text appears only in codegen/mod.rs:1031 at head and no test asserts it; build of /home/claude/grade/probes/48-r2/build/exc_list.pyr is refused at head; fixed on main (conformance.rs:1116 build_refuses_an_exception_that_may_close_a_cycle)"

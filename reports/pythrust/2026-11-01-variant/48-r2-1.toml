@@ -1,0 +1,41 @@
+# Grade 48-r2-1-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Lists at different depths are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "+ and * on lists of lists lose the elements, for both D4 and D3"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/concat_d4.pyr, concat_d4b.pyr, concat_d3.pyr: check accepts at head, run and CPython print 2 / [1, 2], control concat_ctl.pyr rejected; actual cause is the undocumented lowering gap 'arithmetic on a non-number' (lower/expr.rs:86, whole-program fallback; concat_mul_witness.pyr also hides an unrelated D4 error), not alias.rs:242; on main"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A change through a conditional expression is let off when one branch's name is used later"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/cond.pyr: check accepts at head, run and CPython print 4, while the same change through b alone is rejected; on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The fix-it names the wrong list when the alias did not come from b = a"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/fixit_slot.pyr: suggests 'a = list(b)'; applied (/home/claude/grade/probes/48-r2/fixit_slot_applied.pyr) it compiles and prints 32 where the original prints 22 in CPython; concat_ctl.pyr gets 'row = list(a)' with a bound after row; same on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Nothing tests codegen::refuse_gaps"
+triage = "fixed_since"
+reason = "source trace: the refusal text appears only in codegen/mod.rs:1031 at head and no test asserts it; build of /home/claude/grade/probes/48-r2/build/exc_list.pyr is refused at head; fixed on main (conformance.rs:1116 build_refuses_an_exception_that_may_close_a_cycle)"
+# K2 is named only in the Design questions ("Two parameters, or a parameter and a global, are assumed different"), not graded.

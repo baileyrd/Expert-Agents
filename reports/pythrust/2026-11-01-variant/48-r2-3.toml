@@ -1,0 +1,40 @@
+# Grade 48-r2-3-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Two lists at different depths are assumed different"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Changing a list through a conditional expression skips D4"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/cond.pyr: check accepts at head, run and CPython print 4, control rejected; on main"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A parameter and a module variable are assumed to be different lists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "A false D3 error after an exception holds a parameter"
+triage = "false_positive"
+reason = "executed /home/claude/grade/probes/48-r2/exc_d3.pyr: rejected at head and main, control exc_d3_ctl.pyr accepted at head; but f(G) makes xs the global, so 'return G' does return the parameter (K2), and main rejects the control too; the error is not false, only head's control is unsound"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Nothing tests that native build still refuses an exception holding a list"
+triage = "fixed_since"
+reason = "source trace: the refusal text appears only in codegen/mod.rs:1031 at head and no test asserts it; build of /home/claude/grade/probes/48-r2/build/exc_list.pyr is refused at head; fixed on main (conformance.rs:1116 build_refuses_an_exception_that_may_close_a_cycle)"

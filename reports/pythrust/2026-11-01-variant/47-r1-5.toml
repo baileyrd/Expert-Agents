@@ -1,0 +1,40 @@
+# Grade 47-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/47-r1"
+variant = "baseline"
+prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A list a callee stores in a module variable is not seen by later module-level code"
+triage = "real"
+reason = "executed: probes/47-r1/module_callee_store.pyr and module_callee_noarg.pyr pass check at head e243a9a (exit 0) while module_inline_store.pyr is rejected; run and CPython 3.13 both print [[1], [1]], so add receives row inside rows; roadmap A5 documents only the in-function imprecision, not this; still passes on main b8ac312"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Inside a loose function, a parameter is assumed distinct from the module's lists"
+match = "K1"
+quality = "partial"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A loose function in between hides two parameters that are one list"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The docs say the analysis only errs toward the error, which is false"
+triage = "real"
+reason = "traced at head: roadmap.md:73 and own/calls.rs:10-14 say the imprecision errs toward the error, but probes/47-r1/module_callee_store.pyr and k1_loose_wrapper.pyr are accepted (exit 0); on main (roadmap text unchanged while module_callee_store.pyr and concat_hide.pyr still pass)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The suggested copy fix does not work for nested lists"
+triage = "real"
+reason = "executed: probes/47-r1/fixit_nested_msg.pyr (f(rows, rows[0]) vs f(mut rows, r)) says only 'pass a copy'; applying it to rows (fixit_nested_copy_mut.pyr) is still rejected, only copying the inner list (fixit_nested_copy_inner.pyr) passes; fixit_nested_shallow.pyr f(rows, list(rows)) is rejected with the same advice; same on main"
