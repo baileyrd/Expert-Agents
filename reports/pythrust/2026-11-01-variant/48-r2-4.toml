@@ -3,3 +3,45 @@ case = "pythrust/48-r2"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 4
+
+[[finding]]
+id = "N1"
+severity = "P1"
+title = "Lists at different depths are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "N2"
+severity = "P1"
+title = "A parameter and a module global are assumed to be different lists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "N3"
+severity = "P1"
+title = "A change through a temporary is excused when it may be either of two aliased names"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/cond_grow.pyr: check accepts at head, run and CPython print 4, while grow(a) is rejected; on main"
+
+[[finding]]
+id = "N4"
+severity = "P2"
+title = "A for-loop error is reported where there is no loop"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/loopmsg.pyr: no loop in f, yet head and main report 'changes a list while a for loop over it is running'; source trace alias.rs:403-411 treats any unnamed live temporary as a loop sequence"
+
+[[finding]]
+id = "N5"
+severity = "P2"
+title = "The D3 fix-it fails for a nested-list parameter"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/d3_nested.pyr: suggests 'return list(rows)'; applied (d3_nested_applied.pyr) it is rejected by D3 again at head and on main; grammar.md:210 makes inner lists count, so the fix-it, not the rule, is wrong"
+
+[[finding]]
+id = "N6"
+severity = "P2"
+title = "A doc comment points at a module that does not exist"
+triage = "fixed_since"
+reason = "source trace: alias.rs:16 cites own::calls, absent at head (own/ has alias, body, mod, modes, tests) with roadmap A5 unchecked; on main own/calls.rs exists and roadmap A5 is checked"

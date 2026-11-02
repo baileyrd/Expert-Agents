@@ -3,3 +3,73 @@ case = "pythrust/48-r1"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A list changed through a conditional expression skips the D4 check"
+triage = "real"
+reason = "executed probes/48-r1/cond.pyr: (a if c else b).append(2) accepted by check at head, run and CPython print 4; cond_ctl.pyr (b.append) rejected; still accepted on main b8ac312"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Two fields of one tuple parameter are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A module global is not a name for D4 (local alias of a global, callee changing a global)"
+triage = "fixed_since"
+reason = "executed probes/48-r1/glob_read.pyr and callee_glob.pyr: check accepts at head (run prints 2 and 3); fixed on main b8ac312 (D4 errors naming module variable G and 'changes a list through bump')"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "An unrelated lowering gap (loose raise ValueError(xs), x = print(7)) switches off D3/D4 for every tempered function"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Two different globals are reported as the same list"
+triage = "real"
+reason = "executed probes/48-r1/two_globals.pyr: a = G; b = H; a.append(2); len(b) rejected at head and on main b8ac312 ('b may be the same list'), CPython prints 1; every global maps to root(World) at alias.rs:225"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "The for-loop message fires where there is no loop"
+triage = "real"
+reason = "executed probes/48-r1/forloop_msg.pyr: return h(rows[0], grow(rows)) reports a running for loop with no loop in the body; on main b8ac312"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "The D3 fix-it return list(xs) is itself rejected for nested lists"
+triage = "real"
+reason = "executed probes/48-r1/d3_nested.pyr suggests return list(rows); d3_nested_fixed.pyr applying it gives a new D3 error; on main b8ac312"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "The fix-it for a narrowed optional names the wrong variable"
+triage = "real"
+reason = "executed probes/48-r1/opt_msg.pyr: o.append(2) under 'if o is not None' suggests a = list(...); opt_msg_fixed.pyr with o = list(a) is accepted; same message on main b8ac312"
+
+[[finding]]
+id = "F9"
+severity = "P2"
+title = "Module doc points to own::calls, which does not exist"
+triage = "fixed_since"
+reason = "source trace: alias.rs:15 names own::calls, own/ at head has only alias, body, modes, mod, tests and A5 is unticked; fixed on main (A5 landed, own/calls.rs exists)"
+
+[[finding]]
+id = "F10"
+severity = "P2"
+title = "Missing coverage for the accepted violations"
+triage = "real"
+reason = "source trace: own/tests.rs:349-480 at head has no test for a conditional receiver, tuple fields, globals or the fallback; cond.pyr is still accepted on main b8ac312, so that case is still untested"

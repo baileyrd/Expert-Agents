@@ -3,3 +3,45 @@ case = "pythrust/65-r1"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A held or copied view loses its link to the dict's lists, so D2 and D3 miss changes"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Native d.get(k, default) evaluates default only when the key is missing"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "D3 and the shared-name rule now apply to dicts and sets, against 'D3 and D4 stay list-only'"
+triage = "real"
+reason = "executed probes/65-r1/fixit_dict_return.pyr and fixit_dict_alias.pyr: check at head rejects returning a dict parameter (D3) and e = d; e['b'] = 2 (shared name), while grammar.md:221 and roadmap.md:76 (A8) say D3 and A5 stay list-only and no dict copy exists; code and docs still disagree on main b8ac312 (grammar.md:233)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Dict fix-its suggest list(...), which does not type-check, and messages call dicts and sets lists"
+triage = "real"
+reason = "executed probes/65-r1/fixit_dict_{return,alias,call}.pyr and fixit_set_alias.pyr: check at head suggests `return list(d)`, `e = list(d)`, `t = list(s)` and `pass a copy (list(...))` and calls the dict or set 'that list'; fixit_dict_return_applied.pyr then fails 'expected dict[str, int], found list[T0]' (alias.rs:683-697, calls.rs:232); same on main b8ac312"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "in on a view with a needle of another type is refused natively, undocumented, with a list message"
+triage = "fixed_since"
+reason = "executed probes/65-r1/in_view_mixed.pyr: CPython and run print True True, build at head fails 'a value of another type than its list or tuple holds' (table.rs:250 probe/expect) while native.md:25 lists in on views and Known gaps omits it; fixed on main b8ac312 (builds and prints True True)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "No tests for view aliasing, get default evaluation, dict D3 fix-its or mixed in on views"
+triage = "real"
+reason = "source trace at head: own/tests.rs has no program using values() or items(), and the only NATIVE get defaults (examples/dicts.pyr:12,45) are literals with no side effect, so neither K1 nor K2 is covered; the gaps are themselves real (see F1, F2, F4)"

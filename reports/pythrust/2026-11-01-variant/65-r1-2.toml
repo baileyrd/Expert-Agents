@@ -3,3 +3,38 @@ case = "pythrust/65-r1"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A dict view loses the lists it holds, so D2 and D3 miss writes through views"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Native d.get(k, default) evaluates default only when the key is missing"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "A missing bool key raises KeyError(1) natively instead of KeyError(True)"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Aliasing fix-its suggest list(...) for dicts and sets, and applying them breaks the program"
+triage = "real"
+reason = "executed probes/65-r1/fixit_dict_{return,alias,call}.pyr and fixit_set_alias.pyr: check at head suggests `return list(d)`, `e = list(d)`, `t = list(s)` and `pass a copy (list(...))` and calls the dict or set 'that list'; fixit_dict_return_applied.pyr then fails 'expected dict[str, int], found list[T0]' (alias.rs:683-697, calls.rs:232); same on main b8ac312"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Roadmap card ticked done although its True-is-1 exit test was weakened"
+triage = "design_question"
+reason = "the PR's own roadmap.md:113 card text and native.md Known gaps (line 89) document storing a bool key into dict[int, V] as a named backend gap with dict_bool_key run-only; documented, not a defect"

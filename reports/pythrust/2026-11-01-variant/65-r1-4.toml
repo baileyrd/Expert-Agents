@@ -3,3 +3,59 @@ case = "pythrust/65-r1"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A dict view hides the dict's values from the alias analysis, so D3 and D4 programs are accepted"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Native d.get(k, default) evaluates default only when the key is missing"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Tempered D4 rejects stores at existing keys, beyond Nano's size-change plan"
+triage = "design_question"
+reason = "grammar.md:134 and :173 at head record the stricter rule (any store, an existing key included) as a deviation, and main's roadmap.md:113 records it as Nano's decision (2026-10-31); documented as intended"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "D3, D4 and A5 fix-its for dicts and sets suggest list(...), which does not type-check"
+triage = "real"
+reason = "executed probes/65-r1/fixit_dict_{return,alias,call}.pyr and fixit_set_alias.pyr: check at head suggests `return list(d)`, `e = list(d)`, `t = list(s)` and `pass a copy (list(...))` and calls the dict or set 'that list'; fixit_dict_return_applied.pyr then fails 'expected dict[str, int], found list[T0]' (alias.rs:683-697, calls.rs:232); same on main b8ac312"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Native KeyError holds the int, not the bool the program used"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Roadmap card ticked without its True-is-1 exit test"
+triage = "design_question"
+reason = "the PR's own roadmap.md:113 card text and native.md Known gaps (line 89) document storing a bool key into dict[int, V] as a named backend gap with dict_bool_key run-only; documented, not a defect"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Docs say D3, D4 and A5 stay list-only, but dicts and sets now count as lists"
+triage = "real"
+reason = "executed probes/65-r1/fixit_dict_return.pyr and fixit_dict_call.pyr: check at head applies D3 and A5 to dicts, contradicting grammar.md:221, roadmap.md:76 and research/ownership.md:20 ('stay list-only'); still contradicted on main b8ac312 (grammar.md:233). The D4 part is documented (grammar.md:173)"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "Misleading native refusal for membership in an empty set, not in Known gaps"
+triage = "real"
+reason = "executed probes/65-r1/in_empty_set.pyr: CPython and run print False, build at head fails 'a value of another type than its list or tuple holds' (seq.rs:96) and native.md Known gaps omits it; main b8ac312 still refuses it (now 'comparing values of different types') and still does not record the gap"

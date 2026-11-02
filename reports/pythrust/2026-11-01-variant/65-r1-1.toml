@@ -3,3 +3,17 @@ case = "pythrust/65-r1"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A stored view, list(view) or sorted(view) loses the dict's lists in the own analysis, so D2, D3 and owned miss"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "in on a view with a needle of another type is refused natively, undocumented"
+triage = "fixed_since"
+reason = "executed probes/65-r1/in_view_mixed.pyr: CPython and run print True True, build at head fails 'a value of another type than its list or tuple holds' (table.rs:250 probe/expect) while native.md:25 lists in on views and Known gaps omits it; fixed on main b8ac312 (builds and prints True True)"

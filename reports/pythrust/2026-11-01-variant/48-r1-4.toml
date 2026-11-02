@@ -3,3 +3,45 @@ case = "pythrust/48-r1"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Two fields of one tuple are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A temporary read from two aliased names excuses both of them"
+triage = "real"
+reason = "executed probes/48-r1/cond.pyr: (a if c else b).append(2) accepted by check at head, run and CPython print 4; cond_ctl.pyr (b.append) rejected; still accepted on main b8ac312"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A parameter is assumed never to be a global's list"
+triage = "fixed_since"
+reason = "executed probes/48-r1/glob_param2.pyr (G.append; len(xs), f(G)) and glob_param.pyr: accepted at head, run prints 2; both rejected on main b8ac312"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "Any lowering gap (loose raise ValueError(xs)) silently disables D3 and D4 for every tempered function"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The D4 and D3 fix-its point at the wrong copy or do not fix the error"
+triage = "real"
+reason = "executed probes/48-r1/fixit_mutarg.pyr (grow(b) suggests vague a = list(...)) and d3_nested.pyr/d3_nested_fixed.pyr (applied fix-it rejected again), both on main b8ac312; the reversed-binding part alone holds less well: fixit_orig_applied2.pyr shows a = list(b) before the change is accepted"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Coverage gaps: no tests for findings 1-4 and no rejected ageing test"
+triage = "real"
+reason = "source trace: own/tests.rs:349-480 at head has no tuple, conditional, global or fallback test; each_run_of_an_allocation_is_a_new_list (:425) only asserts Ok"

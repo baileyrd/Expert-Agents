@@ -3,3 +3,53 @@ case = "pythrust/48-r1"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "One lowering gap (list +, *) anywhere turns off D3 and D4 for every tempered function"
+match = "K2"
+quality = "partial"
+# Names the whole-program fallback dropping alias checks, but only via list +/*, not an exception built from a list (baseline convention: partial).
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Two different paths inside one abstract list (tuple fields) are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "The module's lists are separate from every name, and globals are never used later"
+triage = "fixed_since"
+reason = "executed probes/48-r1/modrows.pyr, glob_read.pyr and glob_param.pyr: all accepted at head, run prints 2; all rejected on main b8ac312"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "A temporary read from several variables excuses all of them"
+triage = "real"
+reason = "executed probes/48-r1/cond.pyr: (a if c else b).append(2) accepted by check at head, run and CPython print 4; cond_ctl.pyr (b.append) rejected; still accepted on main b8ac312"
+
+[[finding]]
+id = "F5"
+severity = "P1"
+title = "A callee that changes a module list is not counted as a change"
+triage = "fixed_since"
+reason = "executed probes/48-r1/callee_glob2.pyr: b = G; grow(); len(b) accepted at head, run prints 2; fixed on main b8ac312 (D4 error 'changes a list through grow')"
+
+[[finding]]
+id = "F6"
+severity = "P1"
+title = "Two parameters are assumed disjoint with no check making that true"
+triage = "fixed_since"
+reason = "executed probes/48-r1/twoparams.pyr: f([x], x) with mut rows, rows[0].append, len(r) accepted at head, run prints 2; fixed on main b8ac312 (A5 rejects the call: 'may also pass that list as r')"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Missing tests and docs that overstate"
+triage = "real"
+reason = "source trace: own/tests.rs:349-480 at head has no test for findings 1-6 and the three accept-only tests are as stated; grammar.md:210-211 says Implemented (A6) without the fallback caveat; cond.pyr still accepted on main b8ac312"

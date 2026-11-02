@@ -3,3 +3,59 @@ case = "pythrust/48-r1"
 variant = "baseline"
 prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
 run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A conditional expression lets a change through a shared list go unreported"
+triage = "real"
+reason = "executed probes/48-r1/cond.pyr: (a if c else b).append(2) accepted by check at head, run and CPython print 4; cond_ctl.pyr (b.append) rejected; still accepted on main b8ac312"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A list returned by a callee that reads a global is not linked to locals stored in that global"
+triage = "fixed_since"
+reason = "executed probes/48-r1/result_global.pyr: check accepts at head, run prints 2; result_global_ctl.pyr (inline store[len(store) - 1]) rejected; fixed on main b8ac312 (D4 error at b.append)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Two fields of one tuple are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "A parameter is assumed different from the module's lists and from lists inside other parameters"
+triage = "fixed_since"
+reason = "executed probes/48-r1/glob_param.pyr (f(g)) and nested_arg.pyr (f(rows[0], rows)): both accepted at head, run prints 2; fixed on main b8ac312 (D4 error in the body, and an A5 call error respectively)"
+
+[[finding]]
+id = "F5"
+severity = "P1"
+title = "When lowering falls back (raise ValueError(xs)), D3 and D4 are switched off for the whole program"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "The decided D3 fix-it does not work for nested lists"
+triage = "real"
+reason = "executed probes/48-r1/d3_nested.pyr suggests return list(rows); d3_nested_fixed.pyr applying it gives a new D3 error; on main b8ac312"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "A shallow copy's element is treated as the original list, rejecting a legal program"
+triage = "real"
+reason = "executed probes/48-r1/shallow_elem.pyr: x = list(rows); x[0].append(1); len(rows) rejected ('rows may be the same list') at head and on main b8ac312, CPython prints 1; contradicts grammar D4 / A6 choice 1 (a list inside another is its own list); shallow_fixit_ctl.pyr (b = a) accepted while shallow_fixit.pyr (b = list(a)) is rejected"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "Any live temporary is reported as a for loop"
+triage = "real"
+reason = "executed probes/48-r1/forloop_msg.pyr: return h(rows[0], grow(rows)) reports a running for loop with no loop in the body; on main b8ac312"
