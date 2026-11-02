@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 import tomllib
 from dataclasses import asdict
@@ -129,23 +130,25 @@ def grade(args: argparse.Namespace) -> int:
     jobs = suite_jobs(folder / "suite.toml", args.variant)
     lines = (folder / ".evalkit" / "suite.jsonl").read_text().splitlines()
     records = ex.current_records(lines, jobs, args.variant)
-    developer_of(list(by_id.values()))
+    developer = developer_of(list(by_id.values()))
     sandbox.bwrap()  # fail closed before any work
     grades = []
     for job, record in records:
         g = gr.grade_run(by_id[job.case], job.sample + 1, job.key,
                          record["trace"].get("files") or [], args.clone.resolve(),
                          _work(args), suite_for(by_id[job.case]), TEST_TIMEOUT_S,
-                         SUITE_TIMEOUT_S)
+                         SUITE_TIMEOUT_S, skipped_for(by_id[job.case]))
         grades.append(g)
         print(f"{g.case} run {g.run}: solved {g.solved} (fixed {g.fixed}, suite green "
-              f"{g.suite_green}, own test red at base {g.red_at_base}) {g.note}".rstrip())
+              f"{g.suite_green}, own test red at base {g.red_at_base}, skipped tests green "
+              f"{g.skipped_green}) {g.note}".rstrip())
         for step, why in g.failures.items():
             print(f"  {step}: " + why.replace("\n", "\n    "))
     suite = _toml(folder / "suite.toml")
     out = {"set": args.developer, "variant": args.variant,
            "model": suite["variant"][args.variant]["model"],
            "prompt_spec_sha256": _sha(folder / suite["variant"][args.variant]["subject"]),
+           "grader_rev": _rev(), "env_skips_command": SUITE[developer],
            "grades": [{**asdict(g), "solved": g.solved} for g in grades]}
     args.out.write_text(json.dumps(out, indent=2) + "\n")
     return 0
@@ -162,6 +165,26 @@ def suite_for(case: FixCase) -> list[str]:
     """The developer's suite command, minus the existing tests this case's defect breaks."""
     skips = [arg for name in case.suite_skip for arg in ("--skip", name)]
     return [*SUITE[developer_of([case])], *skips]
+
+
+def skipped_for(case: FixCase) -> list[str] | None:
+    """Only the case's `suite_skip` tests (cargo filters), or None when it skips none."""
+    if not case.suite_skip:
+        return None
+    return [*SUITE[developer_of([case])], *case.suite_skip]
+
+
+def _rev() -> str:
+    """This repo's commit, with "-dirty" when the working tree has changes."""
+    head = _run_git("rev-parse", "HEAD")
+    return head + ("-dirty" if _run_git("status", "--porcelain") else "")
+
+
+def _run_git(*args: str) -> str:
+    out = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=False)
+    if out.returncode != 0:
+        raise ValueError(f"git {args[0]} failed in {ROOT}: {out.stderr.strip()}")
+    return out.stdout.strip()
 
 
 def developer_of(found: list[FixCase]) -> str:

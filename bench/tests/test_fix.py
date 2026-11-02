@@ -11,7 +11,8 @@ from pathlib import Path
 
 from bench import extract
 from bench.fix import grade, sandbox, seed
-from bench.fix.__main__ import CASES, SUITE, cases, developer_of, main, suite_for
+from bench.fix.__main__ import (CASES, SUITE, cases, developer_of, main, skipped_for,
+                                suite_for)
 from bench.fix.model import parse_case, settings, suite_toml, task_input
 
 SHA = "a" * 40
@@ -37,6 +38,8 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(suite_for(c), [*SUITE["rusty-tokio"], "--skip", "hangs_on_the_bug"])
         plain = parse_case("d/c", raw(developer="rusty-tokio"))
         self.assertEqual(suite_for(plain), SUITE["rusty-tokio"])
+        self.assertEqual(skipped_for(c), [*SUITE["rusty-tokio"], "hangs_on_the_bug"])
+        self.assertIsNone(skipped_for(plain))
 
     def test_rejects_bad_cases(self):
         for bad in (raw(fix="abc"), raw(held_back=["src/lib.rs"]), raw(test=[]), raw(task=" "),
@@ -329,6 +332,31 @@ class FailureDetailTest(unittest.TestCase):
         g = self._red(grade.Outcome())
         self.assertIs(g.red_at_base, False)
         self.assertNotIn("red", g.failures)
+
+    def test_grade_records_the_suite_as_run_and_runs_skipped_tests_alone(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        sha = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=sha, fix=sha, seed="seed.patch",
+                                  held_back=["crates/x/tests/t.rs"], suite_skip=["hangs"]),
+                       "PATCH", {"crates/x/tests/t.rs": "held back"})
+        seen = []
+
+        def run(argv, tree, target, timeout):
+            seen.append(argv)
+            return grade.Outcome(grade.TIMEOUT, "after 9s") if argv == ["suite", "hangs"] \
+                else grade.Outcome()
+
+        suite = ["suite", "--skip", "hangs"]
+        with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            g = grade.grade_run(c, 1, "k", [("crates/x/src/lib.rs", "fn f() {}\n")], repo,
+                                self.root / "work", suite, 9, 9, ["suite", "hangs"])
+        self.assertEqual(seen[-1], ["suite", "hangs"])  # the excluded test, on the fix
+        self.assertEqual((g.suite_command, g.suite_skip), (suite, ["hangs"]))
+        self.assertIs(g.skipped_green, False)
+        self.assertEqual(g.failures["skipped"], "timeout: after 9s")
+        self.assertTrue(g.solved)  # separate evidence, not part of solved
 
     def test_check_suite_runs_the_suite_at_the_unmodified_base(self):
         repo = self.root / "repo"

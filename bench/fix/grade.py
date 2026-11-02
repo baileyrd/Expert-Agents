@@ -12,6 +12,11 @@ For each stored run, each step in a fresh export of the case's base (no `.git`):
   adds), a timeout, or a failure with no failed test in its output. The reason is kept
   in `failures["red"]`.
 - **suite_green**: with the run's changes alone, the developer's suite command passes.
+  That is the suite as run: minus the environment skips every case shares, and minus the
+  case's own `suite_skip` (existing tests its defect breaks). The command is recorded in
+  `suite_command`, so suite_green never reads as the full original suite.
+- **skipped_green**: for a case with `suite_skip`, those excluded tests alone, run on the
+  run's changes; `None` for a case that skips none. Separate evidence, not part of solved.
 
 Each step that does not pass records why in `failures`: "timeout after Ns", or the
 failing tests and panics from the command's output, so a timeout or a flaky test in the
@@ -75,6 +80,9 @@ class Grade:
     fixed: bool | None = None
     red_at_base: bool | None = None
     suite_green: bool | None = None
+    skipped_green: bool | None = None
+    suite_command: list[str] = field(default_factory=list)  # as run, skips included
+    suite_skip: list[str] = field(default_factory=list)  # the case's own exclusions
     changed: list[str] = field(default_factory=list)
     failures: dict[str, str] = field(default_factory=dict)  # step -> why it did not pass
     note: str = ""
@@ -103,8 +111,10 @@ def own_tests(files: dict[str, str]) -> dict[str, str]:
 
 
 def grade_run(case: FixCase, run: int, key: str, files: list, clone: Path, work: Path,
-              suite: list[str], timeout: int, suite_timeout: int) -> Grade:
-    g = Grade(case.id, run, key)
+              suite: list[str], timeout: int, suite_timeout: int,
+              skipped: list[str] | None = None) -> Grade:
+    """`suite` is the case's suite command; `skipped` runs only its `suite_skip` tests."""
+    g = Grade(case.id, run, key, suite_command=list(suite), suite_skip=list(case.suite_skip))
     kept, lost = source_files(files)
     g.changed = sorted(kept)
     bad = [p for p in kept if not safe_path(p)]
@@ -125,6 +135,9 @@ def grade_run(case: FixCase, run: int, key: str, files: list, clone: Path, work:
     fixed = _phase(clone, case.base, f"{name}-fixed", {**kept, **held_back(case, clone)},
                    list(case.test), timeout)
     g.fixed = _record(g, "fixed", fixed)
+    if skipped:
+        alone = _phase(clone, case.base, f"{name}-skipped", kept, skipped, suite_timeout)
+        g.skipped_green = _record(g, "skipped", alone)
     return g
 
 

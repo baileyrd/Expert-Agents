@@ -84,7 +84,11 @@ and `bench/fix/`. A case set names one developer; every command takes the set.
   every time and on `duplex-shutdown-eof` about one run in ten (noted in each `source`).
   A case's `suite_skip` lists existing tests its own defect breaks at the base; its suite
   steps skip them, so `check` can require the suite green at the base. once-cell skips
-  the OnceCell test it hangs; the held-back tests still cover the defect.
+  the OnceCell test it hangs; the held-back tests still cover the defect. For such a case
+  suite green is the reduced suite, not the full original one: each grade records the
+  suite command as run (`suite_command`, `suite_skip`), and `skipped_green` runs the
+  excluded tests alone on the run's change as separate evidence. The grades file records
+  the grader's commit (`grader_rev`) and the shared environment skips.
 
 ```
 export PYTHONPATH=~/src/eval-kit EXPERT_AGENTS=$PWD TARGET=<rusty_mill clone>; unset ANTHROPIC_API_KEY
