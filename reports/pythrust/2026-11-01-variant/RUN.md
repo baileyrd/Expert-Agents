@@ -3,8 +3,12 @@
 Variant: `experts/pythrust/` at `3d54c89` ("report every traced defect; prove each distinctness
 assumption"), branch `claude/project-thread-dxffed`. Base: the same suite's `baseline` at `main`.
 `main` resolved to the local ref `91b7e97`; `experts/pythrust`, `bench/suites/pythrust` and
-`bench/cases/pythrust` are identical there and at `origin/main` `5b7639c`. **Not graded.** The
-20 extracted reports here are the variant's, with unfilled graded-run TOMLs.
+`bench/cases/pythrust` are identical there and at `origin/main` `5b7639c`. **Not graded** (as
+captured). The 20 extracted reports here are the variant's, with unfilled graded-run TOMLs.
+
+> **Editorial note, 2026-11-02:** the TOMLs in this directory have since been graded; the graded
+> result is [2026-11-01-variant.md](../2026-11-01-variant.md). The `baseline@main` re-run below
+> (CLI `2.1.316`) is still only judged, not graded.
 
 **Baseline re-run.** The 2026-10-31 baseline ran on Claude Code `2.1.314`; this machine now has
 `2.1.316`, which changes every content key. The old store (60 records) was copied in first, but
@@ -98,5 +102,9 @@ Trace check (tool calls only; Eval-Kit stores no tool output):
   contains the 47-r1, 48-r1 and 48-r2 fixes. No run extracted one of those heads under a name
   that a run of the affected case reused.
 
-A per-run private `TMPDIR` plus a deny on the shared temp root would close this. The content keys
+Proposed mitigation, not a verified isolation boundary: give each run a private `TMPDIR` and
+deny the shared temp root to Bash's sandbox. That covers scratch and Bash only. The suite still
+enables Read, Grep and Glob, which a Bash sandbox deny does not fence, and a separate host temp
+root would need the same coverage. Fencing those tool paths and validating the sandbox in a real
+run remain outstanding. None of this says contamination occurred in these runs. The content keys
 of all 40 runs, both arms, are in [keys.txt](keys.txt).
