@@ -199,12 +199,12 @@ class HostSafetyTest(unittest.TestCase):
             # hostile code: leave the held-back path pointing outside the tree
             shutil.rmtree(tree / "crates/x/tests", ignore_errors=True)
             (tree / "crates/x/tests").symlink_to(self.outside)
-            return True
+            return grade.Outcome(True)
 
         files = [("crates/x/src/lib.rs", "fn fixed() {}\n"), ("crates/x/tests/mine.rs", "t")]
         with unittest.mock.patch.object(grade, "_fetch", fetch), \
                 unittest.mock.patch.object(grade, "_sandboxed", run):
-            g = grade.grade_run(c, 1, "k", files, repo, self.root / "work", ["cargo"], 10)
+            g = grade.grade_run(c, 1, "k", files, repo, self.root / "work", ["cargo"], 10, 10)
         self.assertEqual([e[0] for e in events], ["fetch", "run"] * 3)
         for kind, content in events:
             if kind == "fetch":
@@ -217,8 +217,53 @@ class HostSafetyTest(unittest.TestCase):
     def test_unsafe_run_paths_are_rejected_before_anything_runs(self):
         c = parse_case("s/c", raw())
         g = grade.grade_run(c, 1, "k", [("../../x.rs", "x")], self.root, self.root / "w",
-                            ["cargo"], 10)
+                            ["cargo"], 10, 10)
         self.assertIn("rejected", g.note)
+        self.assertFalse(g.solved)
+
+
+class FailureDetailTest(unittest.TestCase):
+    """A step that does not pass records why, so a suite timeout is not read as a bad fix."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root)
+
+    def test_summarize_keeps_failed_tests_and_panics(self):
+        out = "running 3 tests\ntest a ... ok\ntest b ... FAILED\n" \
+              "thread 'b' panicked at src/x.rs:1:2:\nboom\ntest result: FAILED. 2 passed\n"
+        self.assertEqual(grade.summarize(out).splitlines(),
+                         ["test b ... FAILED", "thread 'b' panicked at src/x.rs:1:2:",
+                          "test result: FAILED. 2 passed"])
+
+    def test_summarize_falls_back_to_the_tail(self):
+        out = "\n".join(f"line {i}" for i in range(50))
+        lines = grade.summarize(out).splitlines()
+        self.assertEqual(len(lines), grade.TAIL_LINES)
+        self.assertEqual(lines[-1], "line 49")
+
+    def test_grade_records_a_suite_timeout_and_a_failed_fix(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        base = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=base, fix=base, seed="seed.patch",
+                                  held_back=["crates/x/tests/t.rs"]), "PATCH",
+                       {"crates/x/tests/t.rs": "held back"})
+        seen = []
+
+        def run(argv, tree, target, timeout):
+            seen.append((argv, timeout))
+            if argv == ["suite"]:
+                return grade.Outcome(False, f"timeout after {timeout}s")
+            return grade.Outcome(False, "test t ... FAILED")
+
+        with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            g = grade.grade_run(c, 1, "k", [("crates/x/src/lib.rs", "fn f() {}\n")], repo,
+                                self.root / "work", ["suite"], 10, 99)
+        self.assertEqual(g.failures, {"suite": "timeout after 99s",
+                                      "fixed": "test t ... FAILED"})
+        self.assertEqual([t for _, t in seen], [99, 10])  # suite gets its own timeout
         self.assertFalse(g.solved)
 
 

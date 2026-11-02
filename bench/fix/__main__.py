@@ -45,6 +45,9 @@ SUITES = ROOT / "bench" / "suites"
 SUITE = {"rusty-tokio": ["cargo", "test", "-p", "rusty_tokio", "--", "--skip",
                          "udp_multicast_v4"]}
 TEST_TIMEOUT_S = 1200
+# The whole suite from a fresh target dir: a full debug build plus every test, on a box
+# that may be running other jobs. 1200 s timed some of these out (2026-11-01).
+SUITE_TIMEOUT_S = 3600
 
 
 def main(argv: list[str]) -> int:
@@ -120,10 +123,12 @@ def grade(args: argparse.Namespace) -> int:
     for job, record in records:
         g = gr.grade_run(by_id[job.case], job.sample + 1, job.key,
                          record["trace"].get("files") or [], args.clone.resolve(),
-                         _work(args), suite_cmd, TEST_TIMEOUT_S)
+                         _work(args), suite_cmd, TEST_TIMEOUT_S, SUITE_TIMEOUT_S)
         grades.append(g)
         print(f"{g.case} run {g.run}: solved {g.solved} (fixed {g.fixed}, suite green "
               f"{g.suite_green}, own test red at base {g.red_at_base}) {g.note}".rstrip())
+        for step, why in g.failures.items():
+            print(f"  {step}: " + why.replace("\n", "\n    "))
     suite = _toml(folder / "suite.toml")
     out = {"set": args.developer, "variant": args.variant,
            "model": suite["variant"][args.variant]["model"],

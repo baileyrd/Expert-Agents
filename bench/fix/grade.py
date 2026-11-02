@@ -10,6 +10,10 @@ For each stored run, each step in a fresh export of the case's base (no `.git`):
   separated from the fix).
 - **suite_green**: with the run's changes alone, the developer's suite command passes.
 
+Each step that does not pass records why in `failures`: "timeout after Ns", or the
+failing tests and panics from the command's output, so a timeout or a flaky test in the
+suite is told apart from a broken fix.
+
 A run is **solved** when it is fixed and suite_green. Eval-Kit's trace keeps the text of
 each file the run added or changed (not deletions, not files over 200 kB); a file it
 could not keep makes the run unreconstructable and it is reported as such.
@@ -36,6 +40,14 @@ from bench.fix import sandbox
 from bench.fix.model import FixCase
 
 SKIP_TOP = {"target", ".git", ".claude"}
+TAIL_LINES = 20
+
+
+@dataclass(frozen=True)
+class Outcome:
+    """How one sandboxed command ended: `detail` says why when it did not pass."""
+    passed: bool
+    detail: str = ""
 
 
 @dataclass
@@ -47,6 +59,7 @@ class Grade:
     red_at_base: bool | None = None
     suite_green: bool | None = None
     changed: list[str] = field(default_factory=list)
+    failures: dict[str, str] = field(default_factory=dict)  # step -> why it did not pass
     note: str = ""
 
     @property
@@ -73,7 +86,7 @@ def own_tests(files: dict[str, str]) -> dict[str, str]:
 
 
 def grade_run(case: FixCase, run: int, key: str, files: list, clone: Path, work: Path,
-              suite: list[str], timeout: int) -> Grade:
+              suite: list[str], timeout: int, suite_timeout: int) -> Grade:
     g = Grade(case.id, run, key)
     kept, lost = source_files(files)
     g.changed = sorted(kept)
@@ -88,11 +101,20 @@ def grade_run(case: FixCase, run: int, key: str, files: list, clone: Path, work:
     name = work / f"{case.id.split('/')[1]}-{run}"
     tests = own_tests(kept)
     if tests:
-        g.red_at_base = not _phase(clone, case.base, f"{name}-red", tests, suite, timeout)
-    g.suite_green = _phase(clone, case.base, f"{name}-suite", kept, suite, timeout)
-    g.fixed = _phase(clone, case.base, f"{name}-fixed", {**kept, **held_back(case, clone)},
-                     list(case.test), timeout)
+        red = _phase(clone, case.base, f"{name}-red", tests, suite, suite_timeout)
+        g.red_at_base = not red.passed
+    suite_run = _phase(clone, case.base, f"{name}-suite", kept, suite, suite_timeout)
+    g.suite_green = _record(g, "suite", suite_run)
+    fixed = _phase(clone, case.base, f"{name}-fixed", {**kept, **held_back(case, clone)},
+                   list(case.test), timeout)
+    g.fixed = _record(g, "fixed", fixed)
     return g
+
+
+def _record(g: Grade, step: str, outcome: Outcome) -> bool:
+    if not outcome.passed:
+        g.failures[step] = outcome.detail
+    return outcome.passed
 
 
 def held_back(case: FixCase, clone: Path) -> dict[str, str]:
@@ -106,8 +128,8 @@ def check_case(case: FixCase, clone: Path, work: Path, timeout: int) -> tuple[bo
     """Is the case valid? Held-back tests fail at the base and pass at the fix."""
     name = work / f"check-{case.id.split('/')[1]}"
     tests = held_back(case, clone)
-    red = not _phase(clone, case.base, f"{name}-base", tests, list(case.test), timeout)
-    green = _phase(clone, case.fix, f"{name}-fix", tests, list(case.test), timeout)
+    red = not _phase(clone, case.base, f"{name}-base", tests, list(case.test), timeout).passed
+    green = _phase(clone, case.fix, f"{name}-fix", tests, list(case.test), timeout).passed
     return red, green
 
 
@@ -119,7 +141,7 @@ def safe_path(rel: str) -> bool:
 
 
 def _phase(clone: Path, sha: str, name: str, files: dict[str, str], argv: list[str],
-           timeout: int) -> bool:
+           timeout: int) -> Outcome:
     """One grading step in a fresh tree and target dir: export `sha`, fetch its
     dependencies on the host (trusted inputs only, before any model file lands), write
     `files`, run `argv` in the sandbox, delete both. Nothing on the host touches the tree
@@ -174,15 +196,26 @@ def _fetch(tree: Path, target: Path, timeout: int) -> None:
                    capture_output=True, timeout=timeout, check=False)
 
 
-def _sandboxed(argv: list[str], tree: Path, target: Path, timeout: int) -> bool:
+def _sandboxed(argv: list[str], tree: Path, target: Path, timeout: int) -> Outcome:
     bwrap = sandbox.bwrap()
     cargo_home, rustup_home = sandbox.toolchain()
     wrapped = sandbox.wrap(argv, tree, target, cargo_home, rustup_home, bwrap)
     try:
-        return subprocess.run(wrapped, cwd=tree, capture_output=True, timeout=timeout,
-                              check=False).returncode == 0
+        done = subprocess.run(wrapped, cwd=tree, capture_output=True, text=True,
+                              errors="replace", timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
-        return False
+        return Outcome(False, f"timeout after {timeout}s")
+    if done.returncode == 0:
+        return Outcome(True)
+    return Outcome(False, summarize(done.stdout + done.stderr))
+
+
+def summarize(output: str) -> str:
+    """Why a cargo command failed: its failed tests, panics and errors, else its tail."""
+    lines = output.splitlines()
+    marks = ("FAILED", "panicked at", "error:", "error[", "failures:")
+    hits = [line.strip() for line in lines if any(m in line for m in marks)]
+    return "\n".join((hits or lines)[-TAIL_LINES:])
 
 
 def _git(cwd: Path, *args: str) -> str:
