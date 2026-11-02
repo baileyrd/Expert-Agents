@@ -199,7 +199,7 @@ class HostSafetyTest(unittest.TestCase):
             # hostile code: leave the held-back path pointing outside the tree
             shutil.rmtree(tree / "crates/x/tests", ignore_errors=True)
             (tree / "crates/x/tests").symlink_to(self.outside)
-            return grade.Outcome(True)
+            return grade.Outcome()
 
         files = [("crates/x/src/lib.rs", "fn fixed() {}\n"), ("crates/x/tests/mine.rs", "t")]
         with unittest.mock.patch.object(grade, "_fetch", fetch), \
@@ -254,17 +254,74 @@ class FailureDetailTest(unittest.TestCase):
         def run(argv, tree, target, timeout):
             seen.append((argv, timeout))
             if argv == ["suite"]:
-                return grade.Outcome(False, f"timeout after {timeout}s")
-            return grade.Outcome(False, "test t ... FAILED")
+                return grade.Outcome(grade.TIMEOUT, f"after {timeout}s")
+            return grade.Outcome(grade.TEST_FAILED, "test t ... FAILED")
 
         with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
                 unittest.mock.patch.object(grade, "_sandboxed", run):
             g = grade.grade_run(c, 1, "k", [("crates/x/src/lib.rs", "fn f() {}\n")], repo,
                                 self.root / "work", ["suite"], 10, 99)
-        self.assertEqual(g.failures, {"suite": "timeout after 99s",
-                                      "fixed": "test t ... FAILED"})
+        self.assertEqual(g.failures, {"suite": "timeout: after 99s",
+                                      "fixed": "test failed: test t ... FAILED"})
         self.assertEqual([t for _, t in seen], [99, 10])  # suite gets its own timeout
         self.assertFalse(g.solved)
+
+    def test_classify_tells_build_errors_and_test_failures_apart(self):
+        build = "error[E0425]: cannot find function `helper_from_fix`\n" \
+                "error: could not compile `rusty_tokio` (test \"t\") due to 1 previous error\n"
+        failed = "test t ... FAILED\ntest result: FAILED. 0 passed; 1 failed\n" \
+                 "error: test failed, to rerun pass `--test t`\n"
+        exited = "watchdog: likely deadlocked\nerror: test failed, to rerun pass `--test t`\n"
+        self.assertEqual(grade.classify(build), grade.BUILD_FAILED)
+        self.assertEqual(grade.classify(failed), grade.TEST_FAILED)
+        self.assertEqual(grade.classify(exited), grade.TEST_FAILED)  # binary exited non-zero
+        self.assertEqual(grade.classify("Killed\n"), grade.UNKNOWN)
+
+    def test_only_a_test_failure_at_base_validates_a_case(self):
+        ok = grade.Outcome()
+        self.assertTrue(grade.valid(grade.Outcome(grade.TEST_FAILED, "x"), ok))
+        for base in (grade.Outcome(grade.BUILD_FAILED, "e"), grade.Outcome(grade.TIMEOUT, "t"),
+                     grade.Outcome(grade.UNKNOWN, "u"), ok):
+            self.assertFalse(grade.valid(base, ok), base)
+        self.assertFalse(grade.valid(grade.Outcome(grade.TEST_FAILED, "x"),
+                                     grade.Outcome(grade.TEST_FAILED, "y")))
+
+    def _red(self, base):
+        repo = Path(tempfile.mkdtemp(dir=self.root))
+        sha = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=sha, fix=sha, seed="seed.patch",
+                                  held_back=["crates/x/tests/t.rs"]), "PATCH",
+                       {"crates/x/tests/t.rs": "held back"})
+
+        def run(argv, tree, target, timeout):
+            if (tree / "crates/x/tests/mine.rs").exists() and argv == ["suite"] and \
+                    (tree / "crates/x/src/lib.rs").read_text() == "fn ok() {}\n":
+                return base  # the red step: own tests on the unmodified base
+            return grade.Outcome()
+
+        files = [("crates/x/src/lib.rs", "fn f() {}\n"), ("crates/x/tests/mine.rs", "t")]
+        with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            return grade.grade_run(c, 1, "k", files, repo, self.root / "work", ["suite"], 9, 9)
+
+    def test_red_at_base_is_true_only_for_a_genuine_test_failure(self):
+        g = self._red(grade.Outcome(grade.TEST_FAILED, "test mine ... FAILED"))
+        self.assertIs(g.red_at_base, True)
+        self.assertEqual(g.failures["red"], "test failed: test mine ... FAILED")
+
+    def test_red_at_base_is_unknown_for_a_compile_failure_or_timeout(self):
+        for base in (grade.Outcome(grade.BUILD_FAILED, "error[E0425]"),
+                     grade.Outcome(grade.TIMEOUT, "after 9s")):
+            with self.subTest(base=base.result):
+                g = self._red(base)
+                self.assertIsNone(g.red_at_base)
+                self.assertEqual(g.failures["red"], base.why())
+                self.assertTrue(g.solved)  # the solved metric is unchanged
+
+    def test_red_at_base_is_false_when_the_own_tests_pass(self):
+        g = self._red(grade.Outcome())
+        self.assertIs(g.red_at_base, False)
+        self.assertNotIn("red", g.failures)
 
     def test_check_suite_runs_the_suite_at_the_unmodified_base(self):
         repo = self.root / "repo"
@@ -275,13 +332,13 @@ class FailureDetailTest(unittest.TestCase):
 
         def run(argv, tree, target, timeout):
             seen.append((argv, sorted(str(q.relative_to(tree)) for q in tree.rglob("*.rs"))))
-            return grade.Outcome(False, "test net::v6 ... FAILED")
+            return grade.Outcome(grade.TEST_FAILED, "test net::v6 ... FAILED")
 
         with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
                 unittest.mock.patch.object(grade, "_sandboxed", run):
             out = grade.check_suite(c, repo, self.root / "work", ["suite"], 30)
         self.assertEqual(seen, [(["suite"], ["crates/x/src/lib.rs"])])
-        self.assertEqual(out, grade.Outcome(False, "test net::v6 ... FAILED"))
+        self.assertEqual(out, grade.Outcome(grade.TEST_FAILED, "test net::v6 ... FAILED"))
 
 
 class SeedTest(unittest.TestCase):

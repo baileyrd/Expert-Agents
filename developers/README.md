@@ -31,8 +31,9 @@ and `bench/fix/`. A case set names one developer; every command takes the set.
 - **Case**: a past fix commit in the target repo, pinned at its parent (`base`). The
   task is the defect written as a bug report: symptom and trace, never the fix. The fix
   commit's own test files are held back (`held_back`), with the command that runs them
-  (`test`). `python3 -m bench.fix check` validates a case: the held-back tests fail at the
-  base and pass at the fix.
+  (`test`). `python3 -m bench.fix check` validates a case: the held-back tests build and
+  fail at the base (a build error or timeout there makes the case invalid, since it never
+  exercised the defect) and pass at the fix.
 - **Run**: Eval-Kit starts each run from a fresh checkout of the base, history only up
   to it, in Claude Code's sandbox with Edit and Write added, no network but crates.io, no
   read or write access to this repo, the target clone or `~/.claude`. GitHub, the
@@ -45,8 +46,10 @@ and `bench/fix/`. A case set names one developer; every command takes the set.
     (`SUITE` in `bench/fix/__main__.py`; for rusty-tokio, `cargo test -p rusty_tokio`
     minus the multicast tests the sandbox cannot run and one timer test that hangs at an
     old base; `check` verifies the suite passes at every case base unmodified);
-  - **red at base**: the run's own test files (under `tests/`) fail at the base; `null`
-    when its tests live in `#[cfg(test)]` modules;
+  - **red at base**: the run's own test files (under `tests/`) build at the base and a
+    test fails; `false` when they pass; `null` when its tests live in `#[cfg(test)]`
+    modules, or when the base failed to build, timed out or failed with no failed test
+    (the reason is kept in `failures.red`);
   - **solved** = fixed and suite green.
   Grading runs the model's code (build scripts, tests), so every test command runs in
   bubblewrap (`bench/fix/sandbox.py`): no network, an empty environment, only the

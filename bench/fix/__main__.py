@@ -109,15 +109,16 @@ def seed(args: argparse.Namespace) -> int:
 def check(args: argparse.Namespace) -> int:
     bad = 0
     for case in cases(args.developer):
-        red, green = gr.check_case(case, args.clone.resolve(), _work(args), TEST_TIMEOUT_S)
+        base, fix = gr.check_case(case, args.clone.resolve(), _work(args), TEST_TIMEOUT_S)
         suite = gr.check_suite(case, args.clone.resolve(), _work(args),
                                SUITE[developer_of([case])], SUITE_TIMEOUT_S)
-        ok = red and green and suite.passed
+        ok = gr.valid(base, fix) and suite.passed
         bad += not ok
-        print(f"{case.id}: red at base {red}, green at fix {green}, suite green at base "
-              f"{suite.passed}{'' if ok else '  INVALID'}")
-        if suite.detail:
-            print("  suite: " + suite.detail.replace("\n", "\n    "))
+        print(f"{case.id}: at base {base.result}, at fix {fix.result}, suite at base "
+              f"{suite.result}{'' if ok else '  INVALID'}")
+        for step, out in (("base", base), ("fix", fix), ("suite", suite)):
+            if out.detail:
+                print(f"  {step}: " + out.detail.replace("\n", "\n    "))
     return 1 if bad else 0
 
 

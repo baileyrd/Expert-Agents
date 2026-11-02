@@ -5,9 +5,12 @@ For each stored run, each step in a fresh export of the case's base (no `.git`):
 - **fixed**: the run's changed files applied, then the held-back test files from the
   real fix on top; the case's test command passes.
 - **red_at_base**: only the run's own changed test files (under a `tests/` directory)
-  applied to the base; the developer's suite command fails with them. `None` when the
-  run added no such file (its tests may live in `#[cfg(test)]` modules, which cannot be
-  separated from the fix).
+  applied to the base; the developer's suite command builds and a test fails. `False`
+  when it passes. `None` when the run added no such file (its tests may live in
+  `#[cfg(test)]` modules, which cannot be separated from the fix), or when the command
+  failed for another reason: a build error (say, a test calling a helper only the fix
+  adds), a timeout, or a failure with no failed test in its output. The reason is kept
+  in `failures["red"]`.
 - **suite_green**: with the run's changes alone, the developer's suite command passes.
 
 Each step that does not pass records why in `failures`: "timeout after Ns", or the
@@ -43,11 +46,25 @@ SKIP_TOP = {"target", ".git", ".claude"}
 TAIL_LINES = 20
 
 
+PASS = "pass"
+TEST_FAILED = "test failed"  # it built, and a test failed or a test binary exited non-zero
+BUILD_FAILED = "build failed"
+TIMEOUT = "timeout"
+UNKNOWN = "failed, cause unknown"  # non-zero exit with neither of the above in its output
+
+
 @dataclass(frozen=True)
 class Outcome:
     """How one sandboxed command ended: `detail` says why when it did not pass."""
-    passed: bool
+    result: str = PASS
     detail: str = ""
+
+    @property
+    def passed(self) -> bool:
+        return self.result == PASS
+
+    def why(self) -> str:
+        return f"{self.result}: {self.detail}" if self.detail else self.result
 
 
 @dataclass
@@ -102,7 +119,7 @@ def grade_run(case: FixCase, run: int, key: str, files: list, clone: Path, work:
     tests = own_tests(kept)
     if tests:
         red = _phase(clone, case.base, f"{name}-red", tests, suite, suite_timeout)
-        g.red_at_base = not red.passed
+        g.red_at_base = _red(g, red)
     suite_run = _phase(clone, case.base, f"{name}-suite", kept, suite, suite_timeout)
     g.suite_green = _record(g, "suite", suite_run)
     fixed = _phase(clone, case.base, f"{name}-fixed", {**kept, **held_back(case, clone)},
@@ -113,8 +130,17 @@ def grade_run(case: FixCase, run: int, key: str, files: list, clone: Path, work:
 
 def _record(g: Grade, step: str, outcome: Outcome) -> bool:
     if not outcome.passed:
-        g.failures[step] = outcome.detail
+        g.failures[step] = outcome.why()
     return outcome.passed
+
+
+def _red(g: Grade, outcome: Outcome) -> bool | None:
+    """True only when the tests built and one failed; None when the failure says nothing
+    about the defect (build error, timeout, unknown)."""
+    if outcome.passed:
+        return False
+    g.failures["red"] = outcome.why()
+    return True if outcome.result == TEST_FAILED else None
 
 
 def held_back(case: FixCase, clone: Path) -> dict[str, str]:
@@ -124,13 +150,20 @@ def held_back(case: FixCase, clone: Path) -> dict[str, str]:
     return {p: _git(clone, "show", f"{case.fix}:{p}") for p in case.held_back}
 
 
-def check_case(case: FixCase, clone: Path, work: Path, timeout: int) -> tuple[bool, bool]:
-    """Is the case valid? Held-back tests fail at the base and pass at the fix."""
+def check_case(case: FixCase, clone: Path, work: Path,
+               timeout: int) -> tuple[Outcome, Outcome]:
+    """The held-back tests at the base and at the fix. The case is valid when they build
+    and fail at the base (`TEST_FAILED`, not a build error or timeout) and pass at the fix:
+    see `valid`."""
     name = work / f"check-{case.id.split('/')[1]}"
     tests = held_back(case, clone)
-    red = not _phase(clone, case.base, f"{name}-base", tests, list(case.test), timeout).passed
-    green = _phase(clone, case.fix, f"{name}-fix", tests, list(case.test), timeout).passed
-    return red, green
+    base = _phase(clone, case.base, f"{name}-base", tests, list(case.test), timeout)
+    fix = _phase(clone, case.fix, f"{name}-fix", tests, list(case.test), timeout)
+    return base, fix
+
+
+def valid(base: Outcome, fix: Outcome) -> bool:
+    return base.result == TEST_FAILED and fix.passed
 
 
 def check_suite(case: FixCase, clone: Path, work: Path, suite: list[str],
@@ -212,10 +245,20 @@ def _sandboxed(argv: list[str], tree: Path, target: Path, timeout: int) -> Outco
         done = subprocess.run(wrapped, cwd=tree, capture_output=True, text=True,
                               errors="replace", timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
-        return Outcome(False, f"timeout after {timeout}s")
+        return Outcome(TIMEOUT, f"after {timeout}s")
     if done.returncode == 0:
-        return Outcome(True)
-    return Outcome(False, summarize(done.stdout + done.stderr))
+        return Outcome()
+    output = done.stdout + done.stderr
+    return Outcome(classify(output), summarize(output))
+
+
+def classify(output: str) -> str:
+    """Why a cargo test command exited non-zero, from its output."""
+    if "could not compile" in output or "error[E" in output:
+        return BUILD_FAILED
+    if "test result: FAILED" in output or "error: test failed" in output:
+        return TEST_FAILED
+    return UNKNOWN
 
 
 def summarize(output: str) -> str:
