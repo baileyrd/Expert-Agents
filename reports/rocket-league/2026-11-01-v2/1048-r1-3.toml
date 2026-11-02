@@ -1,0 +1,40 @@
+# Grade 1048-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/1048-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A car under ~45 uu/s cannot wake a sleeping ball"
+triage = "design_question"
+reason = "executed: head, ball asleep 300 ticks in standard_arena, standard_car pressed against it at 35/45/60 uu/s: ball never wakes, moves 0.000 uu (200 uu/s wakes it). FR-037 Non-goals (RB-PHYSICS-001:2162-2166, same on main) document a slow push never waking a sleeping body as a deliberate modelling choice; the 'matches real Bullet' rationale is disputable, but the behaviour is documented as intended"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Linear bracket and 'angular bounded only below' claim more than the captures (joint condition)"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "fixture_checks.py takes the upper bound as the slowest speed, ignoring the timer"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Port freezes the ball one tick before the game"
+triage = "real"
+reason = "executed: head harness at lag 0: rest_10 and rest_20 port last moves on tick 240 and is zero from 241; game moves on 241, zero from 242 (sleep before integrate, world.rs:1527-1532; >= at body.rs:475). Main: body.rs:489, world.rs:1532-1534 unchanged. Still on main; duplicates #1311"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "rest_* golden bounds measured at a lag the captures do not have"
+triage = "real"
+reason = "executed: head harness picks lag 3/3/1/3 for rest_10/20/40/80 (start_speed reads only the parked car's velocity, scenario.rs:593-601) though every rest fixture shows the ball moving on frame 1 (true lag 0); at RB_FORCE_ALIGN=0,0 rest_80 ball mean 3.93 > bound 3.6, rest_20 1.10/1.59. Main: scenario.rs:593-602 unchanged, picks 3/2/1/3, and at lag 0 rest_80 is 2.78/8.19 against its (2.7, 8.0) bound. Still on main; new (not #1309-#1313)"

@@ -1,0 +1,19 @@
+# Grade 973-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/973-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Rest probe claims the ball stops; port still at 339.9 uu/s when the tape ends"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A 600 uu/s roll is impossible under the 6 rad/s spin cap; the spinless ball slides first"
+triage = "fixed_since"
+reason = "executed: balltrace probe (rb_verify_cli::simulate_scenario on head probe_ball_rest.json) shows |w|=0 at tick 0, v/w=156.6 at tick 60, rolling (v/w=93.15) only from about 418 uu/s at tick 120, while gen_probes.py:165 and probe_ball_rest.json:2 call it rolling at 600 uu/s (600/91.25 = 6.58 rad/s > the 6.0 cap, PHYSICS-PARITY-VS-ROCKETSIM.md:91); fixed on main (f7f3a591c starts each rest rung already rolling with angular_velocity = -v/BALL_R, gen_probes.py:174-176 at 8f27bb992); not among #1309-#1313"

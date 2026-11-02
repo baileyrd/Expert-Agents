@@ -1,0 +1,3 @@
+<!-- rocket-league/666-r1 run 3, variant baseline, prompt 034d2ab7cdb5d0e7cbaf6671c79de028048aec2b, model claude-opus-5-5, 2.1.316 (Claude Code); 5 s, 47202 tokens, $0.67 -->
+
+That notice is about my first probe run, which I had already stopped. It hung because of a mistake in my probe, not because of the PR: the first `wait_for_game` call kept a silent connection open, so the call could never return. I fixed the probe and re-ran it, and that run produced the result behind finding 2: the game connects first, eight silent connections push it out, and the wait still hadn't returned 3 s after the game spoke. Nothing from the stopped run is used in the review, and the verdict is still **changes required**.

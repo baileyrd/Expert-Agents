@@ -1,0 +1,27 @@
+# Grade 666-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/666-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Eight later connections push out a silent game; wait never ends"
+triage = "real"
+reason = "executed: probe silent_game_first_then_eight_strays (probes/666-r1/probe-head) at head: game dials silent, 8 silent strays follow, game then writes GameSpawn; game reads Ok(0) (closed by link.rs:203-207 remove(0)), wait_for_game has not returned 2 s later with strays open (:233-235 keeps timeout off), Ok(None) after they leave. Same result with probe-main (admit link.rs:238); main README:89-91 (2cc049473) now lists it as a known limitation. Duplicates #1309; on main"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A game that has already sent its message is evicted in the accept drain before it is checked"
+# Also mentions the unbounded drain starving checks (K3); one match per finding, K2 is the headline.
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "swap_remove breaks oldest-dropped-first"
+match = "K5"
+quality = "caught"

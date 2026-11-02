@@ -1,0 +1,7 @@
+# Grade 1048-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/1048-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 4
+
+# run 4: report lost to a harness artifact (final_text is an epilogue); no findings recorded

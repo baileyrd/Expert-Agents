@@ -1,0 +1,40 @@
+# Grade 1048-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/1048-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Cars sleep on the ball's new thresholds; wob_0_500 car 73% worse, bound raised"
+triage = "real"
+reason = "executed: head copy with cars on the old 20/0.5/0.5 sleep thresholds (ball unchanged): wob_0_500 car 7.19/33.39 -> 4.15/27.79, every ball number unchanged, demo_4 car 2.84/5.06 -> 2.93/6.12; cars share the ball constants (world.rs:1528-1530) and the wob_0_500 car bound rose to (9.0, 41.7). Main: body.rs:105-109, world.rs:1532-1534, wob_0_500 car 7.40/33.88 under the same bound. Still on main; same root cause as #1312 (cars sleep on unmeasured ball thresholds), new evidence (wob_0_500 regression absorbed by the raised bound)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Stated cause of the rest_40 residual is wrong"
+triage = "real"
+reason = "executed: head probe (compare_scenario_recorded, RB_FORCE_ALIGN=0,0): port ball 40.000 -> 40.231 uu/s on tick 1 (game 39.981), first under 40 at tick 33, zeroed at tick 273 vs game 242; spin set for 91.25 (gen_probes.py) on the 93.15 ball (body.rs:112), so decay rate is not the cause. Main's FR-161 (f2bb268a9) removed the residual (0.29/0.36) but the decay explanation is still at RB-PHYSICS-001:2213-2215, golden_captures.rs:177-178 and the 2026-10-25 fragment. Still on main; duplicates #1313"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Port freezes a rolling ball one tick before the game"
+triage = "real"
+reason = "executed: head harness at lag 0: rest_10 and rest_20 port last moves on tick 240 and is zero from 241; game moves on 241, zero from 242 (sleep before integrate, world.rs:1527-1532; >= at body.rs:475). Main: body.rs:489, world.rs:1532-1534 unchanged. Still on main; duplicates #1311"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Numbers in fragment, FR and commit do not match the head"
+triage = "real"
+reason = "executed: golden harness at head: rest_20 ball max 1.441 (docs 1.6), fast_6500 mean 5.680 (5.4), max 56.84 (55); bounds 1.8/7.1/71.1 = measured x1.25; rb-verify --against without --recorded-inputs gives 1.6/5.4/55.2 (tape mode). Text unchanged at changes/2026-10-25-rl-ball-sleep-calibration.md:8,11 and RB-PHYSICS-001:2213,4009. Still on main; duplicates #1313"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Edited doc comments contradict where the cap runs"
+triage = "real"
+reason = "traced: world.rs:1213 (step doc) and :272-274 (clamp_ball_velocity doc) say the end cap runs before sleep evaluation and transform integration, but clamp_ball_velocity (:1537) runs after integrate_transform_and_refresh_inertia (:1532), and it is now called twice per step (:1284, :1537). Same at main world.rs:1218, :277. Still on main; duplicates #1313"

@@ -94,12 +94,15 @@ Go down this list only as far as the question needs.
 
 ## Steps
 
-1. **Predict.** Before reading the PR description, list the mechanics, solver stages,
-   scenarios, fixtures and wire or file formats the diff touches. For each, write the
+1. **Map and predict.** Run `git diff --stat` on the pinned range and list every
+   changed file: code, tests, fixtures, docs, and scripts in any language (PowerShell
+   and Python included). That list is the review's coverage. Before reading the PR
+   description, list the mechanics, solver stages, scenarios, fixtures and wire or
+   file formats the diff touches. For each, write the
    invariant that must hold with a citation (FR, ADR, capture, RocketSim or Bullet line),
    and for every number the diff introduces, state its unit and which recording or
-   reference it comes from. Done when every touched item has an invariant and every new
-   constant has a source.
+   reference it comes from. Done when every changed file is on the list, every touched
+   item has an invariant and every new constant has a source.
 2. **Break it.** Try each failure class from earlier reviews against the diff:
    - **Units**: a Bullet value in metres, m/s or rad used as uu without the 50x scale;
      ticks against seconds; 120 Hz against a capture's rate.
@@ -124,7 +127,12 @@ Go down this list only as far as the question needs.
      walked without a cap.
    - **Stale frames**: a repeated or paused frame advancing a stateful policy, cached
      input replayed after the ball or car vanished, state applied half-validated.
-   Done when each class has a concrete trace or is ruled out with a reason.
+   A severe finding does not end the search. Record it and keep going through every
+   class on every file in the map. Then search its neighbours: the other exits of the
+   same loop, the other branches on the same state, the other callers of the changed
+   function, and the same quantity in the other harness or script. Independent defects
+   cluster there. Done when each class has a concrete trace or is ruled out with a
+   reason for every file in the map.
 3. **Compare** the diff with steps 1–2, the FRs and ADRs, `PHYSICS-PARITY-VS-ROCKETSIM.md`,
    the scoreboard and the change fragment. Documentation or a spec that disagrees with
    the code is a defect. A divergence from RocketSim with no ADR or FR is drift.
@@ -150,6 +158,9 @@ fixture bounds and change-fragment claims it makes false. Each has:
   support, malformed input accepted, missing tests for changed
   behaviour, docs that disagree with the code). Grade by impact alone and state the
   trigger beside it; a narrow trigger never lowers the grade.
+- **One defect per finding.** Report each independent defect on its own, even when a
+  more severe one shares its path. A smaller defect folded into a headline, or left
+  only in optional improvements, is lost.
 - **File and line** at <HEAD_SHA>.
 - **Failure scenario**: concrete inputs and order (for example "car lands at 8 uu/s; the
   threshold is 0.2 uu/s, so it bounces and the next jump fires as a dodge"), labelled *source-traced* or
@@ -157,9 +168,10 @@ fixture bounds and change-fragment claims it makes false. Each has:
 - **Required correction**, and the regression test or capture check that goes red
   without it.
 
-A finding needs a trace. What only the live game can settle (an unmeasured threshold, a
-Windows or PowerShell path, the BakkesMod plugin) is a validation gap with the capture
-or run that would settle it, not a finding. Style alone never blocks. List optional
+A finding needs a trace. What only the live game can settle (an unmeasured threshold,
+runtime behaviour only Windows shows, the BakkesMod plugin) is a validation gap with the
+capture or run that would settle it, not a finding. A script in the diff, PowerShell
+included, is still read and traced from source like any other code. Style alone never blocks. List optional
 improvements separately. Any defect, at any severity, makes the verdict **changes
 required**; optional improvements never do.
 
@@ -172,13 +184,15 @@ each crate the diff touches (physics changes: `rb_physics_bullet`, `rb_env` and
 Tape-bot Python: `python3 -I -m unittest discover -s crates/apps/rocket_league/rusty_bullet/tools/rb_tape_bot`.
 Change fragment: `python3 .github/scripts/changes.py check`. Tests that need
 the private corpus skip without it; say so. Never call a check passing unless you ran it
-and saw it pass. PowerShell, the game and the plugin are validation gaps here.
+and saw it pass. Running PowerShell, the game and the plugin are validation gaps here;
+reading the scripts is not.
 
 ## Return
 
 - Repository, PR number, base SHA and the head SHA that was reviewed.
 - Prior findings, each fixed or still present (re-reviews only).
 - Blocking findings, most severe first.
+- Coverage: each changed file from step 1, and the classes checked in it.
 - Design questions: documented behaviour that hurts a real client.
 - Optional improvements.
 - Checks performed with results, and validation gaps.
