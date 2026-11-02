@@ -82,6 +82,9 @@ and `bench/fix/`. A case set names one developer; every command takes the set.
   hidden test was checked red at the seeded commit and green at `main`. The existing
   `rusty_tokio` suite stays green on six seeds; it hangs on `once-cell-cancel-waiters`
   every time and on `duplex-shutdown-eof` about one run in ten (noted in each `source`).
+  A case's `suite_skip` lists existing tests its own defect breaks at the base; its suite
+  steps skip them, so `check` can require the suite green at the base. once-cell skips
+  the OnceCell test it hangs; the held-back tests still cover the defect.
 
 ```
 export PYTHONPATH=~/src/eval-kit EXPERT_AGENTS=$PWD TARGET=<rusty_mill clone>; unset ANTHROPIC_API_KEY

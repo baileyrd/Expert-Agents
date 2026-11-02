@@ -53,6 +53,9 @@ class FixCase:
     developer: str = ""
     seed: str = ""  # seeded only: the patch that plants the bug in `fix`
     hidden: tuple[tuple[str, str], ...] = ()  # seeded only: (path, text) of each held-back file
+    # Existing tests the case's own defect breaks at the base, skipped in its suite steps so
+    # the suite can pass there; the held-back tests and `fixed` still cover the defect.
+    suite_skip: tuple[str, ...] = ()
 
     @property
     def seeded(self) -> bool:
@@ -62,7 +65,8 @@ class FixCase:
 def parse_case(case_id: str, raw: dict, seed: str = "",
                hidden: dict[str, str] | None = None) -> FixCase:
     """`seed` and `hidden` are the texts of the files a seeded case names; the caller reads them."""
-    known = {"developer", "repo", "fix", "base", "task", "held_back", "test", "source", "seed"}
+    known = {"developer", "repo", "fix", "base", "task", "held_back", "test", "source", "seed",
+             "suite_skip"}
     unknown = set(raw) - known
     if unknown:
         raise ValueError(f"{case_id}: unknown keys {sorted(unknown)}")
@@ -76,6 +80,9 @@ def parse_case(case_id: str, raw: dict, seed: str = "",
         raise ValueError(f"{case_id}: held_back must list the fix's test files")
     if not test or not all(isinstance(a, str) for a in test):
         raise ValueError(f"{case_id}: test must be a non-empty argv list")
+    skip = raw.get("suite_skip") or []
+    if not isinstance(skip, list) or not all(isinstance(t, str) and t for t in skip):
+        raise ValueError(f"{case_id}: suite_skip must list test names")
     task = str(raw.get("task", "")).strip()
     if not task:
         raise ValueError(f"{case_id}: task is empty")
@@ -84,7 +91,7 @@ def parse_case(case_id: str, raw: dict, seed: str = "",
         raise ValueError(f"{case_id}: a seeded case needs the text of every held_back file")
     return FixCase(case_id, str(raw["repo"]), raw["fix"], raw["base"], task, tuple(held),
                    tuple(test), str(raw.get("developer", "")), seed,
-                   tuple((p, files[p]) for p in held) if seed else ())
+                   tuple((p, files[p]) for p in held) if seed else (), tuple(skip))
 
 
 def task_input(case: FixCase) -> str:

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from bench import extract
 from bench.fix import grade, sandbox, seed
-from bench.fix.__main__ import CASES, cases, developer_of, main
+from bench.fix.__main__ import CASES, SUITE, cases, developer_of, main, suite_for
 from bench.fix.model import parse_case, settings, suite_toml, task_input
 
 SHA = "a" * 40
@@ -31,9 +31,16 @@ class ModelTest(unittest.TestCase):
         self.assertIn("b" * 40, task_input(c))
         self.assertNotIn(SHA, task_input(c))  # the fix commit is never shown
 
+    def test_suite_skip_adds_the_case_s_own_skips_to_the_suite(self):
+        c = parse_case("d/c", raw(developer="rusty-tokio", suite_skip=["hangs_on_the_bug"]))
+        self.assertEqual(c.suite_skip, ("hangs_on_the_bug",))
+        self.assertEqual(suite_for(c), [*SUITE["rusty-tokio"], "--skip", "hangs_on_the_bug"])
+        plain = parse_case("d/c", raw(developer="rusty-tokio"))
+        self.assertEqual(suite_for(plain), SUITE["rusty-tokio"])
+
     def test_rejects_bad_cases(self):
         for bad in (raw(fix="abc"), raw(held_back=["src/lib.rs"]), raw(test=[]), raw(task=" "),
-                    raw(extra=1)):
+                    raw(extra=1), raw(suite_skip="x"), raw(suite_skip=[""])):
             with self.assertRaises(ValueError):
                 parse_case("d/c", bad)
 

@@ -110,8 +110,8 @@ def check(args: argparse.Namespace) -> int:
     bad = 0
     for case in cases(args.developer):
         base, fix = gr.check_case(case, args.clone.resolve(), _work(args), TEST_TIMEOUT_S)
-        suite = gr.check_suite(case, args.clone.resolve(), _work(args),
-                               SUITE[developer_of([case])], SUITE_TIMEOUT_S)
+        suite = gr.check_suite(case, args.clone.resolve(), _work(args), suite_for(case),
+                               SUITE_TIMEOUT_S)
         ok = gr.valid(base, fix) and suite.passed
         bad += not ok
         print(f"{case.id}: at base {base.result}, at fix {fix.result}, suite at base "
@@ -129,13 +129,14 @@ def grade(args: argparse.Namespace) -> int:
     jobs = suite_jobs(folder / "suite.toml", args.variant)
     lines = (folder / ".evalkit" / "suite.jsonl").read_text().splitlines()
     records = ex.current_records(lines, jobs, args.variant)
-    suite_cmd = SUITE[developer_of(list(by_id.values()))]
+    developer_of(list(by_id.values()))
     sandbox.bwrap()  # fail closed before any work
     grades = []
     for job, record in records:
         g = gr.grade_run(by_id[job.case], job.sample + 1, job.key,
                          record["trace"].get("files") or [], args.clone.resolve(),
-                         _work(args), suite_cmd, TEST_TIMEOUT_S, SUITE_TIMEOUT_S)
+                         _work(args), suite_for(by_id[job.case]), TEST_TIMEOUT_S,
+                         SUITE_TIMEOUT_S)
         grades.append(g)
         print(f"{g.case} run {g.run}: solved {g.solved} (fixed {g.fixed}, suite green "
               f"{g.suite_green}, own test red at base {g.red_at_base}) {g.note}".rstrip())
@@ -155,6 +156,12 @@ def cases(case_set: str) -> list[FixCase]:
     if not folder.is_dir():
         raise ValueError(f"{case_set} has no fix cases under {folder}")
     return [_load(f"{case_set}/{d.name}", d) for d in sorted(folder.iterdir()) if d.is_dir()]
+
+
+def suite_for(case: FixCase) -> list[str]:
+    """The developer's suite command, minus the existing tests this case's defect breaks."""
+    skips = [arg for name in case.suite_skip for arg in ("--skip", name)]
+    return [*SUITE[developer_of([case])], *skips]
 
 
 def developer_of(found: list[FixCase]) -> str:

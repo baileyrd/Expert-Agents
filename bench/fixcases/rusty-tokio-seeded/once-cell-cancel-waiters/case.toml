@@ -4,6 +4,8 @@ fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
 base = "a3f11e44b0bec35faaebaf5009f074cc97b10bd9"
 source = "seeded: blind bug in code the developer prompt never names; the existing suite catches it (once_cell_concurrent_waiters_see_the_first_successful_result_after_a_panic hangs)"
 seed = "seed.patch"
+# The seeded bug hangs this existing test (every time), so the suite skips it for this case.
+suite_skip = ["once_cell_concurrent_waiters_see_the_first_successful_result_after_a_panic"]
 held_back = ["crates/libs/async/rusty_tokio/tests/heldback_once_cell_cancel_waiters.rs"]
 test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_once_cell_cancel_waiters"]
 task = """
