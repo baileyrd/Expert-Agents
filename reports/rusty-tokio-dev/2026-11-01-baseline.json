@@ -1,0 +1,218 @@
+{
+  "set": "rusty-tokio",
+  "variant": "baseline",
+  "model": "claude-opus-5-5",
+  "prompt_spec_sha256": "427f5c60a9c7",
+  "grades": [
+    {
+      "case": "rusty-tokio/abort-poll-race",
+      "run": 1,
+      "key": "48f33f0dd8105eb8eee7799e144e6d5bacc0e6566810aad3f12d77d2672abc8d",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-abort-begin-poll-race.md",
+        "crates/libs/async/rusty_tokio/src/task/join.rs",
+        "crates/libs/async/rusty_tokio/src/task/local.rs",
+        "crates/libs/async/rusty_tokio/src/task/mod.rs",
+        "crates/libs/async/rusty_tokio/src/task/state.rs",
+        "crates/libs/async/rusty_tokio/tests/abort_handle.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/abort-poll-race",
+      "run": 2,
+      "key": "88c289468441ef9c337fccbc4ce915c9d63e3c12ab1900ac4edf10044be43f95",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-abort-first-poll-race.md",
+        "crates/libs/async/rusty_tokio/src/lib.rs",
+        "crates/libs/async/rusty_tokio/src/task/join.rs",
+        "crates/libs/async/rusty_tokio/src/task/local.rs",
+        "crates/libs/async/rusty_tokio/src/task/mod.rs",
+        "crates/libs/async/rusty_tokio/src/task/state.rs",
+        "crates/libs/async/rusty_tokio/tests/abort_handle.rs",
+        "crates/libs/async/rusty_tokio/tests/current_thread.rs",
+        "crates/libs/async/rusty_tokio/tests/local_set.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/abort-poll-race",
+      "run": 3,
+      "key": "39012d6b1bea2aa07d05a7a09c4a6aa7e47fcc96edacf86dc0578a34e62e17d7",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-abort-racing-first-poll.md",
+        "crates/libs/async/rusty_tokio/src/task/state.rs",
+        "crates/libs/async/rusty_tokio/tests/abort_handle.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/mpsc-cancelled-send",
+      "run": 1,
+      "key": "50842308ed3537a265ccffc449fe12e1af46f809f56b2631adf58822231beea2",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-mpsc-cancelled-send-wake.md",
+        "crates/libs/async/rusty_tokio/src/sync/mpsc.rs",
+        "crates/libs/async/rusty_tokio/tests/sync.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/mpsc-cancelled-send",
+      "run": 2,
+      "key": "1b0c3bb711c34384297dc6d6ef9f8d8ae106b6acf3d4f1d50fc5b436b1ae8b0c",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-mpsc-cancelled-send-waiter.md",
+        "crates/libs/async/rusty_tokio/src/sync/mpsc.rs",
+        "crates/libs/async/rusty_tokio/tests/sync.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/mpsc-cancelled-send",
+      "run": 3,
+      "key": "67283e1c33929356ae1bfbe4dd8e48a4de3edc601433cef80ad7ff0c1c07499a",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-mpsc-cancelled-send-wake.md",
+        "crates/libs/async/rusty_tokio/src/sync/mpsc.rs",
+        "crates/libs/async/rusty_tokio/tests/sync.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/mpsc-waker-under-lock",
+      "run": 1,
+      "key": "b8befac3576ff6a56d5d98fee181df3ea30afa485a5a743b4420140f39f6feb5",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-mpsc-waker-owns-sender.md",
+        "crates/libs/async/rusty_tokio/README.md",
+        "crates/libs/async/rusty_tokio/src/lib.rs",
+        "crates/libs/async/rusty_tokio/src/sync/mpsc.rs",
+        "crates/libs/async/rusty_tokio/tests/mpsc_cancel.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/mpsc-waker-under-lock",
+      "run": 2,
+      "key": "ff9d37ec21ce1b98d234821b62e460821ddca29b66e46304b58aec38ac930a05",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-mpsc-waker-owns-sender.md",
+        "crates/libs/async/rusty_tokio/src/sync/mpsc.rs",
+        "crates/libs/async/rusty_tokio/tests/mpsc_cancel.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/mpsc-waker-under-lock",
+      "run": 3,
+      "key": "cfcd241291ecc4f38e5ad70ecbb4b7f8e84dc1317d37ede93331a2924b8bd536",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-mpsc-waker-owns-sender.md",
+        "crates/libs/async/rusty_tokio/README.md",
+        "crates/libs/async/rusty_tokio/src/sync/mpsc.rs",
+        "crates/libs/async/rusty_tokio/tests/mpsc_cancel.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/rwlock-queue",
+      "run": 1,
+      "key": "4ade157dc15b6efc5374c6167e6a0cd42989a0f07484c9eb86b28adc28599bef",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-rwlock-fifo-cancel.md",
+        "crates/libs/async/rusty_tokio/README.md",
+        "crates/libs/async/rusty_tokio/src/sync/rwlock.rs",
+        "crates/libs/async/rusty_tokio/src/sync/semaphore.rs",
+        "crates/libs/async/rusty_tokio/tests/sync.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/rwlock-queue",
+      "run": 2,
+      "key": "9a3905c458b3df700a7c5daa7c049c09c204a41ad8a7d228c5af062e018312af",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-rwlock-fifo-cancel-safe.md",
+        "crates/libs/async/rusty_tokio/README.md",
+        "crates/libs/async/rusty_tokio/src/sync/rwlock.rs",
+        "crates/libs/async/rusty_tokio/src/sync/semaphore.rs",
+        "crates/libs/async/rusty_tokio/tests/sync.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    },
+    {
+      "case": "rusty-tokio/rwlock-queue",
+      "run": 3,
+      "key": "d1f2c696820e77939524f7f87e36b489e8d32095e14204fd80ddeb93db074aad",
+      "fixed": true,
+      "red_at_base": true,
+      "suite_green": true,
+      "changed": [
+        "changes/2026-11-01-rusty-tokio-rwlock-fifo-cancel-safe.md",
+        "crates/libs/async/rusty_tokio/README.md",
+        "crates/libs/async/rusty_tokio/src/sync/rwlock.rs",
+        "crates/libs/async/rusty_tokio/src/sync/semaphore.rs",
+        "crates/libs/async/rusty_tokio/tests/sync.rs"
+      ],
+      "failures": {},
+      "note": "",
+      "solved": true
+    }
+  ]
+}

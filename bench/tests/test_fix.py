@@ -1,0 +1,423 @@
+import io
+import json
+import shutil
+import subprocess
+import tempfile
+import tomllib
+import unittest
+import unittest.mock
+from contextlib import redirect_stderr
+from pathlib import Path
+
+from bench import extract
+from bench.fix import grade, sandbox, seed
+from bench.fix.__main__ import CASES, SUITE, cases, developer_of, main, suite_for
+from bench.fix.model import parse_case, settings, suite_toml, task_input
+
+SHA = "a" * 40
+
+
+def raw(**over):
+    return {"developer": "d", "repo": "o/r", "fix": SHA, "base": "b" * 40,
+            "held_back": ["crates/x/tests/t.rs"], "test": ["cargo", "test"],
+            "task": "Bug: it hangs.", **over}
+
+
+class ModelTest(unittest.TestCase):
+    def test_parses_a_case(self):
+        c = parse_case("d/c", raw())
+        self.assertEqual(c.held_back, ("crates/x/tests/t.rs",))
+        self.assertIn("Bug: it hangs.", task_input(c))
+        self.assertIn("b" * 40, task_input(c))
+        self.assertNotIn(SHA, task_input(c))  # the fix commit is never shown
+
+    def test_suite_skip_adds_the_case_s_own_skips_to_the_suite(self):
+        c = parse_case("d/c", raw(developer="rusty-tokio", suite_skip=["hangs_on_the_bug"]))
+        self.assertEqual(c.suite_skip, ("hangs_on_the_bug",))
+        self.assertEqual(suite_for(c), [*SUITE["rusty-tokio"], "--skip", "hangs_on_the_bug"])
+        plain = parse_case("d/c", raw(developer="rusty-tokio"))
+        self.assertEqual(suite_for(plain), SUITE["rusty-tokio"])
+
+    def test_rejects_bad_cases(self):
+        for bad in (raw(fix="abc"), raw(held_back=["src/lib.rs"]), raw(test=[]), raw(task=" "),
+                    raw(extra=1), raw(suite_skip="x"), raw(suite_skip=[""])):
+            with self.assertRaises(ValueError):
+                parse_case("d/c", bad)
+
+    def test_suite_starts_at_the_base_and_hides_the_clone(self):
+        text = suite_toml("d", [parse_case("d/c", raw())], "m", ("index.crates.io",))
+        data = tomllib.loads(text)
+        self.assertEqual(data["case"][0]["checkout"], {"from": "${TARGET}", "head": "b" * 40})
+        self.assertNotIn(SHA, text)
+        rules = json.loads(data["settings"])
+        self.assertIn("Write(/${TARGET}/**)", rules["permissions"]["deny"])
+        self.assertIn("Agent", rules["permissions"]["deny"])
+        self.assertEqual(rules["sandbox"]["network"]["allowedDomains"], ["index.crates.io"])
+
+    def test_settings_never_open_github(self):
+        self.assertNotIn("github", settings(()))
+
+    def test_a_seeded_case_carries_its_patch_and_hidden_tests(self):
+        c = parse_case("d/c", raw(seed="seed.patch"), "PATCH", {"crates/x/tests/t.rs": "T"})
+        self.assertTrue(c.seeded)
+        self.assertEqual(c.hidden, (("crates/x/tests/t.rs", "T"),))
+        self.assertEqual(grade.held_back(c, Path("/nonexistent")), {"crates/x/tests/t.rs": "T"})
+        self.assertNotIn("PATCH", task_input(c))
+        self.assertFalse(parse_case("d/c", raw()).seeded)
+
+    def test_a_seeded_case_needs_its_patch_and_every_hidden_test(self):
+        for args in ((raw(seed="seed.patch"), "", {}),
+                     (raw(seed="seed.patch"), "PATCH", {}),
+                     (raw(), "PATCH", {"crates/x/tests/t.rs": "T"})):
+            with self.assertRaises(ValueError):
+                parse_case("d/c", *args)
+
+    def test_a_case_set_names_one_developer(self):
+        self.assertEqual(developer_of([parse_case("s/c", raw())]), "d")
+        for found in ([], [parse_case("s/a", raw()), parse_case("s/b", raw(developer="e"))],
+                      [parse_case("s/c", raw(developer=""))]):
+            with self.assertRaises(ValueError):
+                developer_of(found)
+
+
+def _record(key, case, sample, files, variant="baseline"):
+    return json.dumps({"key": key, "variant": variant, "case": case, "sample": sample,
+                       "cli_version": "x", "trace": {"files": files, "final_text": ""}})
+
+
+class StoreTest(unittest.TestCase):
+    JOBS = (extract.Job("k-new", "c", 0),)
+
+    def test_takes_the_run_under_the_current_key_not_the_latest_line(self):
+        lines = [_record("k-new", "c", 0, [["a.rs", "new"]]),
+                 _record("k-old", "c", 0, [["a.rs", "stale"]])]  # same case and sample, later
+        [(job, record)] = extract.current_records(lines, self.JOBS, "baseline")
+        self.assertEqual(job.key, "k-new")
+        self.assertEqual(record["trace"]["files"], [["a.rs", "new"]])
+
+    def test_refuses_a_missing_run_an_empty_store_or_no_jobs(self):
+        for lines, jobs in (([_record("k-old", "c", 0, [])], self.JOBS), ([], self.JOBS),
+                            ([_record("k-new", "c", 0, [])], ())):
+            with self.assertRaises(ValueError):
+                extract.current_records(lines, jobs, "baseline")
+
+    def test_refuses_a_key_that_names_another_case(self):
+        with self.assertRaises(ValueError):
+            extract.current_records([_record("k-new", "other", 0, [])], self.JOBS, "baseline")
+
+
+class SandboxTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        self.cargo, self.rustup = root / "cargo", root / "rustup"
+        self.cargo.mkdir()
+        self.rustup.mkdir()
+        (self.cargo / "credentials.toml").write_text("token = 'secret'")
+        self.tree, self.target = root / "tree", root / "target"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def wrap(self):
+        return sandbox.wrap(["cargo", "test"], self.tree, self.target, self.cargo,
+                            self.rustup, "/usr/bin/bwrap")
+
+    def test_no_network_no_host_env_and_the_command_last(self):
+        cmd = self.wrap()
+        for flag in ("--unshare-all", "--clearenv", "--die-with-parent"):
+            self.assertIn(flag, cmd)
+        self.assertEqual(cmd[-3:], ["--", "cargo", "test"])
+        env = {cmd[i + 1]: cmd[i + 2] for i, a in enumerate(cmd) if a == "--setenv"}
+        self.assertEqual(env["CARGO_NET_OFFLINE"], "true")
+        self.assertEqual(env["HOME"], "/tmp")
+        self.assertNotIn("ANTHROPIC_API_KEY", env)
+
+    def test_mounts_only_the_tree_target_toolchain_and_system_dirs(self):
+        cmd = self.wrap()
+        writable = [cmd[i + 1] for i, a in enumerate(cmd) if a == "--bind"]
+        self.assertEqual(writable, [str(self.tree), str(self.target)])
+        mounted = {cmd[i + 2] for i, a in enumerate(cmd) if a in ("--bind", "--ro-bind",
+                                                                 "--ro-bind-try")}
+        allowed = {*sandbox.SYSTEM_DIRS, str(self.cargo), str(self.rustup), str(self.tree),
+                   str(self.target), str(self.cargo / "credentials.toml")}
+        self.assertLessEqual(mounted, allowed)
+        self.assertNotIn("/", mounted)
+        self.assertNotIn(str(Path.home()), mounted)
+
+    def test_masks_cargo_credentials(self):
+        cmd = self.wrap()
+        i = cmd.index(str(self.cargo / "credentials.toml"))
+        self.assertEqual(cmd[i - 2:i], ["--ro-bind", "/dev/null"])
+
+    def test_fails_closed_without_bubblewrap(self):
+        with unittest.mock.patch("shutil.which", return_value=None):
+            with self.assertRaises(ValueError):
+                sandbox.bwrap()
+
+
+class HostSafetyTest(unittest.TestCase):
+    """Grading's host-side steps never follow model-made paths or run model config."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.outside = self.root / "outside"
+        self.outside.mkdir()
+        self.sentinel = self.outside / "t.rs"
+        self.sentinel.write_text("SENTINEL")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_safe_path_rejects_absolute_traversing_and_git_paths(self):
+        for bad in ("/etc/passwd", "../x.rs", "a/../../x.rs", "a//b.rs", ".git/config",
+                    "a/.git/hooks/pre-commit", "", "./a.rs", "a\\b.rs"):
+            self.assertFalse(grade.safe_path(bad), bad)
+        self.assertTrue(grade.safe_path("crates/x/tests/t.rs"))
+
+    def test_write_refuses_a_symlinked_directory_or_file(self):
+        tree = self.root / "tree"
+        (tree / "crates").mkdir(parents=True)
+        (tree / "crates" / "x").symlink_to(self.outside)  # as code in the sandbox could
+        with self.assertRaises(ValueError):
+            grade._write(tree, {"crates/x/t.rs": "pwned"})
+        (tree / "f.rs").symlink_to(self.sentinel)
+        with self.assertRaises(OSError):
+            grade._write(tree, {"f.rs": "pwned"})
+        with self.assertRaises(ValueError):
+            grade._write(tree, {"../outside/t.rs": "pwned"})
+        self.assertEqual(self.sentinel.read_text(), "SENTINEL")
+
+    def test_each_phase_is_a_fresh_tree_fetched_before_any_run_file(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        base = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=base, fix=base, seed="seed.patch",
+                                  held_back=["crates/x/tests/t.rs"]), "PATCH",
+                       {"crates/x/tests/t.rs": "held back"})
+        events = []
+
+        def fetch(tree, target, timeout):
+            events.append(("fetch", (tree / "crates/x/src/lib.rs").read_text()))
+
+        def run(argv, tree, target, timeout):
+            events.append(("run", sorted(str(p.relative_to(tree)) for p in tree.rglob("*.rs"))))
+            # hostile code: leave the held-back path pointing outside the tree
+            shutil.rmtree(tree / "crates/x/tests", ignore_errors=True)
+            (tree / "crates/x/tests").symlink_to(self.outside)
+            return grade.Outcome()
+
+        files = [("crates/x/src/lib.rs", "fn fixed() {}\n"), ("crates/x/tests/mine.rs", "t")]
+        with unittest.mock.patch.object(grade, "_fetch", fetch), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            g = grade.grade_run(c, 1, "k", files, repo, self.root / "work", ["cargo"], 10, 10)
+        self.assertEqual([e[0] for e in events], ["fetch", "run"] * 3)
+        for kind, content in events:
+            if kind == "fetch":
+                self.assertEqual(content, "fn ok() {}\n")  # the export, before run files
+        self.assertIn("crates/x/tests/t.rs", events[-1][1])  # held back written last phase
+        self.assertTrue(g.fixed)
+        self.assertEqual(self.sentinel.read_text(), "SENTINEL")
+        self.assertEqual(sorted(p.name for p in (self.root / "work").iterdir()), [])
+
+    def test_unsafe_run_paths_are_rejected_before_anything_runs(self):
+        c = parse_case("s/c", raw())
+        g = grade.grade_run(c, 1, "k", [("../../x.rs", "x")], self.root, self.root / "w",
+                            ["cargo"], 10, 10)
+        self.assertIn("rejected", g.note)
+        self.assertFalse(g.solved)
+
+
+class FailureDetailTest(unittest.TestCase):
+    """A step that does not pass records why, so a suite timeout is not read as a bad fix."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root)
+
+    def test_summarize_keeps_failed_tests_and_panics(self):
+        out = "running 3 tests\ntest a ... ok\ntest b ... FAILED\n" \
+              "thread 'b' panicked at src/x.rs:1:2:\nboom\ntest result: FAILED. 2 passed\n"
+        self.assertEqual(grade.summarize(out).splitlines(),
+                         ["test b ... FAILED", "thread 'b' panicked at src/x.rs:1:2:",
+                          "test result: FAILED. 2 passed"])
+
+    def test_summarize_falls_back_to_the_tail(self):
+        out = "\n".join(f"line {i}" for i in range(50))
+        lines = grade.summarize(out).splitlines()
+        self.assertEqual(len(lines), grade.TAIL_LINES)
+        self.assertEqual(lines[-1], "line 49")
+
+    def test_grade_records_a_suite_timeout_and_a_failed_fix(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        base = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=base, fix=base, seed="seed.patch",
+                                  held_back=["crates/x/tests/t.rs"]), "PATCH",
+                       {"crates/x/tests/t.rs": "held back"})
+        seen = []
+
+        def run(argv, tree, target, timeout):
+            seen.append((argv, timeout))
+            if argv == ["suite"]:
+                return grade.Outcome(grade.TIMEOUT, f"after {timeout}s")
+            return grade.Outcome(grade.TEST_FAILED, "test t ... FAILED")
+
+        with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            g = grade.grade_run(c, 1, "k", [("crates/x/src/lib.rs", "fn f() {}\n")], repo,
+                                self.root / "work", ["suite"], 10, 99)
+        self.assertEqual(g.failures, {"suite": "timeout: after 99s",
+                                      "fixed": "test failed: test t ... FAILED"})
+        self.assertEqual([t for _, t in seen], [99, 10])  # suite gets its own timeout
+        self.assertFalse(g.solved)
+
+    def test_classify_tells_build_errors_and_test_failures_apart(self):
+        build = "error[E0425]: cannot find function `helper_from_fix`\n" \
+                "error: could not compile `rusty_tokio` (test \"t\") due to 1 previous error\n"
+        failed = "test t ... FAILED\ntest result: FAILED. 0 passed; 1 failed\n" \
+                 "error: test failed, to rerun pass `--test t`\n"
+        exited = "watchdog: likely deadlocked\nerror: test failed, to rerun pass `--test t`\n"
+        self.assertEqual(grade.classify(build), grade.BUILD_FAILED)
+        self.assertEqual(grade.classify(failed), grade.TEST_FAILED)
+        self.assertEqual(grade.classify(exited), grade.TEST_FAILED)  # binary exited non-zero
+        self.assertEqual(grade.classify("Killed\n"), grade.UNKNOWN)
+
+    def test_only_a_test_failure_at_base_validates_a_case(self):
+        ok = grade.Outcome()
+        self.assertTrue(grade.valid(grade.Outcome(grade.TEST_FAILED, "x"), ok))
+        for base in (grade.Outcome(grade.BUILD_FAILED, "e"), grade.Outcome(grade.TIMEOUT, "t"),
+                     grade.Outcome(grade.UNKNOWN, "u"), ok):
+            self.assertFalse(grade.valid(base, ok), base)
+        self.assertFalse(grade.valid(grade.Outcome(grade.TEST_FAILED, "x"),
+                                     grade.Outcome(grade.TEST_FAILED, "y")))
+
+    def _red(self, base):
+        repo = Path(tempfile.mkdtemp(dir=self.root))
+        sha = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=sha, fix=sha, seed="seed.patch",
+                                  held_back=["crates/x/tests/t.rs"]), "PATCH",
+                       {"crates/x/tests/t.rs": "held back"})
+
+        def run(argv, tree, target, timeout):
+            if (tree / "crates/x/tests/mine.rs").exists() and argv == ["suite"] and \
+                    (tree / "crates/x/src/lib.rs").read_text() == "fn ok() {}\n":
+                return base  # the red step: own tests on the unmodified base
+            return grade.Outcome()
+
+        files = [("crates/x/src/lib.rs", "fn f() {}\n"), ("crates/x/tests/mine.rs", "t")]
+        with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            return grade.grade_run(c, 1, "k", files, repo, self.root / "work", ["suite"], 9, 9)
+
+    def test_red_at_base_is_true_only_for_a_genuine_test_failure(self):
+        g = self._red(grade.Outcome(grade.TEST_FAILED, "test mine ... FAILED"))
+        self.assertIs(g.red_at_base, True)
+        self.assertEqual(g.failures["red"], "test failed: test mine ... FAILED")
+
+    def test_red_at_base_is_unknown_for_a_compile_failure_or_timeout(self):
+        for base in (grade.Outcome(grade.BUILD_FAILED, "error[E0425]"),
+                     grade.Outcome(grade.TIMEOUT, "after 9s")):
+            with self.subTest(base=base.result):
+                g = self._red(base)
+                self.assertIsNone(g.red_at_base)
+                self.assertEqual(g.failures["red"], base.why())
+                self.assertTrue(g.solved)  # the solved metric is unchanged
+
+    def test_red_at_base_is_false_when_the_own_tests_pass(self):
+        g = self._red(grade.Outcome())
+        self.assertIs(g.red_at_base, False)
+        self.assertNotIn("red", g.failures)
+
+    def test_check_suite_runs_the_suite_at_the_unmodified_base(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        base = _repo_with(repo, {"crates/x/src/lib.rs": "fn ok() {}\n"})
+        c = parse_case("s/c", raw(base=base, fix=base))
+        seen = []
+
+        def run(argv, tree, target, timeout):
+            seen.append((argv, sorted(str(q.relative_to(tree)) for q in tree.rglob("*.rs"))))
+            return grade.Outcome(grade.TEST_FAILED, "test net::v6 ... FAILED")
+
+        with unittest.mock.patch.object(grade, "_fetch", lambda *a: None), \
+                unittest.mock.patch.object(grade, "_sandboxed", run):
+            out = grade.check_suite(c, repo, self.root / "work", ["suite"], 30)
+        self.assertEqual(seen, [(["suite"], ["crates/x/src/lib.rs"])])
+        self.assertEqual(out, grade.Outcome(grade.TEST_FAILED, "test net::v6 ... FAILED"))
+
+
+class SeedTest(unittest.TestCase):
+    PATCH = """diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1 +1 @@
+-fn ok() {}
++fn bug() {}
+"""
+
+    def test_plant_builds_the_same_parentless_commit_every_time(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            fix = _repo_with(repo, {"src/lib.rs": "fn ok() {}\n"})
+            c = parse_case("s/c", raw(fix=fix, seed="seed.patch"), self.PATCH,
+                           {"crates/x/tests/t.rs": "T"})
+            first, second = seed.plant(c, repo), seed.plant(c, repo)
+            self.assertEqual(first, second)
+            self.assertNotIn("parent", _git(repo, "cat-file", "-p", first))
+            self.assertEqual(_git(repo, "show", f"{first}:src/lib.rs"), "fn bug() {}\n")
+            self.assertEqual(_git(repo, "rev-parse", seed.ref(c)).strip(), first)
+
+    def test_plant_fails_when_the_patch_does_not_apply(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            fix = _repo_with(repo, {"src/lib.rs": "fn other() {}\n"})
+            c = parse_case("s/c", raw(fix=fix, seed="seed.patch"), self.PATCH,
+                           {"crates/x/tests/t.rs": "T"})
+            with self.assertRaises(ValueError):
+                seed.plant(c, repo)
+
+
+def _repo_with(repo: Path, files: dict[str, str]) -> str:
+    _git(repo, "init", "-q")
+    for rel, text in files.items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text(text)
+    _git(repo, "add", ".")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--no-gpg-sign",
+         "-m", "init")
+    return _git(repo, "rev-parse", "HEAD").strip()
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True,
+                          check=True).stdout
+
+
+class GradeTest(unittest.TestCase):
+    def test_source_files_skip_build_output_and_report_lost_text(self):
+        kept, lost = grade.source_files([("target/debug/x", None), ("a/target/b.rs", "x"),
+                                         ("src/lib.rs", "fn f() {}"), ("big.rs", None)])
+        self.assertEqual(kept, {"src/lib.rs": "fn f() {}"})
+        self.assertEqual(lost, ["big.rs"])
+
+    def test_own_tests_are_files_under_a_tests_directory(self):
+        files = {"crates/x/tests/t.rs": "", "crates/x/src/tests.rs": "", "tests/a.rs": ""}
+        self.assertEqual(sorted(grade.own_tests(files)), ["crates/x/tests/t.rs", "tests/a.rs"])
+
+    def test_solved_needs_fixed_and_green(self):
+        self.assertTrue(grade.Grade("d/c", 1, fixed=True, suite_green=True).solved)
+        self.assertFalse(grade.Grade("d/c", 1, fixed=True, suite_green=False).solved)
+
+
+class CommittedTest(unittest.TestCase):
+    def test_committed_cases_parse_and_suites_are_current(self):
+        for developer in (d.name for d in CASES.iterdir() if d.is_dir()):
+            self.assertTrue(cases(developer))
+            with redirect_stderr(io.StringIO()) as err:
+                self.assertEqual(main(["suite", developer, "--check"]), 0, err.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()

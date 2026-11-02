@@ -1,0 +1,19 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "23b28c0f909749cbb2f21a58fc33a3636a87cdbc"
+base = "7096ee85c91de9ed4ca0eb1f17ad276e32ff9664"
+source = "grounding: experts/rusty-tokio/grounding.md"
+held_back = ["crates/libs/async/rusty_tokio/tests/mpsc_cancel.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "mpsc_cancel"]
+task = """
+Bug: rusty_tokio's `mpsc` deadlocks when a task's `Waker` owns a `Sender` of the same channel.
+
+Trace: a task waits in `send`, `reserve` or `recv` with a waker whose `Arc` holds the
+last clone of a `Sender` (or one of several; any `Sender` clone does). The waiting future
+is cancelled, re-polled with a different waker, or completes, or a `recv` is re-polled
+with a new waker. When the channel then destroys the old waker, `Sender::drop` runs, and
+the thread hangs: it never returns.
+
+A waker can own anything; destroying one must not hang the channel. Fix it in
+`crates/libs/async/rusty_tokio`.
+"""
