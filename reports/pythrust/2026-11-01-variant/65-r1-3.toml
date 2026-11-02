@@ -1,0 +1,5 @@
+# Grade 65-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/65-r1"
+variant = "baseline"
+prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
+run = 3
