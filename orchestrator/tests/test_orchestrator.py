@@ -181,28 +181,40 @@ class MineTest(unittest.TestCase):
             commit = mine.Commit("s", subject, "Avoids the bug class where reads race.", ())
             self.assertFalse(mine.answers_review(commit), subject)
 
-    def test_parse_renames_reads_only_rename_lines(self) -> None:
-        text = "R100\0old/a.rs\0new/a.rs\0M\0R1.rs\0\nR087\0x\ty.rs\0\"y\".rs\0"
+    def test_parse_renames_reads_raw_paths_per_commit(self) -> None:
+        text = ("commit s2\0\nR100\0old/a.rs\0new/a.rs\0M\0R1.rs\0"
+                "commit s1\0\nR087\0x\ty.rs\0\"y\".rs\0")
         self.assertEqual(mine.parse_renames(text),
-                         [("old/a.rs", "new/a.rs"), ("x\ty.rs", '"y".rs')])
+                         [mine.Rename("s2", "old/a.rs", "new/a.rs"),
+                          mine.Rename("s1", "x\ty.rs", '"y".rs')])
 
-    def test_former_paths_follow_a_file_moved_twice(self) -> None:
-        renames = [("mid/nexus/a.rs", "crates/nexus/a.rs"), ("nexus/a.rs", "mid/nexus/a.rs"),
-                   ("other/b.rs", "elsewhere/b.rs")]
-        self.assertEqual(mine.former_paths(("crates/nexus",), renames),
-                         ("crates/nexus", "mid/nexus/a.rs", "nexus/a.rs"))
+    def test_aliases_follow_a_file_moved_twice(self) -> None:
+        second = mine.Rename("s2", "mid/nexus/a.rs", "crates/nexus/a.rs")
+        first = mine.Rename("s1", "nexus/a.rs", "mid/nexus/a.rs")
+        other = mine.Rename("s3", "other/b.rs", "elsewhere/b.rs")
+        for scope in ("crates/nexus", "./crates/nexus/"):
+            self.assertEqual(mine.aliases((scope,), [second, first, other]), (second, first))
 
-    def test_former_paths_need_a_whole_path_component(self) -> None:
-        self.assertEqual(mine.former_paths(("src/a",), [("old.rs", "src/ab.rs")]), ("src/a",))
+    def test_aliases_need_a_whole_path_component(self) -> None:
+        self.assertEqual(mine.aliases(("src/a",), [mine.Rename("s", "old.rs", "src/ab.rs")]), ())
+
+    def test_merge_logs_unions_files_in_the_given_order(self) -> None:
+        a, b = mine.Commit("a", "s", "", ("new/x",)), mine.Commit("b", "t", "", ("new/y",))
+        old_a = mine.Commit("a", "s", "", ("old/x",))
+        merged = mine.merge_logs([[a, b], [old_a]], ["b", "a"])
+        self.assertEqual([(c.sha, c.files) for c in merged],
+                         [("b", ("new/y",)), ("a", ("new/x", "old/x"))])
 
     def test_review_fixes_find_a_fix_made_before_the_scope_moved(self) -> None:
-        for name in ("a.rs", "é [1].rs"):
+        for name, scope in (("a.rs", "crates"), ("é [1].rs", "./crates/")):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as d:
-                self.assertIn("nexus: queue silently dropped events", self._moved_twice(d, name))
+                subjects = self._moved_twice(d, name, scope)
+            self.assertIn("nexus: queue silently dropped events", subjects)
+            self.assertNotIn("nexus: fix a bug in the unrelated file", subjects)
 
     @staticmethod
-    def _moved_twice(d: str, name: str) -> list[str]:
-        """Subjects `review_fixes` finds under crates/ after nexus/ -> mid/ -> crates/."""
+    def _moved_twice(d: str, name: str, scope: str) -> list[str]:
+        """Subjects found under `scope` after nexus/ -> mid/ -> crates/ and a new nexus/."""
         repo = Path(d)
         run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True,  # noqa: E731
                                         capture_output=True, text=True).stdout.strip()
@@ -218,7 +230,13 @@ class MineTest(unittest.TestCase):
         for src, dst in (("nexus", "mid"), ("mid", "crates")):
             run("mv", src, dst)
             commit(f"move {src} to {dst}")
-        return [c.subject for c in mine.review_fixes(repo, ("crates",))]
+        (repo / "nexus").mkdir()
+        (repo / "nexus" / name).write_text("something else\n")
+        run("add", ".")
+        commit("nexus: unrelated file reusing the old name")
+        (repo / "nexus" / name).write_text("something else, fixed\n")
+        commit("nexus: fix a bug in the unrelated file")
+        return [c.subject for c in mine.review_fixes(repo, (scope,))]
 
 class CliTest(unittest.TestCase):
     def test_a_named_cases_dir_that_does_not_exist_is_refused(self) -> None:

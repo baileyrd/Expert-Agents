@@ -1,11 +1,12 @@
 """Grounding: the commits that answered earlier reviews in a domain, minus the held-out PRs.
 
-`parse_log`, `parse_renames`, `former_paths`, `answers_review` and `grounding_md` are pure;
-`review_fixes` and `held_out` run git.
+`parse_log`, `parse_renames`, `aliases`, `merge_logs`, `answers_review` and `grounding_md`
+are pure; `review_fixes` and `held_out` run git.
 """
 
 from __future__ import annotations
 
+import posixpath
 import re
 import subprocess
 from dataclasses import dataclass
@@ -38,6 +39,14 @@ class Commit:
     files: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class Rename:
+    """`old` became `new` in commit `sha`."""
+    sha: str
+    old: str
+    new: str
+
+
 def parse_log(text: str) -> list[Commit]:
     """Parse `git log --format=%x1e%H%x1f%s%x1f%b%x1f --name-only`."""
     commits = []
@@ -48,35 +57,56 @@ def parse_log(text: str) -> list[Commit]:
     return commits
 
 
-def parse_renames(text: str) -> list[tuple[str, str]]:
-    """(old, new) pairs from `git log -z -M --diff-filter=R --name-status --format=`.
+def parse_renames(text: str) -> list[Rename]:
+    """Renames from `git log -z -M --diff-filter=R --name-status --format='commit %H'`.
 
     NUL-delimited, so paths come raw rather than quoted (non-ASCII, tabs, quotes).
     """
     tokens = [t.strip("\n") for t in text.split("\0")]
-    pairs, i = [], 0
+    renames: list[Rename] = []
+    sha, i = "", 0
     while i < len(tokens):
-        status = tokens[i]
-        if status[:1] in ("R", "C") and i + 2 < len(tokens):
-            if status[0] == "R":
-                pairs.append((tokens[i + 1], tokens[i + 2]))
+        token = tokens[i]
+        if token.startswith("commit "):
+            sha, i = token.removeprefix("commit "), i + 1
+        elif token[:1] in ("R", "C") and i + 2 < len(tokens):
+            if token[0] == "R":
+                renames.append(Rename(sha, tokens[i + 1], tokens[i + 2]))
             i += 3
         else:
-            i += 2 if status else 1
-    return pairs
+            i += 2 if token else 1
+    return renames
 
 
-def former_paths(paths: tuple[str, ...], renames: list[tuple[str, str]]) -> tuple[str, ...]:
-    """`paths` plus every file that was later renamed into them, through any number of moves."""
-    found = list(paths)
+def aliases(paths: tuple[str, ...], renames: list[Rename]) -> tuple[Rename, ...]:
+    """Every rename into `paths`, through any number of moves.
+
+    Each old name counts only up to its rename, so a file later created under that name
+    is not mistaken for this one.
+    """
+    found: list[Rename] = []
+    scopes = [posixpath.normpath(p) for p in paths]
     grew = True
     while grew:
         grew = False
-        for old, new in renames:
-            if old not in found and any(_under(new, p) for p in found):
-                found.append(old)
+        for r in renames:
+            if r not in found and any(_under(r.new, s) for s in scopes):
+                found.append(r)
+                scopes.append(r.old)
                 grew = True
     return tuple(found)
+
+
+def merge_logs(logs: list[list[Commit]], order: list[str]) -> list[Commit]:
+    """One commit per sha across `logs`, files unioned, in `order` (newest first)."""
+    merged: dict[str, Commit] = {}
+    for log in logs:
+        for c in log:
+            seen = merged.get(c.sha)
+            files = c.files if seen is None else seen.files + tuple(
+                f for f in c.files if f not in seen.files)
+            merged[c.sha] = Commit(c.sha, c.subject, c.body, files)
+    return [merged[sha] for sha in order if sha in merged]
 
 
 def answers_review(commit: Commit) -> bool:
@@ -103,12 +133,26 @@ def grounding_md(commits: list[Commit], held: frozenset[str], paths: tuple[str, 
 
 
 def review_fixes(target: Path, paths: tuple[str, ...]) -> list[Commit]:
-    """Every non-merge commit touching `paths` or their names before a rename, newest first."""
+    """Every non-merge commit touching `paths`, or their names before a rename, newest first."""
     renames = parse_renames(_git(target, "log", "-z", "-M", "--diff-filter=R",
-                                 "--name-status", "--format="))
-    out = _git(target, "--literal-pathspecs", "log", "--no-merges", f"--format={_SEP}%H{_FIELD}%s{_FIELD}%b{_FIELD}",
-               "--name-only", "--", *former_paths(paths, renames))
-    return parse_log(out)
+                                 "--name-status", "--format=commit %H"))
+    found = aliases(paths, renames)
+    if not found:
+        return _log(target, (), paths)
+    by_rename: dict[str, list[str]] = {}
+    for r in found:
+        by_rename.setdefault(r.sha, []).append(r.old)
+    logs = [_log(target, (), paths)]
+    logs += [_log(target, (f"{sha}^",), tuple(olds)) for sha, olds in by_rename.items()]
+    shas = {c.sha for log in logs for c in log}
+    order = _git(target, "rev-list", "--no-walk=sorted", *shas).split()
+    return merge_logs(logs, order)
+
+
+def _log(target: Path, revs: tuple[str, ...], paths: tuple[str, ...]) -> list[Commit]:
+    return parse_log(_git(target, "--literal-pathspecs", "log", "--no-merges",
+                          f"--format={_SEP}%H{_FIELD}%s{_FIELD}%b{_FIELD}", "--name-only",
+                          *revs, "--", *paths))
 
 
 def held_out(target: Path, cases: list[Case]) -> frozenset[str]:
@@ -121,8 +165,7 @@ def held_out(target: Path, cases: list[Case]) -> frozenset[str]:
 
 
 def _under(path: str, scope: str) -> bool:
-    scope = scope.rstrip("/")
-    return scope in ("", ".") or path == scope or path.startswith(scope + "/")
+    return scope == "." or path == scope or path.startswith(scope + "/")
 
 
 def _git(target: Path, *args: str) -> str:
