@@ -32,6 +32,12 @@ expertise: mine them for the defect classes reviews actually caught, and for pri
 sources the reviewer can cite (the reference implementation, its tests, client source).
 Hold the PRs chosen as answer keys out of the prompt's examples.
 
+`mine` keeps a commit when its message answers a review or names a finding, or its
+subject names the defect ("events were silently dropped"). It drops formatting, lint,
+typo and `style:`/`chore:`/`docs:`/`ci:`/`build:`/`plan:` commits even when they say
+"fix", and follows renames, so pass today's paths only. It is a filter by words: skim
+`git log --oneline -- <paths>` for fixes it missed.
+
 ## Loop
 
 1. **Key.** Pick a past PR in the domain that had review rounds and build its case
