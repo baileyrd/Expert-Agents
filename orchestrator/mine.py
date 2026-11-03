@@ -187,8 +187,10 @@ def _under(path: str, scope: str) -> bool:
 
 
 def _git(target: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(target), *args], capture_output=True, text=True,
-                            check=False)
+    """git's stdout, decoded as-is: no newline translation, so raw paths keep a CR, and
+    undecodable bytes round-trip back into git arguments via surrogateescape."""
+    result = subprocess.run(["git", "-C", str(target), *args], capture_output=True, check=False)
     if result.returncode != 0:
-        raise ValueError(f"git {' '.join(args[:2])} in {target} failed: {result.stderr.strip()}")
-    return result.stdout
+        err = result.stderr.decode("utf-8", "replace").strip()
+        raise ValueError(f"git {' '.join(args[:2])} in {target} failed: {err}")
+    return result.stdout.decode("utf-8", "surrogateescape")

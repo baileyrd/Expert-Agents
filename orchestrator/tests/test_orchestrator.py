@@ -254,7 +254,7 @@ class MineTest(unittest.TestCase):
                          [("b", ("new/y",)), ("a", ("new/x", "old/x"))])
 
     def test_review_fixes_find_a_fix_made_before_the_scope_moved(self) -> None:
-        for name, scope in (("a.rs", "crates"), ("é [1].rs", "./crates/")):
+        for name, scope in (("a.rs", "crates"), ("é [1].rs", "./crates/"), ("a\r", "crates")):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as d:
                 subjects = self._moved_twice(d, name, scope)
             self.assertIn("nexus: queue silently dropped events", subjects)
