@@ -1,0 +1,19 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
+base = "5e8991097d1fa863d90fbb3cb57059672e660344"
+source = "seeded: blind bug in code the developer prompt never names"
+seed = "seed.patch"
+held_back = ["crates/libs/async/rusty_tokio/tests/heldback_bufreader_bypass.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_bufreader_bypass"]
+task = """
+Bug: in rusty_tokio, `io::BufReader` loses data. After a small read leaves bytes in its
+buffer, a following read into a buffer at least as large as the `BufReader`'s capacity
+skips the buffered bytes and returns later data.
+
+Repro: `BufReader::with_capacity(4, &b"abcdefghij"[..])`; `read_exact` one byte (gets
+`a`); then `read` into a 16-byte buffer returns `efghij`, and `bcd` is gone.
+
+Expected, as in tokio: bytes come out in order and none are lost, whatever the read
+sizes. Fix it in `crates/libs/async/rusty_tokio`.
+"""

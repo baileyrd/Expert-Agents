@@ -88,7 +88,7 @@ def write_reports(args: argparse.Namespace) -> int:
     # by this model and by the prompt committed at this repo's (clean) HEAD.
     outputs = ex.run_outputs(store.read_text().splitlines(), args.expert, args.variant,
                              str(variant.get("model") or "unrecorded"), _prompt_sha(),
-                             _jobs(folder / "suite.toml", args.variant))
+                             suite_jobs(folder / "suite.toml", args.variant))
     taken = sorted(n for o in outputs for n in (f"{ex.stem(o)}-report.md", f"{ex.stem(o)}.toml")
                    if (out / n).exists())
     if taken:
@@ -101,15 +101,18 @@ def write_reports(args: argparse.Namespace) -> int:
     return 0
 
 
-def _jobs(suite_toml: Path, variant: str) -> tuple[ex.Job, ...]:
+def suite_jobs(suite_toml: Path, variant: str) -> tuple[ex.Job, ...]:
     """The variant's jobs and their keys, computed by Eval-Kit itself so they cannot drift."""
     try:
         from evalkit import plan, spec
     except ModuleNotFoundError:
-        raise ValueError("bench extract needs the Eval-Kit that ran the suite on PYTHONPATH, "
+        raise ValueError("needs the Eval-Kit that ran the suite on PYTHONPATH, "
                          "to compute each run's content key") from None
     jobs = plan.jobs(spec.load_suite(suite_toml))
-    return tuple(ex.Job(j.key, j.case.id, j.sample) for j in jobs if j.variant.id == variant)
+    found = tuple(ex.Job(j.key, j.case.id, j.sample) for j in jobs if j.variant.id == variant)
+    if not found:
+        raise ValueError(f"{suite_toml} has no jobs for variant {variant!r}")
+    return found
 
 
 def _cases(expert: str) -> list[Case]:

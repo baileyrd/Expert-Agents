@@ -1,0 +1,13 @@
+diff --git a/crates/libs/async/rusty_tokio/src/io/duplex.rs b/crates/libs/async/rusty_tokio/src/io/duplex.rs
+index 012d23903..7d1135043 100644
+--- a/crates/libs/async/rusty_tokio/src/io/duplex.rs
++++ b/crates/libs/async/rusty_tokio/src/io/duplex.rs
+@@ -183,7 +183,7 @@ impl AsyncWrite for DuplexStream {
+     /// direction closes independently" shape
+     /// [`TcpStream::shutdown`](crate::io::AsyncWriteExt::shutdown) has.
+     fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+-        wake(self.close_write());
++        let _ = self.close_write();
+         Poll::Ready(Ok(()))
+     }
+ }

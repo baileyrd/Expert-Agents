@@ -40,11 +40,20 @@ class RunOutput:
 
 def run_outputs(store_lines: list[str], expert: str, variant: str, model: str,
                 prompt_sha: str, jobs: tuple[Job, ...]) -> list[RunOutput]:
-    """The stored run of each of the variant's *jobs*, ordered by case then run.
+    """The stored run of each of the variant's *jobs*, ordered by case then run."""
+    records = current_records(store_lines, jobs, variant)
+    return [_output(r, expert, variant, model, prompt_sha) for _, r in records]
+
+
+def current_records(store_lines: list[str], jobs: tuple[Job, ...],
+                    variant: str) -> list[tuple[Job, dict[str, Any]]]:
+    """Each job's stored run record, taken by its content key, ordered by case then sample.
 
     Refuses unless every job has a record under its key: a missing one means the store
     holds only an older prompt's or model's run for it, which must not be relabelled.
     """
+    if not jobs:
+        raise ValueError("the suite expects no runs for this variant")
     records = _latest_by_key(store_lines)
     missing = [j for j in jobs if j.key not in records]
     if missing:
@@ -54,7 +63,7 @@ def run_outputs(store_lines: list[str], expert: str, variant: str, model: str,
     for job in jobs:
         _check_matches(records[job.key], job, variant)
     ordered = sorted(jobs, key=lambda j: (j.case, j.sample))
-    return [_output(records[j.key], expert, variant, model, prompt_sha) for j in ordered]
+    return [(j, records[j.key]) for j in ordered]
 
 
 def _latest_by_key(store_lines: list[str]) -> dict[str, dict[str, Any]]:

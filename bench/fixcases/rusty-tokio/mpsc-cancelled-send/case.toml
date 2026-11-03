@@ -1,0 +1,21 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "7096ee85c91de9ed4ca0eb1f17ad276e32ff9664"
+base = "4c12777ab0a065e418958ce3a6efa2458de1612f"
+source = "grounding: experts/rusty-tokio/grounding.md"
+held_back = ["crates/libs/async/rusty_tokio/tests/mpsc_cancel.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "mpsc_cancel"]
+task = """
+Bug: in rusty_tokio's bounded `mpsc`, a cancelled `send` or `reserve` that was waiting for
+capacity can leave a live sender parked forever.
+
+Trace: `mpsc::channel(1)` holding one value. Sender A calls `send(x)` and is polled to
+`Pending`; sender B does the same. A's future is then dropped (a timeout or a losing
+`select!` arm). The receiver takes the value, so capacity is free, but B is never woken
+and stays `Pending`. The same happens with `reserve()`, and when A had already been woken
+before it was dropped. Re-polling a waiting send with a fresh waker should not queue it
+a second time.
+
+tokio's contract: dropping a waiting send/reserve removes it from the wait queue, and a
+wakeup it already received is not lost. Fix it in `crates/libs/async/rusty_tokio`.
+"""

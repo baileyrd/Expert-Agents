@@ -1,0 +1,21 @@
+diff --git a/crates/libs/async/rusty_tokio/src/time/mod.rs b/crates/libs/async/rusty_tokio/src/time/mod.rs
+index bf587b9ad..715d5ae13 100644
+--- a/crates/libs/async/rusty_tokio/src/time/mod.rs
++++ b/crates/libs/async/rusty_tokio/src/time/mod.rs
+@@ -530,13 +530,10 @@ impl<F: Future> Future for Timeout<F> {
+         // `Pin<Box<F>>`, always `Unpin`, and `Sleep`, itself all-`Unpin`
+         // fields), so projecting via `get_mut` needs no unsafe code.
+         let this = self.get_mut();
+-        if let Poll::Ready(v) = this.future.as_mut().poll(cx) {
+-            return Poll::Ready(Ok(v));
+-        }
+-        match Pin::new(&mut this.sleep).poll(cx) {
+-            Poll::Ready(()) => Poll::Ready(Err(Elapsed)),
+-            Poll::Pending => Poll::Pending,
++        if Pin::new(&mut this.sleep).poll(cx).is_ready() {
++            return Poll::Ready(Err(Elapsed));
+         }
++        this.future.as_mut().poll(cx).map(Ok)
+     }
+ }
+ 

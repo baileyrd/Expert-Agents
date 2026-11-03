@@ -1,0 +1,20 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
+base = "046884df83195efa92f41745d1142d411a1becab"
+source = "seeded: blind bug in code the developer prompt never names"
+seed = "seed.patch"
+held_back = ["crates/libs/async/rusty_tokio/tests/heldback_interval_skip_boundary.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_interval_skip_boundary"]
+task = """
+Bug: in rusty_tokio, `time::Interval` with `MissedTickBehavior::Skip` sometimes fires two
+ticks back to back after a stall. When the caller falls behind by an exact multiple of the
+period (easy to hit under `time::pause()` and `time::advance`), the tick after the
+catch-up tick completes immediately instead of waiting.
+
+Repro: `interval_at(start, 10s)` with Skip, tick once, advance 30s, tick (returns
+`start + 10s`), then tick again: it returns `start + 30s` at once.
+
+Expected, as in tokio: Skip schedules the next tick strictly in the future, on the
+original period grid (`start + 40s` here). Fix it in `crates/libs/async/rusty_tokio`.
+"""

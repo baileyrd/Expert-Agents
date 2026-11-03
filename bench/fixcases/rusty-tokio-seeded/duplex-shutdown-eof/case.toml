@@ -1,0 +1,20 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
+base = "7d184687053bfdb9a584642cc888b2b6e42b6588"
+source = "seeded: blind bug in code the developer prompt never names; the existing suite catches it about 1 run in 10 (chain_take hangs when its reader parks first)"
+seed = "seed.patch"
+held_back = ["crates/libs/async/rusty_tokio/tests/heldback_duplex_shutdown_eof.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_duplex_shutdown_eof"]
+task = """
+Bug: in rusty_tokio, reading from an `io::duplex` stream can hang after the peer calls
+`shutdown()`. A task blocked in `read`/`read_to_end` on an empty pipe stays blocked when
+the other half shuts down its write side.
+
+Reads that start after the shutdown see EOF correctly, and dropping the other half
+instead of shutting it down also wakes the reader.
+
+Expected, as in tokio: `shutdown()` on one half makes a pending read on the other half
+return EOF (`Ok(0)`) once the buffered bytes are drained. Fix it in
+`crates/libs/async/rusty_tokio`.
+"""

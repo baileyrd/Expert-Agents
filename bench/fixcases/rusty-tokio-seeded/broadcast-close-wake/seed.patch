@@ -1,0 +1,22 @@
+diff --git a/crates/libs/async/rusty_tokio/src/sync/broadcast.rs b/crates/libs/async/rusty_tokio/src/sync/broadcast.rs
+index f4739278a..e3479efd0 100644
+--- a/crates/libs/async/rusty_tokio/src/sync/broadcast.rs
++++ b/crates/libs/async/rusty_tokio/src/sync/broadcast.rs
+@@ -166,14 +166,9 @@ impl<T> Drop for Sender<T> {
+         let mut guard = self.shared.inner.lock().unwrap();
+         guard.senders_alive -= 1;
+         if guard.senders_alive == 0 {
+-            // That was the last sender: wake every parked receiver so
+-            // they can see the channel is now closed instead of waiting
+-            // forever for a message that will never come.
+-            let waiters = std::mem::take(&mut guard.waiters);
+-            drop(guard);
+-            for waker in waiters {
+-                waker.wake();
+-            }
++            // That was the last sender: nothing will be sent again, so
++            // the parked receivers' wakers are no longer needed.
++            guard.waiters.clear();
+         }
+     }
+ }

@@ -1,0 +1,13 @@
+diff --git a/crates/libs/async/rusty_tokio/src/time/mod.rs b/crates/libs/async/rusty_tokio/src/time/mod.rs
+index bf587b9ad..9d582eb57 100644
+--- a/crates/libs/async/rusty_tokio/src/time/mod.rs
++++ b/crates/libs/async/rusty_tokio/src/time/mod.rs
+@@ -662,7 +662,7 @@ impl Interval {
+                     MissedTickBehavior::Skip => {
+                         let now = current_time();
+                         let mut next = self.next_deadline + self.period;
+-                        while next <= now {
++                        while next < now {
+                             next += self.period;
+                         }
+                         next

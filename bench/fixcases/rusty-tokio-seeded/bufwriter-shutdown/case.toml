@@ -1,0 +1,19 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
+base = "60608eb438297ccba7629c993b6f2e7150bb920c"
+source = "seeded: blind bug in code the developer prompt never names"
+seed = "seed.patch"
+held_back = ["crates/libs/async/rusty_tokio/tests/heldback_bufwriter_shutdown.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_bufwriter_shutdown"]
+task = """
+Bug: in rusty_tokio, data written through `io::BufWriter` or `io::BufStream` is lost if
+the stream is shut down without an explicit `flush()`. The peer sees EOF without the
+buffered bytes.
+
+Repro: wrap one half of `io::duplex(64)` in `BufWriter`, `write_all(b"hello")`, then
+`shutdown()`. `read_to_end` on the other half returns nothing.
+
+Expected, as in tokio: `shutdown()` writes out buffered data before shutting down the
+inner stream. Fix it in `crates/libs/async/rusty_tokio`.
+"""

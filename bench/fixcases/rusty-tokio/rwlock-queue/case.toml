@@ -1,0 +1,21 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "7ba275a351b05c3d53aac7522d3889de2a21a382"
+base = "6c09ab3cf96e7b4c14e523fc3f557cd073cabb11"
+source = "grounding: experts/rusty-tokio/grounding.md"
+held_back = ["crates/libs/async/rusty_tokio/tests/sync.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "sync", "rwlock_"]
+task = """
+Bug: rusty_tokio's `RwLock` can deadlock.
+
+Trace 1: a write guard is held. A reader calls `read()` and is polled to `Pending`, then a
+second writer calls `write()` and is polled to `Pending`. When the first write guard is
+dropped, neither the reader nor the second writer ever acquires: both stay `Pending`
+with the lock free.
+
+Trace 2: a `write()` future dropped while it is queued behind a held lock stays in the
+queue for good, so readers that arrive later never acquire after the lock is released.
+
+tokio's `RwLock` is fair (FIFO) and its waiters are cancel safe. Fix it in
+`crates/libs/async/rusty_tokio`.
+"""
