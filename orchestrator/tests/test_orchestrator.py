@@ -164,6 +164,57 @@ class MineTest(unittest.TestCase):
         self.assertEqual(held, frozenset(shas[1:3]))
 
 
+    def test_a_defect_named_without_fix_is_a_review_fix(self) -> None:
+        for subject in ("journal: events were silently dropped on overflow",
+                        "store: lost writes when the WAL rotates", "pool: deadlock on shutdown"):
+            self.assertTrue(mine.answers_review(mine.Commit("s", subject, "", ())), subject)
+
+    def test_mechanical_upkeep_is_not_a_review_fix_even_when_it_says_fix(self) -> None:
+        for subject in ("fix clippy warnings", "cargo fmt after review", "fix typos in docs",
+                        "chore: fix CI cache", "style(core): fix import order",
+                        "plan: P0 tasks for the next phase"):
+            self.assertFalse(mine.answers_review(mine.Commit("s", subject, "Fixes P1.", ())),
+                             subject)
+
+    def test_a_feature_whose_body_mentions_a_bug_is_not_a_review_fix(self) -> None:
+        for subject in ("nexus: add a cache", "Phase 4: ablation and a regression gate"):
+            commit = mine.Commit("s", subject, "Avoids the bug class where reads race.", ())
+            self.assertFalse(mine.answers_review(commit), subject)
+
+    def test_parse_renames_reads_only_rename_lines(self) -> None:
+        text = "R100\told/a.rs\tnew/a.rs\nM\tnew/b.rs\n\nR087\tx.rs\ty.rs\n"
+        self.assertEqual(mine.parse_renames(text), [("old/a.rs", "new/a.rs"), ("x.rs", "y.rs")])
+
+    def test_former_paths_follow_a_file_moved_twice(self) -> None:
+        renames = [("mid/nexus/a.rs", "crates/nexus/a.rs"), ("nexus/a.rs", "mid/nexus/a.rs"),
+                   ("other/b.rs", "elsewhere/b.rs")]
+        self.assertEqual(mine.former_paths(("crates/nexus",), renames),
+                         ("crates/nexus", "mid/nexus/a.rs", "nexus/a.rs"))
+
+    def test_former_paths_need_a_whole_path_component(self) -> None:
+        self.assertEqual(mine.former_paths(("src/a",), [("old.rs", "src/ab.rs")]), ("src/a",))
+
+    def test_review_fixes_find_a_fix_made_before_the_scope_moved(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d)
+            run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True,  # noqa: E731
+                                            capture_output=True, text=True).stdout.strip()
+            commit = lambda msg: run("-c", "user.name=t", "-c", "user.email=t@t",  # noqa: E731
+                                     "commit", "-q", "--no-gpg-sign", "-am", msg)
+            run("init", "-q")
+            (repo / "nexus").mkdir()
+            (repo / "nexus" / "a.rs").write_text("fn a() {}\n" * 20)
+            run("add", ".")
+            commit("nexus: add a")
+            (repo / "nexus" / "a.rs").write_text("fn a() { b() }\n" + "fn a() {}\n" * 19)
+            commit("nexus: queue silently dropped events")
+            for src, dst in (("nexus", "mid"), ("mid", "crates")):
+                run("mv", src, dst)
+                commit(f"move {src} to {dst}")
+            subjects = [c.subject for c in mine.review_fixes(repo, ("crates",))]
+        self.assertIn("nexus: queue silently dropped events", subjects)
+        self.assertIn("nexus: add a", subjects)
+
 class CliTest(unittest.TestCase):
     def test_a_named_cases_dir_that_does_not_exist_is_refused(self) -> None:
         from orchestrator.__main__ import main
