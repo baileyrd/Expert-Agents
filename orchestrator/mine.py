@@ -9,7 +9,9 @@ from __future__ import annotations
 import posixpath
 import re
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache, partial
 from pathlib import Path
 
 from bench.scorer.model import Case
@@ -78,25 +80,31 @@ def parse_renames(text: str) -> list[Rename]:
     return renames
 
 
-def aliases(paths: tuple[str, ...], renames: list[Rename]) -> tuple[Rename, ...]:
+def aliases(paths: tuple[str, ...], renames: list[Rename],
+            is_ancestor: Callable[[str, str], bool]) -> tuple[Rename, ...]:
     """Every rename into `paths`, through any number of moves.
 
-    `renames` is newest first in topological order. An old name stands for this lineage
-    only before its rename, so only older renames into it count, and its history is read
-    only up to that rename (see `review_fixes`).
+    An old name stands for this lineage only before the rename that ended it, so only
+    renames that are ancestors of that commit count, and its history is read only up to
+    it (see `review_fixes`). `is_ancestor(a, b)` says whether commit a precedes b.
     """
     found: list[Rename] = []
-    # (scope, index of the rename that ended it); renames at a higher index are older.
-    scopes = [(posixpath.normpath(p), -1) for p in paths]
+    # (scope, the rename commit that ended it, or None for a path as it is today)
+    scopes: list[tuple[str, str | None]] = [(posixpath.normpath(p), None) for p in paths]
     grew = True
     while grew:
         grew = False
-        for i, r in enumerate(renames):
-            if r not in found and any(i > end and _under(r.new, s) for s, end in scopes):
+        for r in renames:
+            if r not in found and any(_under(r.new, s) and _before(r.sha, end, is_ancestor)
+                                      for s, end in scopes):
                 found.append(r)
-                scopes.append((r.old, i))
+                scopes.append((r.old, r.sha))
                 grew = True
     return tuple(found)
+
+
+def _before(sha: str, end: str | None, is_ancestor: Callable[[str, str], bool]) -> bool:
+    return end is None or (sha != end and is_ancestor(sha, end))
 
 
 def merge_logs(logs: list[list[Commit]], order: list[str]) -> list[Commit]:
@@ -136,9 +144,9 @@ def grounding_md(commits: list[Commit], held: frozenset[str], paths: tuple[str, 
 
 def review_fixes(target: Path, paths: tuple[str, ...]) -> list[Commit]:
     """Every non-merge commit touching `paths`, or their names before a rename, newest first."""
-    renames = parse_renames(_git(target, "log", "--topo-order", "-z", "-M",
-                                 "--diff-filter=R", "--name-status", "--format=commit %H"))
-    found = aliases(paths, renames)
+    renames = parse_renames(_git(target, "log", "-z", "-M", "--diff-filter=R",
+                                 "--name-status", "--format=commit %H"))
+    found = aliases(paths, renames, lru_cache(maxsize=None)(partial(_is_ancestor, target)))
     if not found:
         return _log(target, (), paths)
     by_rename: dict[str, list[str]] = {}
@@ -149,6 +157,14 @@ def review_fixes(target: Path, paths: tuple[str, ...]) -> list[Commit]:
     shas = {c.sha for log in logs for c in log}
     order = _git(target, "rev-list", "--no-walk=sorted", *shas).split()
     return merge_logs(logs, order)
+
+
+def _is_ancestor(target: Path, sha: str, of: str) -> bool:
+    result = subprocess.run(["git", "-C", str(target), "merge-base", "--is-ancestor", sha, of],
+                            capture_output=True, text=True, check=False)
+    if result.returncode not in (0, 1):
+        raise ValueError(f"git merge-base in {target} failed: {result.stderr.strip()}")
+    return result.returncode == 0
 
 
 def _log(target: Path, revs: tuple[str, ...], paths: tuple[str, ...]) -> list[Commit]:

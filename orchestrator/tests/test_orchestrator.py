@@ -15,6 +15,8 @@ from bench.scorer.model import Case, KeyFinding
 from orchestrator import check, mine, template
 
 ROOT = Path(__file__).resolve().parents[2]
+# Ancestry for pure `aliases` tests on a linear history: s1 < s2 < s3.
+LINEAR = lambda a, b: a < b  # noqa: E731
 EXAMPLES = ROOT / "orchestrator" / "examples"
 
 
@@ -193,16 +195,56 @@ class MineTest(unittest.TestCase):
         first = mine.Rename("s1", "nexus/a.rs", "mid/nexus/a.rs")
         other = mine.Rename("s3", "other/b.rs", "elsewhere/b.rs")
         for scope in ("crates/nexus", "./crates/nexus/"):
-            self.assertEqual(mine.aliases((scope,), [second, first, other]), (second, first))
+            self.assertEqual(mine.aliases((scope,), [second, first, other], LINEAR),
+                             (second, first))
 
     def test_aliases_skip_a_later_rename_into_a_freed_old_name(self) -> None:
         reuse = mine.Rename("s3", "x/a.rs", "nexus/a.rs")
         move = mine.Rename("s2", "nexus/a.rs", "crates/a.rs")
         older = mine.Rename("s1", "lib/a.rs", "nexus/a.rs")
-        self.assertEqual(mine.aliases(("crates",), [reuse, move, older]), (move, older))
+        self.assertEqual(mine.aliases(("crates",), [reuse, move, older], LINEAR), (move, older))
+
+    def test_aliases_skip_a_rename_on_a_parallel_branch_listed_after_the_move(self) -> None:
+        move = mine.Rename("s2", "nexus/a.rs", "crates/a.rs")
+        parallel = mine.Rename("p1", "x/a.rs", "nexus/a.rs")
+        self.assertEqual(mine.aliases(("crates",), [move, parallel], lambda a, b: False), (move,))
 
     def test_aliases_need_a_whole_path_component(self) -> None:
-        self.assertEqual(mine.aliases(("src/a",), [mine.Rename("s", "old.rs", "src/ab.rs")]), ())
+        renames = [mine.Rename("s", "old.rs", "src/ab.rs")]
+        self.assertEqual(mine.aliases(("src/a",), renames, LINEAR), ())
+
+    def test_review_fixes_skip_a_merged_parallel_rename_into_the_old_name(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d)
+            run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True,  # noqa: E731
+                                            capture_output=True, text=True).stdout.strip()
+            commit = lambda msg: run("-c", "user.name=t", "-c", "user.email=t@t",  # noqa: E731
+                                     "commit", "-q", "--no-gpg-sign", "-am", msg)
+            run("init", "-q", "-b", "main")
+            for name, text in (("old", "the real a\n"), ("x", "an unrelated a\n")):
+                (repo / name).mkdir()
+                (repo / name / "a.rs").write_text(text * 20)
+            run("add", ".")
+            commit("add both")
+            run("checkout", "-q", "-b", "side")
+            (repo / "x" / "a.rs").write_text("fixed\n" + "an unrelated a\n" * 19)
+            commit("x: fix a crash in the unrelated a")
+            run("rm", "-q", "old/a.rs")
+            commit("drop old/a")
+            (repo / "old").mkdir()
+            run("mv", "x/a.rs", "old/a.rs")
+            commit("move x/a into old/a")
+            run("checkout", "-q", "main")
+            run("mv", "old", "new")
+            commit("move old to new")
+            # Merge main into side, keeping main's tree, so the move is listed first.
+            run("checkout", "-q", "side")
+            run("merge", "-q", "--no-commit", "-s", "ours", "main")
+            run("read-tree", "-u", "--reset", "main")
+            commit("merge main")
+            subjects = [c.subject for c in mine.review_fixes(repo, ("new",))]
+        self.assertIn("move old to new", subjects)
+        self.assertNotIn("x: fix a crash in the unrelated a", subjects)
 
     def test_merge_logs_unions_files_in_the_given_order(self) -> None:
         a, b = mine.Commit("a", "s", "", ("new/x",)), mine.Commit("b", "t", "", ("new/y",))
