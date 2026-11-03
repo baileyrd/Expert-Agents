@@ -221,6 +221,8 @@ class MineTest(unittest.TestCase):
             commit = lambda msg: run("-c", "user.name=t", "-c", "user.email=t@t",  # noqa: E731
                                      "commit", "-q", "--no-gpg-sign", "-am", msg)
             run("init", "-q", "-b", "main")
+            run("config", "user.name", "t")  # merge needs an identity, not only commit
+            run("config", "user.email", "t@t")
             for name, text in (("old", "the real a\n"), ("x", "an unrelated a\n")):
                 (repo / name).mkdir()
                 (repo / name / "a.rs").write_text(text * 20)
