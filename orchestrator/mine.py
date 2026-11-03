@@ -62,11 +62,11 @@ def parse_renames(text: str) -> list[Rename]:
 
     NUL-delimited, so paths come raw rather than quoted (non-ASCII, tabs, quotes).
     """
-    tokens = [t.strip("\n") for t in text.split("\0")]
+    tokens = text.split("\0")
     renames: list[Rename] = []
     sha, i = "", 0
     while i < len(tokens):
-        token = tokens[i]
+        token = tokens[i].lstrip("\n")  # git's record separator; path tokens stay raw
         if token.startswith("commit "):
             sha, i = token.removeprefix("commit "), i + 1
         elif token[:1] in ("R", "C") and i + 2 < len(tokens):

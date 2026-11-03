@@ -183,10 +183,10 @@ class MineTest(unittest.TestCase):
 
     def test_parse_renames_reads_raw_paths_per_commit(self) -> None:
         text = ("commit s2\0\nR100\0old/a.rs\0new/a.rs\0M\0R1.rs\0"
-                "commit s1\0\nR087\0x\ty.rs\0\"y\".rs\0")
+                "commit s1\0\nR087\0x\ty.rs\n\0\"y\".rs\0")
         self.assertEqual(mine.parse_renames(text),
                          [mine.Rename("s2", "old/a.rs", "new/a.rs"),
-                          mine.Rename("s1", "x\ty.rs", '"y".rs')])
+                          mine.Rename("s1", "x\ty.rs\n", '"y".rs')])
 
     def test_aliases_follow_a_file_moved_twice(self) -> None:
         second = mine.Rename("s2", "mid/nexus/a.rs", "crates/nexus/a.rs")
