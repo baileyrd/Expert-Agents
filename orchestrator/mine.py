@@ -81,18 +81,20 @@ def parse_renames(text: str) -> list[Rename]:
 def aliases(paths: tuple[str, ...], renames: list[Rename]) -> tuple[Rename, ...]:
     """Every rename into `paths`, through any number of moves.
 
-    Each old name counts only up to its rename, so a file later created under that name
-    is not mistaken for this one.
+    `renames` is newest first in topological order. An old name stands for this lineage
+    only before its rename, so only older renames into it count, and its history is read
+    only up to that rename (see `review_fixes`).
     """
     found: list[Rename] = []
-    scopes = [posixpath.normpath(p) for p in paths]
+    # (scope, index of the rename that ended it); renames at a higher index are older.
+    scopes = [(posixpath.normpath(p), -1) for p in paths]
     grew = True
     while grew:
         grew = False
-        for r in renames:
-            if r not in found and any(_under(r.new, s) for s in scopes):
+        for i, r in enumerate(renames):
+            if r not in found and any(i > end and _under(r.new, s) for s, end in scopes):
                 found.append(r)
-                scopes.append(r.old)
+                scopes.append((r.old, i))
                 grew = True
     return tuple(found)
 
@@ -134,8 +136,8 @@ def grounding_md(commits: list[Commit], held: frozenset[str], paths: tuple[str, 
 
 def review_fixes(target: Path, paths: tuple[str, ...]) -> list[Commit]:
     """Every non-merge commit touching `paths`, or their names before a rename, newest first."""
-    renames = parse_renames(_git(target, "log", "-z", "-M", "--diff-filter=R",
-                                 "--name-status", "--format=commit %H"))
+    renames = parse_renames(_git(target, "log", "--topo-order", "-z", "-M",
+                                 "--diff-filter=R", "--name-status", "--format=commit %H"))
     found = aliases(paths, renames)
     if not found:
         return _log(target, (), paths)

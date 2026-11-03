@@ -195,6 +195,12 @@ class MineTest(unittest.TestCase):
         for scope in ("crates/nexus", "./crates/nexus/"):
             self.assertEqual(mine.aliases((scope,), [second, first, other]), (second, first))
 
+    def test_aliases_skip_a_later_rename_into_a_freed_old_name(self) -> None:
+        reuse = mine.Rename("s3", "x/a.rs", "nexus/a.rs")
+        move = mine.Rename("s2", "nexus/a.rs", "crates/a.rs")
+        older = mine.Rename("s1", "lib/a.rs", "nexus/a.rs")
+        self.assertEqual(mine.aliases(("crates",), [reuse, move, older]), (move, older))
+
     def test_aliases_need_a_whole_path_component(self) -> None:
         self.assertEqual(mine.aliases(("src/a",), [mine.Rename("s", "old.rs", "src/ab.rs")]), ())
 
@@ -211,10 +217,12 @@ class MineTest(unittest.TestCase):
                 subjects = self._moved_twice(d, name, scope)
             self.assertIn("nexus: queue silently dropped events", subjects)
             self.assertNotIn("nexus: fix a bug in the unrelated file", subjects)
+            self.assertNotIn("x: fix a crash in b", subjects)
 
     @staticmethod
     def _moved_twice(d: str, name: str, scope: str) -> list[str]:
-        """Subjects found under `scope` after nexus/ -> mid/ -> crates/ and a new nexus/."""
+        """Subjects under `scope` after nexus/ -> mid/ -> crates/, then two reuses of nexus/:
+        a new file created there, and an unrelated x/b.rs renamed there."""
         repo = Path(d)
         run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True,  # noqa: E731
                                         capture_output=True, text=True).stdout.strip()
@@ -236,6 +244,17 @@ class MineTest(unittest.TestCase):
         commit("nexus: unrelated file reusing the old name")
         (repo / "nexus" / name).write_text("something else, fixed\n")
         commit("nexus: fix a bug in the unrelated file")
+        (repo / "x").mkdir()
+        (repo / "x" / "b.rs").write_text("another thing\n" * 20)
+        run("add", ".")
+        commit("x: add b")
+        (repo / "x" / "b.rs").write_text("another thing, fixed\n" + "another thing\n" * 19)
+        commit("x: fix a crash in b")
+        run("rm", "-q", "-r", "nexus")
+        commit("drop the replacement")
+        (repo / "nexus").mkdir()
+        run("mv", "x/b.rs", f"nexus/{name}")
+        commit("move b into the freed old name")
         return [c.subject for c in mine.review_fixes(repo, (scope,))]
 
 class CliTest(unittest.TestCase):
