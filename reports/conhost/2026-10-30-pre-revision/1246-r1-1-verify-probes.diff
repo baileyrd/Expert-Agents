@@ -1,0 +1,136 @@
+--- a/crates/libs/ui/rusty_conhost/src/console/read.rs
++++ b/crates/libs/ui/rusty_conhost/src/console/read.rs
+@@ -1176,4 +1176,133 @@
+         let fx = h.ev(Event::HangUp);
+         check(&mut h, fx);
+     }
++
++    // ===== verifier probes =====
++    #[test]
++    fn probe_f1_paste_over_4096_into_waiting_cooked_read() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        let r = read_w(&mut h, input, 32768);
++        assert!(held(&r));
++        let mut bytes = vec![b'a'; 5000];
++        bytes.push(b'\r');
++        let fx = h.ev(Event::Input(&bytes));
++        let done = completes(&fx);
++        let n = done.first().map(|d| wide(d).len()).unwrap_or(0);
++        eprintln!("PROBE F1: completed={} returned_chars={} (expect 5002) dropped_logged={}", done.len(), n, fx.contains(&Effect::Log(Diag::InputDropped)));
++    }
++
++    #[test]
++    fn probe_f3_reply_size() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.set_mode(input, RAW);
++        // 100 win32 records each repeating 'a' 65535 times: ~2.1 KB input.
++        let inp = b"\x1b[65;0;97;1;0;65535_".repeat(100);
++        h.ev(Event::Input(&inp));
++        let r = read_w(&mut h, input, u32::MAX - 64);
++        eprintln!("PROBE F3: input_bytes={} reply_bytes={}", inp.len(), r.output.len());
++    }
++
++    #[test]
++    fn probe_f4_ctrl_c_effects() {
++        let mut h = Host::new();
++        for pid in 0..256 { h.connect(1000 + pid, ""); }
++        let bytes = vec![0x03u8; 16 * 1024];
++        let fx = h.ev(Event::Input(&bytes));
++        eprintln!("PROBE F4: effects={} ctrl={} size_of_Effect={} bytes~={}", fx.len(), ctrls(&fx).len(), std::mem::size_of::<Effect>(), fx.len()*std::mem::size_of::<Effect>());
++    }
++
++    #[test]
++    fn probe_f6_focus_to_vt_client() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.set_mode(input, RAW | mode::VIRTUAL_TERMINAL_INPUT);
++        h.ev(Event::Input(b"\x1b[I"));
++        let r = read_w(&mut h, input, 64);
++        eprintln!("PROBE F6: vt client read {:?}", wide(&r));
++    }
++
++    #[test]
++    fn probe_f7_echo_controls() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        let _r = read_w(&mut h, input, 512);
++        h.ev(Event::Input(b"\x01\x0e"));
++        h.ev(Event::Input("\u{4e2d}\x7f".as_bytes()));
++        eprintln!("PROBE F7a: echo {:?}", String::from_utf8_lossy(&h.vt));
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.set_mode(input, mode::PROCESSED_INPUT | mode::LINE_INPUT | mode::ECHO_INPUT | mode::VIRTUAL_TERMINAL_INPUT);
++        let _r = read_w(&mut h, input, 512);
++        h.ev(Event::Input(b"\x1b[A"));
++        eprintln!("PROBE F7b: vt echo {:?}", String::from_utf8_lossy(&h.vt));
++    }
++
++    #[test]
++    fn probe_f8_second_cooked_read_overwrites_rest() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        let a = read_w(&mut h, input, 4);
++        let b = read_w(&mut h, input, 64);
++        assert!(held(&a) && held(&b));
++        let fx = h.ev(Event::Input(b"abcdef\rxy\r"));
++        let done = completes(&fx);
++        for d in &done { eprintln!("PROBE F8: done {:?}", wide(d)); }
++        let r = read_w(&mut h, input, 64);
++        eprintln!("PROBE F8: next read held={} got {:?}", held(&r), wide(&r));
++    }
++
++    #[test]
++    fn probe_f10_long_osc_split() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.set_mode(input, RAW);
++        let mut a = b"\x1b]52;c;".to_vec();
++        a.extend(vec![b'Q'; 5000]);
++        h.ev(Event::Input(&a));
++        h.ev(Event::Input(b"ZZZ\x1b\\"));
++        let r = read_w(&mut h, input, 64);
++        eprintln!("PROBE F10: read {:?}", wide(&r));
++    }
++
++    #[test]
++    fn probe_f11_cpr_row1() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.set_mode(input, RAW);
++        h.ev(Event::Input(b"\x1b[1;5R\x1b[7;5R"));
++        let r = get_input(&mut h, input, READ_NOWAIT, true, 16);
++        let recs: Vec<(u16,u32,u32)> = r.output.chunks(20).map(|c| (u16::from_le_bytes([c[10],c[11]]), u32::from_le_bytes([c[4],c[5],c[6],c[7]]), u32::from_le_bytes([c[16],c[17],c[18],c[19]]))).collect();
++        eprintln!("PROBE F11: records (vk,down,state) {:x?}", recs);
++    }
++
++    #[test]
++    fn probe_f17_close_other_handle() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        let second = h.create(1, msg::OBJECT_GENERIC, msg::GENERIC_READ | msg::GENERIC_WRITE).information;
++        let a = read_w(&mut h, input, 8);
++        let b = read_w(&mut h, second, 8);
++        assert!(held(&a) && held(&b));
++        let (_, fx) = h.packet(msg::CLOSE_OBJECT, 1, second, &[], 0);
++        eprintln!("PROBE F17: completed on close of second: {}", completes(&fx).len());
++    }
++
++    #[test]
++    fn probe_f18_ctrl_c_queue() {
++        let mut h = Host::new();
++        let [_, input, _] = h.connect(1, "");
++        h.ev(Event::Input(b"\x03"));
++        let r = get_input(&mut h, input, READ_NOWAIT, true, 4);
++        eprintln!("PROBE F18: queued after Ctrl+C = {} down={:?}", r.output.len()/20, r.output.get(4..8));
++    }
++
++    #[test]
++    fn probe_f14_order() {
++        let mut h = Host::new();
++        h.connect(10, ""); h.connect(11, "");
++        let fx = h.ev(Event::Input(b"\x03"));
++        eprintln!("PROBE F14: {:?}", ctrls(&fx));
++    }
+ }
