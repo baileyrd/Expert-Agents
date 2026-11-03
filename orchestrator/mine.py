@@ -49,12 +49,20 @@ def parse_log(text: str) -> list[Commit]:
 
 
 def parse_renames(text: str) -> list[tuple[str, str]]:
-    """(old, new) pairs from `git log -M --diff-filter=R --name-status --format=`."""
-    pairs = []
-    for line in text.splitlines():
-        fields = line.split("\t")
-        if len(fields) == 3 and fields[0].startswith("R"):
-            pairs.append((fields[1], fields[2]))
+    """(old, new) pairs from `git log -z -M --diff-filter=R --name-status --format=`.
+
+    NUL-delimited, so paths come raw rather than quoted (non-ASCII, tabs, quotes).
+    """
+    tokens = [t.strip("\n") for t in text.split("\0")]
+    pairs, i = [], 0
+    while i < len(tokens):
+        status = tokens[i]
+        if status[:1] in ("R", "C") and i + 2 < len(tokens):
+            if status[0] == "R":
+                pairs.append((tokens[i + 1], tokens[i + 2]))
+            i += 3
+        else:
+            i += 2 if status else 1
     return pairs
 
 
@@ -96,9 +104,9 @@ def grounding_md(commits: list[Commit], held: frozenset[str], paths: tuple[str, 
 
 def review_fixes(target: Path, paths: tuple[str, ...]) -> list[Commit]:
     """Every non-merge commit touching `paths` or their names before a rename, newest first."""
-    renames = parse_renames(_git(target, "log", "-M", "--diff-filter=R", "--name-status",
-                                 "--format="))
-    out = _git(target, "log", "--no-merges", f"--format={_SEP}%H{_FIELD}%s{_FIELD}%b{_FIELD}",
+    renames = parse_renames(_git(target, "log", "-z", "-M", "--diff-filter=R",
+                                 "--name-status", "--format="))
+    out = _git(target, "--literal-pathspecs", "log", "--no-merges", f"--format={_SEP}%H{_FIELD}%s{_FIELD}%b{_FIELD}",
                "--name-only", "--", *former_paths(paths, renames))
     return parse_log(out)
 
@@ -121,5 +129,5 @@ def _git(target: Path, *args: str) -> str:
     result = subprocess.run(["git", "-C", str(target), *args], capture_output=True, text=True,
                             check=False)
     if result.returncode != 0:
-        raise ValueError(f"git {args[0]} in {target} failed: {result.stderr.strip()}")
+        raise ValueError(f"git {' '.join(args[:2])} in {target} failed: {result.stderr.strip()}")
     return result.stdout

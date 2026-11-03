@@ -182,8 +182,9 @@ class MineTest(unittest.TestCase):
             self.assertFalse(mine.answers_review(commit), subject)
 
     def test_parse_renames_reads_only_rename_lines(self) -> None:
-        text = "R100\told/a.rs\tnew/a.rs\nM\tnew/b.rs\n\nR087\tx.rs\ty.rs\n"
-        self.assertEqual(mine.parse_renames(text), [("old/a.rs", "new/a.rs"), ("x.rs", "y.rs")])
+        text = "R100\0old/a.rs\0new/a.rs\0M\0R1.rs\0\nR087\0x\ty.rs\0\"y\".rs\0"
+        self.assertEqual(mine.parse_renames(text),
+                         [("old/a.rs", "new/a.rs"), ("x\ty.rs", '"y".rs')])
 
     def test_former_paths_follow_a_file_moved_twice(self) -> None:
         renames = [("mid/nexus/a.rs", "crates/nexus/a.rs"), ("nexus/a.rs", "mid/nexus/a.rs"),
@@ -195,25 +196,29 @@ class MineTest(unittest.TestCase):
         self.assertEqual(mine.former_paths(("src/a",), [("old.rs", "src/ab.rs")]), ("src/a",))
 
     def test_review_fixes_find_a_fix_made_before_the_scope_moved(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
-            repo = Path(d)
-            run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True,  # noqa: E731
-                                            capture_output=True, text=True).stdout.strip()
-            commit = lambda msg: run("-c", "user.name=t", "-c", "user.email=t@t",  # noqa: E731
-                                     "commit", "-q", "--no-gpg-sign", "-am", msg)
-            run("init", "-q")
-            (repo / "nexus").mkdir()
-            (repo / "nexus" / "a.rs").write_text("fn a() {}\n" * 20)
-            run("add", ".")
-            commit("nexus: add a")
-            (repo / "nexus" / "a.rs").write_text("fn a() { b() }\n" + "fn a() {}\n" * 19)
-            commit("nexus: queue silently dropped events")
-            for src, dst in (("nexus", "mid"), ("mid", "crates")):
-                run("mv", src, dst)
-                commit(f"move {src} to {dst}")
-            subjects = [c.subject for c in mine.review_fixes(repo, ("crates",))]
-        self.assertIn("nexus: queue silently dropped events", subjects)
-        self.assertIn("nexus: add a", subjects)
+        for name in ("a.rs", "é [1].rs"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as d:
+                self.assertIn("nexus: queue silently dropped events", self._moved_twice(d, name))
+
+    @staticmethod
+    def _moved_twice(d: str, name: str) -> list[str]:
+        """Subjects `review_fixes` finds under crates/ after nexus/ -> mid/ -> crates/."""
+        repo = Path(d)
+        run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True,  # noqa: E731
+                                        capture_output=True, text=True).stdout.strip()
+        commit = lambda msg: run("-c", "user.name=t", "-c", "user.email=t@t",  # noqa: E731
+                                 "commit", "-q", "--no-gpg-sign", "-am", msg)
+        run("init", "-q")
+        (repo / "nexus").mkdir()
+        (repo / "nexus" / name).write_text("fn a() {}\n" * 20)
+        run("add", ".")
+        commit("nexus: add a")
+        (repo / "nexus" / name).write_text("fn a() { b() }\n" + "fn a() {}\n" * 19)
+        commit("nexus: queue silently dropped events")
+        for src, dst in (("nexus", "mid"), ("mid", "crates")):
+            run("mv", src, dst)
+            commit(f"move {src} to {dst}")
+        return [c.subject for c in mine.review_fixes(repo, ("crates",))]
 
 class CliTest(unittest.TestCase):
     def test_a_named_cases_dir_that_does_not_exist_is_refused(self) -> None:
