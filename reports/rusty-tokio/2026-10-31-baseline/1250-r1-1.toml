@@ -1,0 +1,33 @@
+# Grade 1250-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1250-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "notify_one racing a dropped waiter loses the wakeup (single set after unlock)"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Permit taken by enable is re-banked on drop, unlike tokio"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-1250-r1-head (hand-polled, noop waker): notify_one; notified().enable()==true; drop; fresh notified() -> rusty_tokio head 98621f936 Ready, tokio 1.53.3 Pending, contradicting the 'as tokio does' doc at notify.rs:31-33; same on main 808d6ebd9 (probe-1250-r1-main, enable still sets registered at notify.rs:274-280)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Forwarded notify_last goes to the oldest waiter, tokio sends it to the newest"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-1250-r1-head: A,B,C queued, notify_last, drop C -> rusty_tokio head 98621f936 wakes A (release pop_front, notify.rs:286), tokio 1.53.3 wakes B; same on main 808d6ebd9 (release forwards via notify_one, notify.rs:300-304)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "No test covers the concurrent drop/notify window"
+triage = "fixed_since"
+reason = "traced: head 98621f936 notify.rs:385-435 tests are all single-threaded hand-polled and none reaches the pop-to-fire window; main 808d6ebd9 adds deterministic window tests (a_waiter_dropped_before_notify_one/notify_last_fires_it_passes_it_on, notify.rs:463-498)"

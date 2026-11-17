@@ -1,0 +1,16 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/999#issuecomment-6387940256"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "Unbounded recursion through nested ArrayProperty/StructProperty"
+files = ["crates/apps/rocket_league/crates/rl_replay/src/header.rs"]
+fix = "cf7bbb0e16f35deaf18740c4fab8ce2a346b1255"
+summary = """
+header.rs properties/property recurse through ArrayProperty rows (~158) and StructProperty
+fields (177-180) with no nesting limit. A CRC-valid replay with deeply nested structs or
+arrays exhausts the stack instead of returning an Error, and catch_unwind does not recover
+a stack overflow. Needs one depth budget shared by arrays and structs, a structured error
+with the offset, and public-parse tests at and above the limit.
+"""
+caught_if = "Names unbounded recursion on nested header properties (array or struct) letting a crafted replay overflow the stack."

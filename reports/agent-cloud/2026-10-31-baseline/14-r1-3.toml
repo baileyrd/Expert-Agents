@@ -1,0 +1,47 @@
+# Grade 14-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "agent-cloud/14-r1"
+variant = "baseline"
+prompt_sha = "7c00a3eee28643720845867db321dcd6e32967b9"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Change diff runs inline on the tick thread, lifecycle lock and pre-READY reconcile; output read unbounded"
+triage = "real"
+reason = "traced at head bb1b6b3: jobs.rs transition calls note_changes inline after the lock drops; main.rs runs jobs.reconcile() before READY and tick() on the single supervisor thread; dump read whole"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A file the agent names like o<ino>-<gen>-<seq> has every change hidden"
+triage = "real"
+reason = "traced at head bb1b6b3: changes.rs note() drops any temp-shaped path for every command; its own doc comment says only where created or renamed to; runs executed the probe"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Job snapshots a crash leaves behind are cleaned only by purge"
+triage = "design_question"
+reason = "ADR-019 at head: 'a purge deletes any a crash left behind' documents this as intended"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "security.md and ADR-010 still say history holds only job ids and states"
+triage = "real"
+reason = "traced at head bb1b6b3: docs/security.md:190 'history records only job ids and states'; the PR adds agent-chosen paths to history"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "A cancelled job's change note can include the next job's changes"
+triage = "real"
+reason = "traced at head bb1b6b3: transition removes the job from the book and drops the lock before note_changes, so the tick can start the agent's next job before the end snapshot"
+
+[[finding]]
+id = "F6"
+severity = "P3"
+title = "Validation gap: deleted children of a replaced directory may be listed under its temporary o… name (parser probe gives o300-5-0/f)"
+match = "K1"
+quality = "partial"

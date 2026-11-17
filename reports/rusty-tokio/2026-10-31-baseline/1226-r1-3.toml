@@ -1,0 +1,33 @@
+# Grade 1226-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1226-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "kill_on_drop children become zombies on a tokio thread with the fallback"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-1226-r1-zombie at head aba661f23: install_fallback, piped kill_on_drop sleep spawned+dropped on tokio current-thread -> /proc/<pid>/stat Some('Z') after 1.5s, control on rusty_tokio Runtime reaped (None); Child::drop uses Handle::try_current (process/mod.rs:426). Same result on main 808d6ebd9 (mod.rs:431)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "~85 Panics docs now false once the fallback is installed"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Inventory note conflicts with the per-consumer owner go-ahead rule"
+triage = "false_positive"
+reason = "traced: ASYNC-RUNTIME-INVENTORY.md:182-191 at aba661f23 conditions the #906 steps on consumers calling install_fallback and grants no consumer go-ahead; it does not contradict the per-consumer owner gate (main 808d6ebd9 keeps the sentence and records the owner-made consumer switches)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "No tests for process, task::Builder::spawn, signal global or racing first installs"
+triage = "real"
+reason = "traced at aba661f23: tests/fallback.rs has no process/Builder/signal case and installing_twice is sequential; main 808d6ebd9 adds tests/fallback_concurrent.rs (race part fixed) but process/Builder/signal still uncovered"

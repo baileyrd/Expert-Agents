@@ -1,0 +1,16 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1250#discussion_r4423708217"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "A Notified dropped between dequeue and fire loses a notify_one"
+files = ["crates/libs/async/rusty_tokio/src/sync/notify.rs"]
+fix = "be7104e6b4a3c399562b0fce22826e458c9a956f"
+summary = """
+notify_one and notify_last remove the waiter, unlock, and only then set single in fire.
+A waiter dropped in that window is out of the queue with single == false, so its drop
+neither forwards nor banks the notification and the notifier wakes a dead waiter; the
+new forwarding path has the same gap. Two enabled waiters, notify_one on another
+thread, the first dropped concurrently: the second stays pending. (Codex review, P1.)
+"""
+caught_if = "Names the window where a waiter has been dequeued by notify_one/notify_last (or forwarding) but single is not yet set, so dropping it then loses the notification."

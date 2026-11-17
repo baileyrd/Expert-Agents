@@ -1,0 +1,47 @@
+# Grade 763-r2-3-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/763-r2"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A turn ended through the protocol is counted as a killed turn"
+triage = "fixed_since"
+reason = "traced moderator.rs:490-497 at fa4a8a8a: a running harness whose turn is no longer live is killed on the next poll with no grace, so a result printed after the ending tool call is lost (tokens.rs:498 'no result line' -> unknown_turns -> pairs.rs:89 fails); gone on main: 61b8a51f9 adds --end-grace-secs (moderator.rs:841 on main)"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Resumed evidence run judged only by its last invocation (build, spec_wall)"
+triage = "real"
+reason = "traced at fa4a8a8a: check_evidence_marker (moderator.rs:615) lets a capped resume pass on a matching marker, the marker holds only cap+criteria sha (marker_text), the wall stop at moderator.rs:441-449 writes no event, and pairs::facts reads one mod_output (stop, bbp_build_sha, state_ms from the last invocation only); same on main (moderator.rs:1091-1140, pairs.rs:483-557)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Grade sealing undone by running release again"
+triage = "fixed_since"
+reason = "traced grade.rs:372-382 at fa4a8a8a: release_files writes release.json and unused.json unconditionally, join_files trusts whichever release.json it is given; gone on main: release.json opened with create_new and compared (grade.rs:384-398)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Clean check honours git config that hides untracked files"
+triage = "real"
+reason = "executed: in a scratch repo `git -c status.showUntrackedFiles=no status --porcelain` prints nothing for an untracked file (default prints '?? newfile'); build.rs:37 and pairs.rs:667 at head use plain `status --porcelain`, unchanged on main (build.rs:37, pairs.rs:707)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Evidence marker written before the task lock"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Half-written line stops the run as over the cap"
+triage = "fixed_since"
+reason = "traced tokens.rs:435-446 at fa4a8a8a: any line starting with '{' that fails to parse, including an unterminated last line, counts as bad -> tokens::of Err (tokens.rs:644) -> enforce_cap Err -> StopKind::Cap; gone on main: scan treats text after the last newline as still being written (tokens.rs:488, commits 8c2536385/e5ad29dc4)"

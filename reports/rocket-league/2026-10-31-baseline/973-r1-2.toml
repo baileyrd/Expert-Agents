@@ -1,0 +1,12 @@
+# Grade 973-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/973-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "probe_ball_rest cannot show a ball at rest; ~347 uu/s at tape end"
+match = "K1"
+quality = "caught"

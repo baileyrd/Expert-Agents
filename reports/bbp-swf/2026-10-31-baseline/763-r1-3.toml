@@ -1,0 +1,47 @@
+# Grade 763-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/763-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "bbp pairs checks its own binary, not the binary that ran each run"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "build.rs reports a clean commit for a binary built with uncommitted code"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Extra N=2 author may use a different model from the control's author"
+triage = "design_question"
+reason = "executed at head 2b31b4e6: check_settings(control planner=opus,coder=sonnet; treatment +planner2=sonnet) -> Ok(()). Same rule on main 069eedbcd pairs.rs:671-676, and it is the stated rule in changes/2026-10-15-bbp-run-guards.md:7 ('an extra N=2 role used a model the control also used') and the check_settings doc; whether design doc :232 'same model' needs the author's model is an owner rule (other runs filed it as a design question)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Cost cap skipped when the run closes; cap not recorded in mod output"
+match = "K4"
+quality = "caught"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Design doc still says the cap cannot stop a run and pairs cannot prove the binary"
+triage = "fixed_since"
+reason = "traced at head: docs/bbp-concurrency-design.md:311 and :322 say so. On main 069eedbcd the 'cannot stop a run in flight' and 'cannot prove the bbp binary' text is gone; :346 documents --max-usd as a live check"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "load/facts wiring (check_settings, pin, role_models, bbp_build_sha) untested"
+triage = "fixed_since"
+reason = "traced at head: no test calls pairs::load (grep load( in src/pairs.rs and tests/), so removing check_settings from load stays green. On main 069eedbcd tests/pairs_load.rs exercises load with missing/dirty/unknown build shas"

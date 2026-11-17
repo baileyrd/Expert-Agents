@@ -1,0 +1,61 @@
+# Grade 6-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/6-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Re-ingest swaps in new page text under facts that were already reviewed"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A condition name from config ends up in an exception"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: parse_category_map with a bad category raises conditions.<synthetic key>: unknown category (conditions.py:23), uncaught in ingest/__main__.py; on main (conditions.py still formats the key into the message)"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Text the model chose ends up in page_error.error"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: a result with an unexpected key named with a synthetic sentinel stores page_error.error = schema: $: missing [], unexpected [<sentinel>]; contract/README.md:39-40 and schema.sql:141 say error never holds record text; on main (same output)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "One out-of-range integer aborts the whole ingest"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: bp sys 10**20 (and 1e20) raises OverflowError at ingest.py:129 and the run rolls back with 0 pages stored, valid page 2 included; on main (same)"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "provider_key merges different people by dropping a common surname"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: provider_key(\"Dr. Do\") is None and the visit stores provider_id NULL (visit has no raw provider column); \"Dr. Kim Do\" and \"Dr. Kim, MD\" both key to kim; on main (providers.py unchanged)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "The ingest command reads the config file twice"
+triage = "real"
+reason = "traced: ingest/__main__.py:23-25 loads config.toml via load_config then reopens it for [conditions], so a save between reads mixes versions; on main (__main__.py:26-28 still reads twice)"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Conflicting [conditions] keys are accepted without warning"
+triage = "real"
+reason = "executed: probes/6-r1/probe.py at head: {Sleep Apnea: sleep_apnea, sleep apnea.: other} yields one entry, last wins, no error (conditions.py:24); on main (same)"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "Coverage gaps: lab_result left out of the reviewed-rows test"
+triage = "real"
+reason = "traced: tests/test_ingest.py:125 parametrizes test_reviewed_rows_survive_reingest over visit, finding, medication_event, bp_reading only and the sole lab test drops the table, so lab_result in _CHILDREN is unexercised; on main (test_ingest.py:133 same list)"

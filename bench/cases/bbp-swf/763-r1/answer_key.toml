@@ -1,0 +1,57 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/763#issuecomment-6199364175"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "The build pin checks the evaluator, not each saved run's producer"
+files = ["crates/apps/rusty_bbp_host/src/pairs.rs"]
+fix = "00911b5a63702affa12a47b6b77f22071b2ac6e9"
+summary = """
+pairs.rs:374-407 and 519-528 parse moderator output as ModOut { state_ms } and ignore
+the emitted bbp_build_sha. Rebuilding the evaluator lets old, dirty, unknown or
+mixed-build runs pass as pinned. Each saved run's build identity must be required and
+matched to the pinned checkout; missing, dirty, unknown and mismatched identities
+rejected.
+"""
+caught_if = "Names that the pin/settings check validates the current (evaluating) binary's build sha rather than the build sha each saved run recorded, so runs from other or dirty builds pass."
+
+[[finding]]
+id = "K2"
+severity = "P1"
+title = "build.rs reruns only on HEAD/index changes, so a dirty build keeps a clean BBP_BUILD_SHA"
+files = ["crates/apps/rusty_bbp_host/build.rs"]
+fix = "58cbbd00821321f3b63fce41be8f4abb9dfd1df4"
+summary = """
+build.rs:22-29 rerun inputs watch git HEAD, the index and build.rs, not unstaged source
+changes. Cargo rebuilds edited Rust code while keeping a previously clean
+BBP_BUILD_SHA; restoring the checkout leaves a dirty-built executable passing the pin.
+Branch/ref movement is also missed.
+"""
+caught_if = "Names that the build-sha provenance is not recomputed when sources change without HEAD/index changing (unstaged edit, ref move), so a dirty build reports a clean sha."
+
+[[finding]]
+id = "K3"
+severity = "P2"
+title = "check_settings accepts zero models, so result-only logs price at zero"
+files = ["crates/apps/rusty_bbp_host/src/pairs.rs"]
+fix = "4ed3242d48829e2cd908036870a83233424a7c2e"
+summary = """
+pairs.rs:397-402,431-453 rejects only model sets of length > 1. Result-only usage logs
+accepted by tokens::parse produce empty model maps; matching empty arms pass and
+per-model cost becomes zero. Absent model evidence, including granted turns with no
+model observations, must be rejected.
+"""
+caught_if = "Names that an empty model set (no model evidence in a run or turn) passes the same-model/settings check, letting arms match vacuously or cost price at zero."
+
+[[finding]]
+id = "K4"
+severity = "P2"
+title = "A terminal task state returns success before the final cap check"
+files = ["crates/apps/rusty_bbp_host/src/moderator.rs"]
+fix = "9fb778788350ea0224065f8390578e515bdcc274"
+summary = """
+moderator.rs:337-357 returns success for Closed/Cancelled before enforce_cap. Over-cap
+or unpriced output written before the terminal poll is accepted. After stopping
+harnesses, final usage must be validated before a successful completion.
+"""
+caught_if = "Names that reaching Closed/Cancelled exits the moderator loop successfully without validating the final usage against the cost cap (over-cap or unpriced output accepted)."

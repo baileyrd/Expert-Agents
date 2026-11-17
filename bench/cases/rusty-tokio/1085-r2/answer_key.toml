@@ -1,0 +1,42 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1085#pullrequestreview-5645806620"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "A cancelled Stdout write keeps the lock, so a later flush or shutdown never completes"
+files = ["crates/libs/async/rusty_tokio/src/io/stdio.rs"]
+fix = "f767524ad3097cd53677dc8f5b9943a6df0036c3"
+summary = """
+Stdout::state keeps the Busy write future after poll_write returns Pending, holding the
+mutex guard across spawn_blocking(...).await (stdio.rs:150-151, 238-243). Cancelling the
+outer write does not drop it, and poll_flush polls only its own flush future, which waits
+on the same mutex without driving the retained write. Flush/shutdown can stay pending
+after the OS write finishes; a cancelled flush followed by write is symmetric.
+"""
+caught_if = "Names a cancelled Stdout write (or flush) whose retained operation holds the lock while the other operation never drives it, so flush/shutdown (or write) hangs."
+
+[[finding]]
+id = "K2"
+severity = "ungraded"
+title = "A dropped watch changed() wait still leaves its waker registered"
+files = ["crates/libs/async/rusty_tokio/src/sync/watch.rs"]
+fix = "4399e88db651b23d9bcbc336347bae83efae1638"
+summary = """
+Round 1's dropped-wait registration finding is unchanged at this head: each dropped
+changed() future leaves its cloned waker in the channel's shared state.
+"""
+caught_if = "Names watch changed() registrations not removed when the wait future is dropped."
+
+[[finding]]
+id = "K3"
+severity = "ungraded"
+title = "The new rusty_lsp stdio test is not gated on the runtime feature"
+files = ["crates/libs/protocol/rusty_lsp/tests/stdio.rs"]
+fix = "f767524ad3097cd53677dc8f5b9943a6df0036c3"
+summary = """
+tests/stdio.rs imports LanguageServer and Server unconditionally, but lib.rs exports them
+only with feature runtime; the other runtime tests use required-features. A
+--no-default-features test or all-targets build fails.
+(Raised in https://github.com/Rusty-Mill/rusty_mill/pull/1085#issuecomment-6404669822.)
+"""
+caught_if = "Names the stdio integration test missing required-features = [\"runtime\"] (or a cfg), breaking no-default-features builds."

@@ -1,0 +1,28 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1226#issuecomment-6486225036"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "install_fallback documents thread-spawn failure as an Err, but it panics"
+files = ["crates/libs/async/rusty_tokio/src/runtime/fallback.rs"]
+fix = "663c38dad67cc78030ec433f8f10f714163e2a00"
+summary = """
+install_fallback() says it returns an error when a thread cannot be spawned and that a
+later call retries. Builder::build_single() calls Reactor::start(), TimerDriver::start()
+and worker::spawn_worker(), whose thread spawns are .expect()ed, so thread exhaustion
+panics, and threads already started keep running, so a retry is not clean.
+"""
+caught_if = "Names install_fallback's Errors contract being false: thread-spawn failure panics via expect (and partial startup leaves threads), so the io::Result/retry promise does not hold."
+
+[[finding]]
+id = "K2"
+severity = "ungraded"
+title = "I/O entry points still say they always panic outside a runtime"
+files = ["crates/libs/async/rusty_tokio/src/io/tcp.rs", "crates/libs/async/rusty_tokio/src/io/async_fd.rs", "crates/libs/async/rusty_tokio/src/io/pipe.rs", "crates/libs/async/rusty_tokio/src/io/udp.rs"]
+fix = "663c38dad67cc78030ec433f8f10f714163e2a00"
+summary = """
+After install_fallback succeeds, I/O constructors work outside a running Runtime, but
+their # Panics sections still say they panic there. The review asked to update them as
+part of the contract correction (Codex graded it P3).
+"""
+caught_if = "Names the # Panics docs on I/O (or spawn) entry points being stale once a fallback is installed."

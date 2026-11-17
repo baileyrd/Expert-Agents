@@ -1,0 +1,8 @@
+expert = "bbp-swf"
+repo = "Rusty-Mill/rusty_mill"
+pr = 763
+title = "feat(rusty_bbp_host): run guards: settings checks, build-sha pin, live cost cap, decision-table tests"
+round = 2
+base = "5dbb633f9f2db1459002fc8fefee59eb4f9f2298"
+head = "fa4a8a8a3bf8daff05ccb967d65ba9317b7e2aec"
+prior = "763-r1"

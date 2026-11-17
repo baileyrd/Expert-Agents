@@ -114,12 +114,17 @@ code, the docs and a probe.
    - **Overstated fix-it or doc**: apply each suggested fix and re-check; compare each
      doc claim, count or measurement with the code.
    Done when each class has a concrete program or is ruled out with a reason.
-3. **Compare** the diff with steps 1 and 2, the decisions, the roadmap step the PR
+3. **Assumptions.** List every place the new code treats two values as different, or a
+   case as impossible, without a check that proves it: two names, two parameters, two
+   fields or depths of one value, a parameter and a module variable, a path the analysis
+   skips or gives up on. For each, cite the code or decision that proves it, or write the
+   `.pyr` program that breaks it. Done when every such assumption is proven or reported.
+4. **Compare** the diff with steps 1 to 3, the decisions, the roadmap step the PR
    claims and its own docs. Documentation that disagrees with the code is a defect; a
    roadmap item marked done without its exit test is one too. Work outside the claimed
    step is scope drift. A CPython difference not listed in Deviations is a defect; a
    listed one is not.
-4. **Tests.** For each changed behaviour, name the test that goes red without the
+5. **Tests.** For each changed behaviour, name the test that goes red without the
    change. Run each new test at <BASE_SHA> too: one that passes there guards nothing.
    An ownership rule needs a rejected program and a legal neighbour that stays
    accepted; a native change needs a corpus program in `NATIVE` that matches CPython,
@@ -128,8 +133,9 @@ code, the docs and a probe.
 
 ## Findings
 
-Report only actionable defects this PR introduces or makes reachable, including
-comments, docs and roadmap claims it makes false. Each has:
+Report every defect this PR introduces or makes reachable, including comments, docs
+and roadmap claims it makes false. Report each one you traced, not the strongest few: a
+review that leaves out a traced defect is incomplete. Each has:
 
 - **Severity**: P0 (memory unsafety in native code: use after free, double free, a
   leak memcheck reports, or a build that overwrites the user's files), P1 (a soundness

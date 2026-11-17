@@ -15,6 +15,8 @@ from bench.scorer.model import Case, KeyFinding
 from orchestrator import check, mine, template
 
 ROOT = Path(__file__).resolve().parents[2]
+# Ancestry for pure `aliases` tests on a linear history: s1 < s2 < s3.
+LINEAR = lambda a, b: a < b  # noqa: E731
 EXAMPLES = ROOT / "orchestrator" / "examples"
 
 
@@ -163,6 +165,141 @@ class MineTest(unittest.TestCase):
             held = mine.held_out(repo, [pr])
         self.assertEqual(held, frozenset(shas[1:3]))
 
+
+    def test_a_defect_named_without_fix_is_a_review_fix(self) -> None:
+        for subject in ("journal: events were silently dropped on overflow",
+                        "store: lost writes when the WAL rotates", "pool: deadlock on shutdown"):
+            self.assertTrue(mine.answers_review(mine.Commit("s", subject, "", ())), subject)
+
+    def test_mechanical_upkeep_is_not_a_review_fix_even_when_it_says_fix(self) -> None:
+        for subject in ("fix clippy warnings", "cargo fmt after review", "fix typos in docs",
+                        "chore: fix CI cache", "style(core): fix import order",
+                        "plan: P0 tasks for the next phase"):
+            self.assertFalse(mine.answers_review(mine.Commit("s", subject, "Fixes P1.", ())),
+                             subject)
+
+    def test_a_feature_whose_body_mentions_a_bug_is_not_a_review_fix(self) -> None:
+        for subject in ("nexus: add a cache", "Phase 4: ablation and a regression gate"):
+            commit = mine.Commit("s", subject, "Avoids the bug class where reads race.", ())
+            self.assertFalse(mine.answers_review(commit), subject)
+
+    def test_parse_renames_reads_raw_paths_per_commit(self) -> None:
+        text = ("commit s2\0\nR100\0old/a.rs\0new/a.rs\0M\0R1.rs\0"
+                "commit s1\0\nR087\0x\ty.rs\n\0\"y\".rs\0")
+        self.assertEqual(mine.parse_renames(text),
+                         [mine.Rename("s2", "old/a.rs", "new/a.rs"),
+                          mine.Rename("s1", "x\ty.rs\n", '"y".rs')])
+
+    def test_aliases_follow_a_file_moved_twice(self) -> None:
+        second = mine.Rename("s2", "mid/nexus/a.rs", "crates/nexus/a.rs")
+        first = mine.Rename("s1", "nexus/a.rs", "mid/nexus/a.rs")
+        other = mine.Rename("s3", "other/b.rs", "elsewhere/b.rs")
+        for scope in ("crates/nexus", "./crates/nexus/"):
+            self.assertEqual(mine.aliases((scope,), [second, first, other], LINEAR),
+                             (second, first))
+
+    def test_aliases_skip_a_later_rename_into_a_freed_old_name(self) -> None:
+        reuse = mine.Rename("s3", "x/a.rs", "nexus/a.rs")
+        move = mine.Rename("s2", "nexus/a.rs", "crates/a.rs")
+        older = mine.Rename("s1", "lib/a.rs", "nexus/a.rs")
+        self.assertEqual(mine.aliases(("crates",), [reuse, move, older], LINEAR), (move, older))
+
+    def test_aliases_skip_a_rename_on_a_parallel_branch_listed_after_the_move(self) -> None:
+        move = mine.Rename("s2", "nexus/a.rs", "crates/a.rs")
+        parallel = mine.Rename("p1", "x/a.rs", "nexus/a.rs")
+        self.assertEqual(mine.aliases(("crates",), [move, parallel], lambda a, b: False), (move,))
+
+    def test_aliases_need_a_whole_path_component(self) -> None:
+        renames = [mine.Rename("s", "old.rs", "src/ab.rs")]
+        self.assertEqual(mine.aliases(("src/a",), renames, LINEAR), ())
+
+    def test_review_fixes_skip_a_merged_parallel_rename_into_the_old_name(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d)
+            run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True,  # noqa: E731
+                                            capture_output=True, text=True).stdout.strip()
+            commit = lambda msg: run("-c", "user.name=t", "-c", "user.email=t@t",  # noqa: E731
+                                     "commit", "-q", "--no-gpg-sign", "-am", msg)
+            run("init", "-q", "-b", "main")
+            run("config", "user.name", "t")  # merge needs an identity, not only commit
+            run("config", "user.email", "t@t")
+            for name, text in (("old", "the real a\n"), ("x", "an unrelated a\n")):
+                (repo / name).mkdir()
+                (repo / name / "a.rs").write_text(text * 20)
+            run("add", ".")
+            commit("add both")
+            run("checkout", "-q", "-b", "side")
+            (repo / "x" / "a.rs").write_text("fixed\n" + "an unrelated a\n" * 19)
+            commit("x: fix a crash in the unrelated a")
+            run("rm", "-q", "old/a.rs")
+            commit("drop old/a")
+            (repo / "old").mkdir()
+            run("mv", "x/a.rs", "old/a.rs")
+            commit("move x/a into old/a")
+            run("checkout", "-q", "main")
+            run("mv", "old", "new")
+            commit("move old to new")
+            # Merge main into side, keeping main's tree, so the move is listed first.
+            run("checkout", "-q", "side")
+            run("merge", "-q", "--no-commit", "-s", "ours", "main")
+            run("read-tree", "-u", "--reset", "main")
+            commit("merge main")
+            subjects = [c.subject for c in mine.review_fixes(repo, ("new",))]
+        self.assertIn("move old to new", subjects)
+        self.assertNotIn("x: fix a crash in the unrelated a", subjects)
+
+    def test_merge_logs_unions_files_in_the_given_order(self) -> None:
+        a, b = mine.Commit("a", "s", "", ("new/x",)), mine.Commit("b", "t", "", ("new/y",))
+        old_a = mine.Commit("a", "s", "", ("old/x",))
+        merged = mine.merge_logs([[a, b], [old_a]], ["b", "a"])
+        self.assertEqual([(c.sha, c.files) for c in merged],
+                         [("b", ("new/y",)), ("a", ("new/x", "old/x"))])
+
+    def test_review_fixes_find_a_fix_made_before_the_scope_moved(self) -> None:
+        for name, scope in (("a.rs", "crates"), ("é [1].rs", "./crates/"), ("a\r", "crates")):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as d:
+                subjects = self._moved_twice(d, name, scope)
+            self.assertIn("nexus: queue silently dropped events", subjects)
+            self.assertNotIn("nexus: fix a bug in the unrelated file", subjects)
+            self.assertNotIn("x: fix a crash in b", subjects)
+
+    @staticmethod
+    def _moved_twice(d: str, name: str, scope: str) -> list[str]:
+        """Subjects under `scope` after nexus/ -> mid/ -> crates/, then two reuses of nexus/:
+        a new file created there, and an unrelated x/b.rs renamed there."""
+        repo = Path(d)
+        run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True,  # noqa: E731
+                                        capture_output=True, text=True).stdout.strip()
+        commit = lambda msg: run("-c", "user.name=t", "-c", "user.email=t@t",  # noqa: E731
+                                 "commit", "-q", "--no-gpg-sign", "-am", msg)
+        run("init", "-q")
+        (repo / "nexus").mkdir()
+        (repo / "nexus" / name).write_text("fn a() {}\n" * 20)
+        run("add", ".")
+        commit("nexus: add a")
+        (repo / "nexus" / name).write_text("fn a() { b() }\n" + "fn a() {}\n" * 19)
+        commit("nexus: queue silently dropped events")
+        for src, dst in (("nexus", "mid"), ("mid", "crates")):
+            run("mv", src, dst)
+            commit(f"move {src} to {dst}")
+        (repo / "nexus").mkdir()
+        (repo / "nexus" / name).write_text("something else\n")
+        run("add", ".")
+        commit("nexus: unrelated file reusing the old name")
+        (repo / "nexus" / name).write_text("something else, fixed\n")
+        commit("nexus: fix a bug in the unrelated file")
+        (repo / "x").mkdir()
+        (repo / "x" / "b.rs").write_text("another thing\n" * 20)
+        run("add", ".")
+        commit("x: add b")
+        (repo / "x" / "b.rs").write_text("another thing, fixed\n" + "another thing\n" * 19)
+        commit("x: fix a crash in b")
+        run("rm", "-q", "-r", "nexus")
+        commit("drop the replacement")
+        (repo / "nexus").mkdir()
+        run("mv", "x/b.rs", f"nexus/{name}")
+        commit("move b into the freed old name")
+        return [c.subject for c in mine.review_fixes(repo, (scope,))]
 
 class CliTest(unittest.TestCase):
     def test_a_named_cases_dir_that_does_not_exist_is_refused(self) -> None:

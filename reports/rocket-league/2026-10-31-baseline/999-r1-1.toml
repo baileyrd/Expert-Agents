@@ -1,0 +1,19 @@
+# Grade 999-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/999-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Unbounded header property recursion overflows the stack"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Names accepted with zero length or no trailing NUL"
+triage = "design_question"
+reason = "Code trace holds (reader.rs:85-93 slices bytes[..n-1] with no NUL/zero check, still so on main reader.rs:85-93), but it is byte-for-byte boxcars 0.11.5 behaviour (parsing_utils.rs:9-12 decode_str; core_parser.rs parse_text_zero_size asserts Ok(\"\")), and the documented P1 contract is equality with the boxcars oracle (replay-parser-scope.md:83,97); the report's 'rather than a guess' quote is about version gating (scope.md:56) and its boxcars ZeroSize claim is false"

@@ -1,0 +1,47 @@
+# Grade 999-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/999-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Unbounded header property recursion overflows the stack"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "MIN_VERSION doc comment misstates the boxcars gates"
+triage = "false_positive"
+reason = "traced: header.rs:7-10 says 868.23.8 is the oldest sample and the newest encoding change boxcars gates below it, which holds (boxcars attributes.rs:492 gates the colour encoding at >= 868.23.8 and no gate between that and the sample is newer, as the report itself concedes); the comment makes no claim about gates above the floor (868.24.10, net < 10)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Scope doc's encoding-risk statement now false"
+triage = "false_positive"
+reason = "traced: replay-parser-scope.md:121-122 is about vector and quaternion bit encodings; boxcars 0.11.5 gates those only at net_version >= 7 (network/models.rs:41,65; attributes.rs:1260) and every version >= 868.23.8 has net >= 8, so the bullet still holds; the frame-trailer and PsyNet-ID gates it cites are other encodings"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Names/text accepted without a NUL terminator (and zero-length names)"
+triage = "design_question"
+reason = "executed: a key of length 9 'TeamSizeX' parses as TeamSize at head and on main (reader.rs:85-113), but this is byte-for-byte boxcars 0.11.5 decode_str (parsing_utils.rs:9-12), and boxcars parity is the documented P1 contract (replay-parser-scope.md:83,97); same grading as v1 run 1 F2"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "BoolProperty accepts any byte value"
+triage = "design_question"
+reason = "executed: a BoolProperty byte of 2 parses as Bool(false) at head and on main (header.rs:156), but boxcars 0.11.5 does exactly the same (header.rs:156-157 bool_prop: data[0] == 1), and boxcars parity is the documented P1 contract (replay-parser-scope.md:83,97)"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Several fail-closed paths have no test"
+triage = "real"
+reason = "executed: a copy of the head crate with the MAX_ARRAY_LEN check, the header CRC check and the InvalidUtf8 check disabled still passes all unit and oracle tests; still on main (only tests/nesting.rs added). Two sub-claims are wrong: negative counts are covered by reader.rs negative_length_is_a_bad_length via the shared len(), and an oversized header size by lib.rs a_short_file_is_truncated_not_a_panic"

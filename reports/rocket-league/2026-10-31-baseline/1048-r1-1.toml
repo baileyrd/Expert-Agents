@@ -1,0 +1,33 @@
+# Grade 1048-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/1048-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "Captures show the game's parked car never sleeps; port freezes it; doc says no car capture measures it"
+triage = "real"
+reason = "fixtures probe_ball_rest_{10,20,40,80}: car speed <= 1.88 uu/s, spin <= 0.11 rad/s for ~5 s with 0 exact-zero frames; port (executed simulate_scenario) zeroes car velocity and spin from frame 241, 361 frames; claim at body.rs:101-102. Still on main: body.rs:104, world.rs:1528-1529"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "rest_40 residual attributed to decay rate; real cause is first-tick spin-to-speed jump"
+triage = "real"
+reason = "executed simulate_scenario(probe_ball_rest_40) at head: speed 40.000 -> 40.231 on tick 1 (spin 0.4384 -> 0.4319, v/w = 93.15), stays >= 40 to frame 32, freezes at 273 vs game 242; spin set for BALL_R 91.25 (gen_probes.py:162,176) vs BALL_RADIUS 93.15 (body.rs:112), so decay rate is not the cause. Still on main: RB-PHYSICS-001:2213-2215, golden_captures.rs:178"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Port freezes the ball one tick before the game"
+triage = "real"
+reason = "game rest_10 moves on frame 241 (y -1981.49 -> -1981.42) and is zero at 242 (fixture); port at head (executed) does not move on step 241 (y -1980.3143 at frames 240 and 241): body.rs:477 >= and same-call zeroing before integrate (world.rs:1527-1532). Still on main: body.rs:477, world.rs:1527-1532"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Quoted error numbers do not match the golden harness"
+triage = "real"
+reason = "executed golden harness (compare_scenario_recorded) at head: rest_20 ball max 1.441 (PR 1.6), fast_6500 mean 5.680 (PR 5.4), max 56.84 (PR 55); bounds 1.8/7.1 = measured x1.25 (golden_captures.rs:192,220); fragment lines 7-8,11 and RB-PHYSICS-001:2212,4008. Still on main: changes/2026-10-25-rl-ball-sleep-calibration.md:8, RB-PHYSICS-001:2212,4009"

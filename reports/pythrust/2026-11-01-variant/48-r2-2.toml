@@ -1,0 +1,61 @@
+# Grade 48-r2-2-report.md into [[finding]] tables; see bench/README.md.
+case = "pythrust/48-r2"
+variant = "baseline"
+prompt_sha = "3d54c89ed46831a4b52991bfbc9f77f62a08d8be"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Lists at different depths of one value are assumed to be different lists"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "All globals are one object at depth 0, so a global and an element of another global look distinct"
+triage = "fixed_since"
+reason = "executed /home/claude/grade/probes/48-r2/k1_global.pyr: check accepts at head, run and CPython print 2; fixed on main (rejected at a.append(2)); kept as in the baseline grade, the tuple case is F1's K1 match"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Any lowering gap anywhere still turns off D3 and D4 for the whole program"
+triage = "design_question"
+reason = "executed /home/claude/grade/probes/48-r2/gap_late.pyr: accepted at head and main (control gap_late_ctl.pyr rejected); the gap is 'calling g while h ... is not yet defined', which native.md:27 records as rejected, roadmap A3 says the fallback is whole-program and grammar.md:64 says the conservative analysis diagnoses nothing"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "Changes a callee makes to a module list are invisible to the caller"
+triage = "fixed_since"
+reason = "executed /home/claude/grade/probes/48-r2/callee_global.pyr and callee_global2.pyr: check accepts at head, CPython loops 3 times / prints 3, direct G.append control rejected; fixed on main (both rejected: 'changes a list through push')"
+
+[[finding]]
+id = "F5"
+severity = "P1"
+title = "A parameter and a module variable are assumed to be different lists"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F6"
+severity = "P1"
+title = "Changing a list through a conditional expression skips the D4 check"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/cond.pyr: check accepts at head, run and CPython print 4, control rejected; on main"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "The D3 fix-it suggests code that does not type-check"
+triage = "real"
+reason = "executed /home/claude/grade/probes/48-r2/d3_opt.pyr and d3_tuple.pyr: suggest 'return list(xs)' / 'return list(t)'; applied (d3_opt_applied.pyr, d3_tuple_applied.pyr) both fail to type-check at head and on main"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "Nothing tests the native refusal of an exception holding a list"
+triage = "fixed_since"
+reason = "source trace: the refusal text appears only in codegen/mod.rs:1031 at head and no test asserts it; build of /home/claude/grade/probes/48-r2/build/exc_list.pyr is refused at head; fixed on main (conformance.rs:1116 build_refuses_an_exception_that_may_close_a_cycle)"

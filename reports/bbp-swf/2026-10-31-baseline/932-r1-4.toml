@@ -1,0 +1,33 @@
+# Grade 932-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/932-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A cancelled or timed-out wait still counts as shown, so an inference that never saw the grant can act in it"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Code differs from the owner-accepted plan, and the PR rewrites the accepted wait definition"
+triage = "design_question"
+reason = "traced git diff 1703450a..e0137a43 docs/bbp-event-based-plan.md: the PR states the grants-only wait as intended with its reason in a Status line; whether the owner approves the narrowing is an owner decision, not a code defect"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Docs the change makes false (README 'serves exactly one turn', 'Five tools', per-turn token line, replay comment)"
+triage = "real"
+reason = "traced at head: README.md:11 opener, :13 'Five tools', :126, mcp.rs:580; on main README.md:11 opener, :13 'Five tools' and :140 unchanged (mcp.rs:717 comment now true via tickets) - still on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Missing tests: launcher session refusal, inotify wake latency, 600 s cap"
+triage = "real"
+reason = "traced at head: no launcher refusal test, session wake bound is 10 s (mcp_e2e.rs:661) which the 1 s recheck alone satisfies, no cap test; on main the same (launchers.rs:249 untested, mcp_e2e.rs:707 still < 10 s, no 600 s test) - still on main"

@@ -1,0 +1,7 @@
+expert = "agent-cloud"
+repo = "baileyrd/agent_cloud"
+pr = 19
+title = "Per-agent CPU, memory and disk limits (ADR-023)"
+round = 1
+base = "b9f9532a759da13b69cdb549ee3cd163fac1c42e"
+head = "69fe6877ddec11081fb131f2bbe2a8e76eb4f277"

@@ -1,0 +1,19 @@
+# Grade 3-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/3-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A confirmed med, lab or BP reaches a claim export through a category link from an unreviewed finding"
+triage = "real"
+reason = "executed: probes/3-r1/probe_head.py, a confirmed med on a confirmed visit whose only knee finding is unreviewed lands in build_claim(KNEE) evidence and the CSV; schema.sql:3-4 says claim views and exports read confirmed/corrected only, and contract/README.md:49-50 does not say an unreviewed finding may link an item; on main (probes/3-r1/probe_main_link.py on tests/seed.py: repo.claim_candidates still builds visit_categories from non-rejected findings, med 1 exported as hypertension evidence with finding 1 unreviewed)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "unconfirmed_count keys on the visit status instead of the item's own unreviewed status"
+match = "K1"
+quality = "caught"

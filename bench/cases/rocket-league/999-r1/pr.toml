@@ -1,0 +1,7 @@
+expert = "rocket-league"
+repo = "Rusty-Mill/rusty_mill"
+pr = 999
+title = "rl: first-party replay parser, slice P1 (container, CRC, header)"
+round = 1
+base = "712c1c2275f6898009357365175a2498f291dadb"
+head = "fd33e2baa3e8862cefdac4e670fa3475d0f2f4e2"

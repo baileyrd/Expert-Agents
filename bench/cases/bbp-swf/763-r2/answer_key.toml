@@ -1,0 +1,55 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/763#issuecomment-6202736619"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "Two harness sessions in one turn log: only the last result is costed"
+files = ["crates/apps/rusty_bbp_host/src/tokens.rs", "crates/apps/rusty_bbp_host/src/pins.rs"]
+fix = "e9100c2a2c56a3ef40a9238461d8c5434aa74bca"
+summary = """
+tokens.rs:347-380 selects the last result line. Pins accepts two sequential pinned
+claude commands (warmup; exec claude ...). Both write one turn log, so the first
+session's spend is dropped from known cost and from the cap floor. Restrict evidence
+launchers to one session or account per session.
+"""
+caught_if = "Names that a launcher running more than one harness session (sequential claude commands) has earlier sessions' cost lost because accounting takes only the last result."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "Evidence marker is written before the moderator lock is taken"
+files = ["crates/apps/rusty_bbp_host/src/moderator.rs"]
+fix = "e9100c2a2c56a3ef40a9238461d8c5434aa74bca"
+summary = """
+moderator.rs:365-375 inspects/creates the evidence marker before acquiring the
+moderator lock. An uncapped moderator holding the lock before its first grant lets a
+second, capped startup write the marker and then fail the lock, so the uncapped run is
+later treated as evidence.
+"""
+caught_if = "Names the ordering race: the evidence marker is checked or written before the moderator lock, so a refused concurrent capped startup can mark an uncapped run as evidence."
+
+[[finding]]
+id = "K3"
+severity = "P2"
+title = "A shell-computed --tools value bypasses the no-subagent check"
+files = ["crates/apps/rusty_bbp_host/src/pins.rs"]
+fix = "e9100c2a2c56a3ef40a9238461d8c5434aa74bca"
+summary = """
+pins.rs:511-545: `t=Agent,Task; exec claude ... --tools "$t" -p task`. The checker reads
+$t as a literal tool name while the shell supplies Agent,Task; list_values discards
+Arg.dynamic. Unresolved dynamic flag values must be rejected.
+"""
+caught_if = "Names that a dynamic/computed shell value (variable or substitution) for a checked flag like --tools is treated as a literal, bypassing the subagent/tool restriction."
+
+[[finding]]
+id = "K4"
+severity = "P2"
+title = "Unreadable or missing turn logs bypass the fail-closed cap"
+files = ["crates/apps/rusty_bbp_host/src/tokens.rs", "crates/apps/rusty_bbp_host/src/moderator.rs"]
+fix = "e9100c2a2c56a3ef40a9238461d8c5434aa74bca"
+summary = """
+tokens.rs:634-642 skips failed read_to_string calls and only increments without_output;
+enforce_cap (moderator.rs:560-586) checks returned turns, never that counter. Missing
+terminal logs, permission failures and invalid UTF-8 escape cap validation.
+"""
+caught_if = "Names that a turn log that fails to read (missing at end, permission error, invalid UTF-8) is silently skipped/counted as no output instead of failing the cap check."

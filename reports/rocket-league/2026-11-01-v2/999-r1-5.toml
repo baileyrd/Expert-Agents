@@ -1,0 +1,19 @@
+# Grade 999-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/999-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Unbounded header property recursion overflows the stack"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Bytes after the content section are silently accepted"
+triage = "real"
+reason = "executed: a valid file with 'garbage after content' appended returns Ok (content.len() == 4) through rl_replay::parse at head and on main (lib.rs:55-63, no remaining() check), while the same PR refuses trailing header bytes (header.rs:106-110, TrailingHeaderData) where boxcars refuses neither, so parity does not document this as intended; still on main"

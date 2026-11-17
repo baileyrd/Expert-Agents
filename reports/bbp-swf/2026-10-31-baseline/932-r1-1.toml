@@ -1,0 +1,19 @@
+# Grade 932-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/932-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "No test for a stale call after the same role is granted a new turn"
+triage = "fixed_since"
+reason = "traced tests/mcp_e2e.rs:590-676 at head: the session test only ends the shown turn while the coder holds the next, never regrants the planner and posts without wait; on main mcp_e2e.rs:686-714 queues a post with the old ticket behind a wait, regrants the planner and asserts 'turn N has ended'"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Docs and comments the diff makes false (lib.rs, README five tools, broker doc/session, replay comment)"
+triage = "real"
+reason = "traced at head: lib.rs:3-4 'One process serves one turn', README.md:13 'Five tools', broker.rs:7-9 'per-turn Server' while bin/bbp.rs:114 passes Binding::from_env (accepts BBP_SESSION=yes), mcp.rs:580 comment; on main lib.rs:4, README.md:13 and broker.rs:9 unchanged and broker still takes from_env (mcp.rs:717 comment now true via tickets) - still on main"

@@ -1,0 +1,20 @@
+# Source of truth for the remind-me developer. Target repos receive copies (see sync/).
+# A developer writes code; unlike experts/, it is not read-only. It pairs with the
+# read-only experts/remind-me reviewer, which reviews every diff it makes.
+name = "remind-me"
+version = 1
+kind = "developer"
+reviewer = "experts/remind-me"
+source = "Written from experts/remind-me (interview, grounding), its 2026-10-31 baseline and rusty-remind-me #351-#354"
+
+[[prompt]]
+file = "prompt.md"
+kind = "claude-subagent"
+target_repo = "Rusty-Mill/rusty-remind-me"
+target_path = ".claude/agents/remind-me-developer.md"
+
+[[prompt]]
+file = "codex.md"
+kind = "codex"
+target_repo = "Rusty-Mill/rusty-remind-me"
+target_path = "docs/agents/developers/remind-me-developer-codex.md"

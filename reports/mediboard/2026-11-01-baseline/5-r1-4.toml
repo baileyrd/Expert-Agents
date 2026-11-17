@@ -1,0 +1,68 @@
+# Grade 5-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "mediboard/5-r1"
+variant = "baseline"
+prompt_sha = "ab404a7bc9802730d0833303ae93c97e93397506"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Page text goes to any environment or Windows system proxy"
+triage = "real"
+reason = "executed: probes/5-r1/proxy.py with http_proxy set to a 127.0.0.1 listener (no_proxy incl. 192.168.0.0/16) - OpenAIClient.complete to http://192.168.10.104 was POSTed to the listener with the synthetic page text; client.py:87 uses default urlopen opener; on main (client.py:91 unchanged)"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Model reply key text reaches error column and log"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Re-transcribed page keeps facts from old text"
+triage = "real"
+reason = "executed: probes/5-r1/probe.py - extract a cut-off page, change its text, rerun (also with retry_errors): RunStats(skipped=1, ok=0), 1 model request total, old quote stays effective (runner.py:64 keys done on (pdf, page)); holds at this head; on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "SUMMARY: heading inside transcription cuts the page short"
+triage = "real"
+reason = "executed: probes/5-r1/probe.py - source_text of a transcription with 'DISCHARGE SUMMARY:' returns 'Synthetic Hospital\\nDISCHARGE' (page.py:22 partition at first SUMMARY:), and is_truncated is False for a cut-off page with that heading; on main"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Whitespace-only quote passes quote check"
+match = "K3"
+quality = "caught"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Some model replies crash the run instead of error lines"
+triage = "real"
+reason = "executed: probes/5-r1/probe.py - via fake server, a lone \\ud800 in a lab value (UnicodeEncodeError in jsonl append), a 5000-digit int (ValueError), 100k-deep nesting (RecursionError) and content=123 (TypeError) each escape run() with 0 lines written, so every rerun stops at the same page; on main"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "Eval counts a tenfold lab error as a match"
+triage = "real"
+reason = "executed: probes/5-r1/probe.py - gold lab TSH '.5' mU/L flag L vs pred '5' MU/L flag null, and med dose 10 mg vs 100 mg, both score tp=1 fp=0 fn=0 (evaluate.py:26 strips edge '.', casefolds; FIELDS:34-44 ignore flag/dose); on main"
+
+[[finding]]
+id = "F8"
+severity = "P2"
+title = "--limit -1 runs almost everything"
+triage = "real"
+reason = "executed: probes/5-r1/probe.py - argparse accepts --limit -1 and run(limit=-1) over 5 pending pages extracted 4 (runner.py:67 pending[:limit]); on main"
+
+[[finding]]
+id = "F9"
+severity = "P2"
+title = "Docs: README says PHI never leaves the machine but default sends pages to a LAN host"
+triage = "design_question"
+reason = "traced: the plain-HTTP LAN model URL is the T0 committed default (config.toml:24-27 at base 866e4bd, 'endpoint on BaileyAi (llama-swap)', merged with the owner-approved contract); contract/README.md:15 bars cloud APIs and services beyond 127.0.0.1, not this configured LAN model host; the PR only uses the configured url"

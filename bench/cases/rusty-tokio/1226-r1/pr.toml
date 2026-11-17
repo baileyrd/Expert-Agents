@@ -1,0 +1,7 @@
+expert = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+pr = 1226
+title = "rusty_tokio: opt-in fallback runtime for foreign executors"
+round = 1
+base = "31c15429f115c0d6a8943ef797a1f750f4786176"
+head = "aba661f23e2bda22c2d2e9340700d7fa72557239"

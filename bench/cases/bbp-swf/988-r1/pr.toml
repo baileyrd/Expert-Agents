@@ -1,0 +1,7 @@
+expert = "bbp-swf"
+repo = "Rusty-Mill/rusty_mill"
+pr = 988
+title = "rusty_orch: permission leases for hosted goals (Stage 3c)"
+round = 1
+base = "90ee60b9e7bdaccedd8c22c04e67e47b9d2900ab"
+head = "54b9024e2b79bceccd09465005630256b531f6a4"

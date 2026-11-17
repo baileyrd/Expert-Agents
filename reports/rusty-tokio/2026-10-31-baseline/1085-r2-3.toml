@@ -1,0 +1,19 @@
+# Grade 1085-r2-3-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1085-r2"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Dropped changed()/wait_for futures keep their wakers; rusty_lsp drops one per message"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Re-polling changed()/wait_for with a new waker keeps the old one; latest waker never woken"
+triage = "fixed_since"
+reason = "traced at 2a6e9dfda: watch.rs:229-232 pushes cx.waker() only while !registered, so a re-poll with waker B leaves A stored and send() wakes A only; origin/main 808d6ebd9 Changed future replaces the stored waker unless will_wake (watch.rs:262-269)"

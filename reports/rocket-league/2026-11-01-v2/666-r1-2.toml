@@ -1,0 +1,32 @@
+# Grade 666-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/666-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Live-test runner waits on 'serving bots on', now printed only after the game speaks"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Eight later connections evict the silent real game, which never redials"
+triage = "real"
+reason = "executed: probe silent_game_first_then_eight_strays (probes/666-r1/probe-head) at head: game dials silent, 8 silent strays follow, game then writes GameSpawn; game reads Ok(0) (closed by link.rs:203-207 remove(0)), wait_for_game has not returned 2 s later with strays open (:233-235 keeps timeout off), Ok(None) after they leave. Same result with probe-main (admit link.rs:238); main README:89-91 (2cc049473) now lists it as a known limitation. Duplicates #1309; on main"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Already-closed connections count toward the cap and evict the live game"
+# Names the drain evicting at :206 before any candidate is checked at :217-230 (K2's ordering),
+# but the victim is a still-silent game, not one holding a valid first frame: partial.
+# Executed: probe closed_strays_in_same_drain at head (silent game + 8 connect-and-close in one
+# backlog) -> game evicted, found=false; on main 8f27bb992 the game is found (2cc049473 sifts
+# before admitting). As a non-key item it would be fixed_since.
+match = "K2"
+quality = "partial"
+# Report F4 ("No test covers the launch order") is a coverage note restating F2/F3; not graded.

@@ -1,0 +1,15 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/1066#pullrequestreview-5644215749"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "Mutex release clones the next waiter's Waker under the state lock"
+files = ["crates/libs/async/rusty_tokio/src/sync/mutex.rs"]
+fix = "6a2002133f7c07e143f867dbfc975c828e976448"
+summary = """
+Mutex release/pass-on now calls next_waker, which clones the queued Waker while holding
+state; the base moved the popped Waker out without cloning. A valid Arc-backed RawWaker
+whose clone callback calls this mutex's try_lock (armed after enqueue) deadlocks when
+the guard is released: release holds state, clone re-enters try_lock.
+"""
+caught_if = "Names a Waker clone (a RawWaker callback) run while the Mutex/Semaphore state lock is held on the release or handoff path, so a clone callback that re-enters deadlocks."

@@ -1,0 +1,26 @@
+# Grade 999-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/999-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Unbounded header property recursion overflows the stack"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Docs say every error carries the byte offset; three variants do not"
+triage = "real"
+reason = "executed: probe through rl_replay::parse gives TrailingHeaderData { bytes: 1 }, Crc { section, stored, actual } and UnsupportedVersion { engine, licensee, net } with no offset, against error.rs:1-2, lib.rs:10-11 and the change fragment; same output and wording on main (8f27bb992)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Array-length cap, header CRC and InvalidUtf8 rejections have no tests"
+triage = "real"
+reason = "executed: a copy of the head crate with the MAX_ARRAY_LEN check disabled (header.rs:148), the header CRC check skipped (lib.rs section) and from_utf8 made lossy (reader.rs:90) still passes every unit test and the boxcars oracle test (20+3+1 ok); main adds only tests/nesting.rs, so the gap is still on main"

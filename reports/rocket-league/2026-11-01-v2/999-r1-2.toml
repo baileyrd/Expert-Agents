@@ -1,0 +1,26 @@
+# Grade 999-r1-2-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/999-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 2
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Unbounded header property recursion overflows the stack"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Docs say every error carries the byte offset; Crc, UnsupportedVersion, TrailingHeaderData do not"
+triage = "real"
+reason = "executed: probe through rl_replay::parse gives TrailingHeaderData { bytes: 1 } ('1 bytes left after the header properties'), Crc { section, stored, actual } and UnsupportedVersion { engine, licensee, net } with no offset, against error.rs:1-2, lib.rs:10-11 and the change fragment's 'name what was being read and the byte offset'; same output and wording on main (8f27bb992)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Lowered version floor makes the scope doc's encoding-risk bullet false"
+triage = "false_positive"
+reason = "traced: replay-parser-scope.md:121-122 is about vector and quaternion bit encodings; boxcars 0.11.5 gates those only at net_version >= 7 (network/models.rs:41,65; attributes.rs:1260), and every version >= 868.23.8 has net >= 8, so the bullet still holds; the cited gates (frame trailer frame_decoder.rs:408, PsyNet ID attributes.rs:1704) are not vector/quaternion encodings"

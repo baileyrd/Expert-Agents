@@ -1,0 +1,33 @@
+# Grade 988-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/988-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "One member can redirect another member's sandbox path outside the lease"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Cancel refused under a lease when confine fails for a never-frozen task"
+triage = "real"
+reason = "executed: probe test in orch-bbp tests.rs (never-opened task, leased fence, unsandboxed default pool) returns Err(Permanent(\"pool member judge is unconfined...\")) with 0 BBP calls at head 54b9024e and at origin/main 069eedbcd; cancel->freeze->lease::confine (lib.rs:837/274 head, :862/288 main); fragment says 'Cancel is never refused for a lease'. Still on main."
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Docs overstate what the lease bounds (validator profile read_roots)"
+triage = "real"
+reason = "traced rusty_bbp_host/src/runner.rs:323-324 at head: agent-written candidate runs with profile set read_roots + work; orch-bbp freeze copies profiles.json verbatim (lib.rs:278), lease.rs never touches it; known-limitations in fragment/ADR/RELEASE_NOTES omit it. Same code and docs on origin/main (runner.rs:323, fragment line 10). Still on main."
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "No tests for relay's lease check or cancel under ended/different lease"
+triage = "real"
+reason = "executed: deleting Self::leased in relay (lib.rs:732 head, :757 main) leaves every existing orch-bbp test green (16 pass head, 18 pass main); no test cancels under a leased fence on head or main. Still on main."

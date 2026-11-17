@@ -1,0 +1,40 @@
+# Grade 1085-r1-3-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1085-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "rusty_lsp message loop leaks one waker per inbound message via dropped watch changed()"
+match = "K4"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Panicking wait_for predicate poisons the channel; a later drop can abort"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "CancelToken::cancelled() leaves a waiter queued each time it loses a select!"
+triage = "fixed_since"
+reason = "executed at head 349b521ab: ~/bench-work/grade/probe-1085-r1 polled 1000 Notify::notified() futures (enable + poll to Pending) then dropped them, counting waker strong count 2 -> 1002 (Notified/OwnedNotified have no Drop, notify.rs:240-300); CancelToken::cancelled (rusty_lsp cancel.rs:79-87) pins exactly such a Notified; on main 808d6ebd9 (98621f936 adds Drop for Notified) same probe stays 2 -> 2"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "l13 Cargo.toml comment made false by the PR"
+triage = "real"
+reason = "traced: crates/libs/ui/rusty_term/l13/Cargo.toml:17 at head 349b521ab still says \"rusty_lsp's tokio-backed runtime feature\" though this PR moves that feature to rusty_tokio; unchanged on main 808d6ebd9"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "New wait_for behaviour lacks no-poison, cancel and waker-release tests"
+triage = "fixed_since"
+reason = "traced: at head 349b521ab tests/sync.rs:2154-2186 has only the three happy-path wait_for tests (no panic, cancel/drop, or waker-release test); main 808d6ebd9 adds watch_wait_for_predicate_panic_does_not_poison_the_channel (sync.rs:2196) and in-module watch drop/unregister tests (watch.rs:378-414)"

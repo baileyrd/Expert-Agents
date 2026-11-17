@@ -1,0 +1,33 @@
+# Grade 666-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "rocket-league/666-r1"
+variant = "v2"
+prompt_sha = "034d2ab7cdb5d0e7cbaf6671c79de028048aec2b"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Real game evicted as oldest by 8 later silent connections"
+triage = "real"
+reason = "executed: probe silent_game_first_then_eight_strays (probes/666-r1/probe-head) at head: game dials silent, 8 silent strays follow, game then writes GameSpawn; game reads Ok(0) (closed by link.rs:203-207 remove(0)), wait_for_game has not returned 2 s later with strays open (:233-235 keeps timeout off), Ok(None) after they leave. Same result with probe-main (admit link.rs:238); main README:89-91 (2cc049473) now lists it as a known limitation. Duplicates #1309; on main"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "swap_remove breaks the age order, so oldest can be the newest"
+match = "K5"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "README, fragment and test claim silent connections cannot keep the game out"
+triage = "real"
+reason = "traced: README.md:83-84, change fragment line 7 and link.rs:204-205 at head say the oldest is dropped so silent connections cannot keep the game out; false when the game dials first (executed in F1's probe), and tests/game_finding.rs:159 only models a game arriving last. Main README:86-91 (2cc049473) rewrote the claim and lists the game-first case as a limitation; graded real as in v1 (same as 2026-10-31 runs 2-4); behaviour on main"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Accept loop has no per-pass limit"
+match = "K3"
+quality = "caught"

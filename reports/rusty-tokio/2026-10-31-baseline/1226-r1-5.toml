@@ -1,0 +1,26 @@
+# Grade 1226-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1226-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "kill_on_drop child dropped on a tokio thread becomes a zombie"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-1226-r1-zombie at head aba661f23: install_fallback, piped kill_on_drop sleep spawned+dropped on tokio current-thread -> /proc/<pid>/stat Some('Z') after 1.5s, control on rusty_tokio Runtime reaped (None); Child::drop uses Handle::try_current (process/mod.rs:426). Same result on main 808d6ebd9 (mod.rs:431)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "~25 Panics doc sections on changed constructors now wrong"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Inventory note contradicts the settled decision on consumer adoption"
+triage = "false_positive"
+reason = "traced: ASYNC-RUNTIME-INVENTORY.md:182-191 at aba661f23 conditions the #906 steps on consumers calling install_fallback and grants no consumer go-ahead; it does not contradict the per-consumer owner gate (main 808d6ebd9 keeps the sentence and records the owner-made consumer switches)"

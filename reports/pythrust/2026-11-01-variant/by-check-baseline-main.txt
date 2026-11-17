@@ -1,0 +1,10 @@
+variant                   runs   pass  triggered
+baseline               20/20      55%          -
+  baseline 47-r1: 5/5 judge: K1: A loose function forwarding its parameters bypasses the tempered call check
+  baseline 48-r1: 3/5 judge: K1: Different tuple slots are assumed to hold different lists
+  baseline 48-r1: 2/5 judge: K2: An exception holding a list turns off aliasing checks for the whole program
+  baseline 48-r2: 4/5 judge: K1: Different depths are assumed to be different lists
+  baseline 48-r2: 3/5 judge: K2: A parameter and a global are assumed never to be the same list
+  baseline 65-r1: 5/5 judge: K1: A dict view does not carry the provenance of the lists it holds
+  baseline 65-r1: 4/5 judge: K2: get's default is evaluated only when the key is missing
+  baseline 65-r1: 3/5 judge: K3: KeyError carries the converted key instead of the key as written

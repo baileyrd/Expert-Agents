@@ -1,0 +1,20 @@
+case = "rocket-league/666-r1"
+variant = "baseline"
+prompt_sha = "2c25712ebd471ea9164c00c79d1d37f92128404c"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Later connections evict the game; accept drain drops a speaking game before it is checked"
+# Headline is a silent game that dialled first being evicted by 8 later silent peers
+# (not in the key; real at head, see run 2 F1). Its executed "second trigger" is K2 exactly.
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "swap_remove breaks oldest-first eviction"
+match = "K5"
+quality = "caught"

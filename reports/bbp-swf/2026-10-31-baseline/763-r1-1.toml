@@ -1,0 +1,33 @@
+# Grade 763-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "bbp-swf/763-r1"
+variant = "baseline"
+prompt_sha = "e4b237b0026cd618246788f721016ce7e8a92784"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "bbp pairs pins its own binary's BUILD_SHA, not the bbp_build_sha each run recorded"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Live cost cap reads an unreadable (non-UTF-8) or result-only turn log as $0"
+triage = "fixed_since"
+reason = "executed at head 2b31b4e6: capped_run probe with \"printf '\\377' >&2\" before a $20 line under a $1 cap returns 'wall limit reached' (control with ASCII stderr: 'cost cap reached'); cause tokens.rs:322 read_to_string error -> without_output, moderator.rs:451 unwrap_or(0.0). Gone on main 069eedbcd: tokens.rs:788-814 errors on unreadable/invalid-UTF-8 logs and moderator.rs:1070-1083 fails closed on unreadable or no-stream-json turns"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "A run reaching Closed/Cancelled returns before the cap check"
+match = "K4"
+quality = "caught"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Docs (README, design doc cost-cap section) and load-level tests not updated"
+triage = "real"
+reason = "traced at head: README.md:29,72 omit --max-usd/--criteria and reads_per_turn; design doc :311,:322 stale; no test calls pairs::load. On main 069eedbcd the design doc (:346) and tests (tests/pairs_load.rs) are fixed, but crates/apps/rusty_bbp_host/README.md:33 bbp mod usage still lists no --max-usd/--criteria, so the README part still holds"

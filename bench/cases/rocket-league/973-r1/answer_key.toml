@@ -1,0 +1,30 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/973#issuecomment-6379008350"
+
+[[finding]]
+id = "K1"
+severity = "P2"
+title = "Rest probe cannot reach rest within its window"
+files = ["crates/apps/rocket_league/rusty_bullet/tools/rb_tape_bot/gen_probes.py", "crates/apps/rocket_league/rusty_bullet/tools/rb_tape_bot/experiments/probe_ball_rest.json"]
+fix = "f7f3a591c020f66f5279dbaf48b0312e570bae3f"
+summary = """
+gen_probes.py:165-166: the ball launches at 600 uu/s and gets 1200 neutral ticks. The port
+separates sliding from rolling and rolling decays only ~3%/s (ball damping 0.03), so the ball
+is still far above any candidate sleep speed when the probe ends. Parsing and running the
+probe is not evidence it reaches rest; it needs a controlled low-speed, low-spin start with
+enough dwell, a predicted trajectory, and the 60 settle ticks counted as motion, not a hold.
+"""
+caught_if = "Names that the rest probe's starting speed and duration leave the ball rolling well above the sleep threshold, so it cannot measure rest."
+
+[[finding]]
+id = "K2"
+severity = "P2"
+title = "Probe omits angular_velocity, leaving spin uncontrolled and inconsistent"
+files = ["crates/apps/rocket_league/rusty_bullet/tools/rb_tape_bot/gen_probes.py"]
+fix = "f7f3a591c020f66f5279dbaf48b0312e570bae3f"
+summary = """
+The probes set no angular_velocity. The tape bot leaves an omitted spin unchanged from the
+previous state, while Scenario::initial_frame defaults it to zero, so the game run and the
+port run start from different spins: an uncontrolled variable in a probe of sleep, which
+depends on spin.
+"""
+caught_if = "Names the unset angular_velocity, and that the tape bot and Scenario::initial_frame treat an omitted spin differently (keep vs zero)."

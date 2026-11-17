@@ -1,0 +1,47 @@
+# Grade 1085-r1-5-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1085-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 5
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Dropped watch changed() leaves its waker queued; rusty_lsp read loop drops one per message"
+match = "K4"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Panicking wait_for predicate poisons the channel, breaking tokio's promise"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "changed() wakes the first waker it saw, not the latest"
+triage = "fixed_since"
+reason = "executed at head 349b521ab: ~/bench-work/grade/probe-1085-r1 polled rx.changed() with waker A then B, then send: A woken 1, B woken 0 (registered flag, watch.rs:215-218); on main 808d6ebd9 (4399e88db, will_wake refresh at watch.rs:262-269) same probe gives A 0, B 1"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Dropped Notify::notified() stays queued, so CancelToken::cancelled() builds up waiters"
+triage = "fixed_since"
+reason = "executed at head 349b521ab: ~/bench-work/grade/probe-1085-r1 polled 1000 Notify::notified() futures (enable + poll to Pending) then dropped them, counting waker strong count 2 -> 1002 (Notified/OwnedNotified have no Drop, notify.rs:240-300); CancelToken::cancelled (rusty_lsp cancel.rs:79-87) pins exactly such a Notified; on main 808d6ebd9 (98621f936 adds Drop for Notified) same probe stays 2 -> 2"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "wait_for runs the predicate (and changed() clones the waker) under the watch lock; re-entry deadlocks"
+triage = "design_question"
+reason = "executed: ~/bench-work/grade/probe-1085-r1 predicate calling tx.send deadlocks at head 349b521ab and still on main 808d6ebd9, but tokio wait_for likewise runs f under the channel read lock (send would block on the write lock), so this matches the tokio contract the API mirrors; the waker-clone-reenters-channel trigger is contrived and not documented as a watch requirement"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "l13 Cargo.toml comment made false by the PR"
+triage = "real"
+reason = "traced: crates/libs/ui/rusty_term/l13/Cargo.toml:17 at head 349b521ab still says \"rusty_lsp's tokio-backed runtime feature\" though this PR moves that feature to rusty_tokio; unchanged on main 808d6ebd9"

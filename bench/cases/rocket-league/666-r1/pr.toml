@@ -1,0 +1,7 @@
+expert = "rocket-league"
+repo = "Rusty-Mill/rusty_mill"
+pr = 666
+title = "rb_rl_bridge: the game is the connection that speaks like it"
+round = 1
+base = "f3d03a936e7d9497b5ef315a5be8b30755aef689"
+head = "fc3a6b0554faabb3baa647cdf2418a388ffb9b89"

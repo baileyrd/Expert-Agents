@@ -1,0 +1,44 @@
+review = "https://github.com/Rusty-Mill/rusty_mill/pull/988#issuecomment-6385393387"
+
+[[finding]]
+id = "K1"
+severity = "P1"
+title = "One member's write root can swap a symlink into another member's leased path"
+files = ["crates/apps/rusty_orch/crates/orch-bbp/src/lease.rs"]
+fix = "021d0f019299caf2cb77b0f94e79e29151e54efd"
+summary = """
+lease.rs bounded() prunes only against the current member's writes. A writes /src while
+B keeps read /src/sub; A replaces sub with a symlink to /secret before B launches, and
+the Linux sandbox opens the root O_PATH and follows it. Pin root identity through launch
+or refuse such cross-member relationships.
+"""
+caught_if = "Names a cross-member symlink swap: a path leased to one member lies under another member's write root, so it can be replaced by a symlink before launch and escape the lease."
+
+[[finding]]
+id = "K2"
+severity = "P1"
+title = "Delegation compares lexical paths while the host grants canonicalized targets"
+files = ["crates/apps/rusty_orch/crates/orch-core/src/factory.rs"]
+fix = "021d0f019299caf2cb77b0f94e79e29151e54efd"
+summary = """
+factory.rs covers() accepts child /src/escape under parent /src lexically, but the
+child's confine() resolves escape to /secret and grants it if the static pool allows
+that target, which parent /src would not. Parent-child authority and launch must use the
+same canonical identity.
+"""
+caught_if = "Names that the parent/child (delegation) containment check is lexical while confinement canonicalizes, so a symlink under the parent's path grants a child a target outside the parent's boundary."
+
+[[finding]]
+id = "K3"
+severity = "P1"
+title = "Lease expiry is not a hard deadline: terminal drain gets a fresh grace"
+files = ["crates/apps/rusty_orch/crates/orch-bbp/src/lib.rs", "crates/apps/rusty_bbp_host/src/moderator.rs"]
+fix = "021d0f019299caf2cb77b0f94e79e29151e54efd"
+summary = """
+orch-bbp lib.rs lifetime() clamps max_wall, but the moderator's Closed/Cancelled path
+drains harnesses with a fresh end_grace (default 60s) before checking wall expiry, and
+the relative duration is computed before startup/health work. A harness keeps its
+authority past the lease end. Carry an absolute deadline through startup, launch,
+supervision and every cleanup grace.
+"""
+caught_if = "Names that the lease end is enforced as a relative wall budget, so startup time or a terminal/cleanup grace lets a harness run past the lease expiry."

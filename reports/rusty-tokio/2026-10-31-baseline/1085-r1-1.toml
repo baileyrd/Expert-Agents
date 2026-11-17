@@ -1,0 +1,33 @@
+# Grade 1085-r1-1-report.md into [[finding]] tables; see bench/README.md.
+case = "rusty-tokio/1085-r1"
+variant = "baseline"
+prompt_sha = "69ff745b617700af0f2cc0c54b503ddd94cff9c5"
+run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "rusty_lsp read loop leaves a waker on writer_dead per message (dropped changed() never deregisters)"
+match = "K4"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Panicking wait_for predicate poisons the channel and aborts the process"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "wait_for predicate calling receiver_count/clone on the same channel deadlocks"
+triage = "real"
+reason = "executed: ~/bench-work/grade/probe-1085-r1 tests/q.rs, wait_for(|v| *v >= tx.receiver_count()) hand-polled on a thread did not finish in 3 s at head 349b521ab (receiver_count locks the same std Mutex the predicate runs under, watch.rs:110 vs 191); same deadlock on main 808d6ebd9 (watch.rs:116-117 still locks); tokio's receiver_count is an atomic load, so it completes there"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "l13 Cargo.toml comment still calls rusty_lsp's runtime feature tokio-backed"
+triage = "real"
+reason = "traced: crates/libs/ui/rusty_term/l13/Cargo.toml:17 at head 349b521ab still says \"rusty_lsp's tokio-backed runtime feature\" though this PR moves that feature to rusty_tokio; unchanged on main 808d6ebd9"
