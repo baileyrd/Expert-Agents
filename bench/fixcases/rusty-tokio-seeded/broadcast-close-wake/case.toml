@@ -1,0 +1,19 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
+base = "4b09612567ed416dac1bd079b9c82ae3eabefa2a"
+source = "seeded: blind bug in code the developer prompt never names"
+seed = "seed.patch"
+held_back = ["crates/libs/async/rusty_tokio/tests/heldback_broadcast_close_wake.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_broadcast_close_wake"]
+task = """
+Bug: in rusty_tokio, a task blocked in `broadcast::Receiver::recv()` never returns after
+the last `Sender` is dropped. In one service the shutdown path hung instead of finishing.
+
+If `recv()` is called after every sender is already gone it correctly returns
+`RecvError::Closed`; only a receiver that was already waiting is affected.
+
+Expected, as in tokio: dropping the last sender wakes every waiting receiver, and each gets
+`RecvError::Closed` once it has read what was buffered. Fix it in
+`crates/libs/async/rusty_tokio`.
+"""

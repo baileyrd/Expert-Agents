@@ -1,0 +1,19 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "069eedbcd10e4352152f5ee7df78db301e9b8fc8"
+base = "7376cef76d8782caca80bf09f3d21cc1ccbfee13"
+source = "seeded: blind bug in code the developer prompt never names"
+seed = "seed.patch"
+held_back = ["crates/libs/async/rusty_tokio/tests/heldback_oneshot_rewaker.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "heldback_oneshot_rewaker"]
+task = """
+Bug: in rusty_tokio, a `oneshot::Receiver` that is polled in one place and later awaited
+somewhere else can hang forever even though the `Sender` sends a value.
+
+Repro: race `&mut rx` against `time::timeout` (or in a `select!` loop) so it is polled and
+times out, then move `rx` into a spawned task and `.await` it there. Send from another task.
+The spawned task never wakes. Awaiting `rx` from a single place works.
+
+Expected, as in tokio: `send` wakes whichever task polled the receiver most recently, and
+the await returns `Ok(value)`. Fix it in `crates/libs/async/rusty_tokio`.
+"""

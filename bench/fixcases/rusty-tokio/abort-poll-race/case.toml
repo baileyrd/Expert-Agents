@@ -1,0 +1,21 @@
+developer = "rusty-tokio"
+repo = "Rusty-Mill/rusty_mill"
+fix = "d8dfe49e620686fca19d55fc9311bbb5240809a0"
+base = "698844212a77722ea15d47cc37160caf1371f153"
+source = "grounding: experts/rusty-tokio/grounding.md"
+held_back = ["crates/libs/async/rusty_tokio/tests/abort_race.rs"]
+test = ["cargo", "test", "-p", "rusty_tokio", "--test", "abort_race"]
+task = """
+Bug: in rusty_tokio, `JoinHandle::abort()` racing a task's transition from queued to running
+can lose the cancellation.
+
+Symptoms under an abort/join stress loop (spawn many tasks, abort each from another
+thread while the runtime polls them, await every `JoinHandle`): occasionally a panic
+from the task state machine outside the future's poll, so the panic handler does not
+catch it and the join never completes; and a task aborted before its first poll on the
+current-thread runtime or a `LocalSet` does not always finish its join as cancelled.
+
+Expected, as in tokio: every aborted task's join completes exactly once with `Ok` or a
+cancelled `JoinError`, the future is dropped exactly once, and no panic escapes. Fix it
+in `crates/libs/async/rusty_tokio`.
+"""

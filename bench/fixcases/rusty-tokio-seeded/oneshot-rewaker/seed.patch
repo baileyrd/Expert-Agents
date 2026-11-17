@@ -1,0 +1,14 @@
+diff --git a/crates/libs/async/rusty_tokio/src/sync/oneshot.rs b/crates/libs/async/rusty_tokio/src/sync/oneshot.rs
+index c6d31572a..0fe8a39fe 100644
+--- a/crates/libs/async/rusty_tokio/src/sync/oneshot.rs
++++ b/crates/libs/async/rusty_tokio/src/sync/oneshot.rs
+@@ -103,7 +103,8 @@ impl<T> Future for Receiver<T> {
+                 Poll::Ready(Ok(v))
+             }
+             State::Closed => Poll::Ready(Err(RecvError)),
+-            State::Empty | State::Waiting(_) => {
++            State::Waiting(_) => Poll::Pending,
++            State::Empty => {
+                 *guard = State::Waiting(cx.waker().clone());
+                 Poll::Pending
+             }
