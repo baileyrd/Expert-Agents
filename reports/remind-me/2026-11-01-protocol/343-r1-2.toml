@@ -3,3 +3,31 @@ case = "remind-me/343-r1"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 2
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Overlapping matches crash the write"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A card number next to another number is stored unredacted"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "Ordinary number lists are replaced with [REDACTED:card_number]"
+triage = "real"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): 'ports 5432 5433 6379 6380' -> 'ports [REDACTED:card_number]' at abdd0b76, 9ef2ec3a and main 15db3280; baseline 343-r1-5 F3 same class"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The sk- rule redacts ordinary kebab-case names"
+triage = "fixed_since"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): 'branch sk-add-redaction-for-provider-keys-and-cards done' and 'https://example.com/sk-learn-classification-pipeline-v2-final' -> [REDACTED:llm_api_key] at head; left alone on main 15db3280"

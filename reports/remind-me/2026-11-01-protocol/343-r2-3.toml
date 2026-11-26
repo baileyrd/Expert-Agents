@@ -3,3 +3,17 @@ case = "remind-me/343-r2"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 3
+
+[[finding]]
+id = "B1"
+severity = "P2"
+title = "A card is skipped when the last number after it runs into letters"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "B2"
+severity = "P2"
+title = "Two glued letters-and-digits tokens leave the second body in clear"
+triage = "real"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): 'x npm_<36a>npm_<36b> y' -> '[REDACTED:npm_token]_bbbb...', and whsec_/sk_live_ likewise, at abdd0b76, 9ef2ec3a and main 15db3280"

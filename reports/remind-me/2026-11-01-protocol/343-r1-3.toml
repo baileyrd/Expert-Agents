@@ -3,3 +3,31 @@ case = "remind-me/343-r1"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 3
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Overlapping matches make redact() panic on the write path"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P0"
+title = "Card numbers in common forms are kept"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Ordinary text is over-redacted (single-digit groups as a card, sk- slugs)"
+triage = "fixed_since"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): 'row 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 ok' -> card redaction at abdd0b76, left alone at 9ef2ec3a and main 15db3280; sk- slug likewise redacted at head, not on main 15db3280"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "README claims connection strings, code covers only URL form"
+triage = "real"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): 'Server=db;User Id=sa;Pwd=Sup3rS3cret!;' and 'host=db user=app password=hunter2' unchanged at head and on main 15db3280; README:234 on main 15db3280 still says 'passwords in URLs and connection strings'"

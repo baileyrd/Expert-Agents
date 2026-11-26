@@ -3,3 +3,38 @@ case = "remind-me/344-r1"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 3
+
+[[finding]]
+id = "F1"
+severity = "P0"
+title = "Merging deletes a canonical's metadata when it isn't a JSON object"
+triage = "real"
+reason = "source-traced: consolidation.rs:499-506 at 95528f01 replaces non-object metadata with {\"evidence\":n} (.filter(Json::is_object).unwrap_or_else(json!({}))), and MCP/REST accept non-object metadata; before the PR merges never touched metadata. Main documents this as intended (keep_evidence doc), so it stays a head defect"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "Peers get the evidence count but not the weight boost"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "evidence is a stored counter in editable metadata, so the boost compounds"
+triage = "fixed_since"
+reason = "executed in baseline (344-r1-1 F2, 344-r1-3 F5): metadata replace drops 'evidence' and a forged u64::MAX panics the sum at 95528f01; main 15db3280 moves the count to system-owned remind_me:evidence with keep_evidence"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "A merge that half-lands leaves a count that a retry inflates"
+triage = "fixed_since"
+reason = "traced consolidation.rs:506-530 at 95528f01: metadata, set_merged, set_importance and set_superseded_by commit separately (baseline 344-r1-1 F3); main 15db3280 runs merge_one inside one transaction"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "The release note says things the code doesn't do"
+triage = "fixed_since"
+reason = "traced consolidation.rs:373 at 95528f01 omits metadata/base_weight; RELEASE_NOTES 'does not compound' false at head (baseline 344-r1-3 F6); main 15db3280 rewrites the doc (consolidation.rs:447-450)"

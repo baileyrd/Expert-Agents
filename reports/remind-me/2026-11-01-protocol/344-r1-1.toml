@@ -3,3 +3,52 @@ case = "remind-me/344-r1"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "The weight boost never reaches the outbox, so peers diverge"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P1"
+title = "A metadata update resets the count while the boost stays"
+triage = "fixed_since"
+reason = "executed in baseline (344-r1-1 F2, 344-r1-3 F5): metadata replace drops 'evidence' and a forged u64::MAX panics the sum at 95528f01; main 15db3280 moves the count to system-owned remind_me:evidence with keep_evidence"
+
+[[finding]]
+id = "F3"
+severity = "P1"
+title = "A merge cut short and retried counts the same memories twice"
+triage = "fixed_since"
+reason = "traced consolidation.rs:506-530 at 95528f01: metadata, set_merged, set_importance and set_superseded_by commit separately (baseline 344-r1-1 F3); main 15db3280 runs merge_one inside one transaction"
+
+[[finding]]
+id = "F4"
+severity = "P1"
+title = "A client-written evidence value panics the merge or wraps around"
+triage = "fixed_since"
+reason = "executed in baseline (344-r1-1 F2, 344-r1-3 F5): metadata replace drops 'evidence' and a forged u64::MAX panics the sum at 95528f01; main 15db3280 moves the count to system-owned remind_me:evidence with keep_evidence"
+
+[[finding]]
+id = "F5"
+severity = "P2"
+title = "Any client can set metadata.evidence, and merges trust it"
+triage = "fixed_since"
+reason = "executed in baseline (344-r1-1 F2, 344-r1-3 F5): metadata replace drops 'evidence' and a forged u64::MAX panics the sum at 95528f01; main 15db3280 moves the count to system-owned remind_me:evidence with keep_evidence"
+
+[[finding]]
+id = "F6"
+severity = "P2"
+title = "Un-superseding a member leaves the canonical's count and boost"
+triage = "real"
+reason = "source-traced: db/queries.rs:244 at 95528f01 clears superseded_by with no change to the canonical's evidence or base_weight; no evidence handling on the clear_superseded path on main 15db3280 either"
+
+[[finding]]
+id = "F7"
+severity = "P2"
+title = "The merge's doc comment is out of date"
+triage = "fixed_since"
+reason = "traced consolidation.rs:373 at 95528f01 omits metadata/base_weight; RELEASE_NOTES 'does not compound' false at head (baseline 344-r1-3 F6); main 15db3280 rewrites the doc (consolidation.rs:447-450)"

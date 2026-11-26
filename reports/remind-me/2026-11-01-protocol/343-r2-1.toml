@@ -3,3 +3,24 @@ case = "remind-me/343-r2"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 1
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "A card in a JSON number survives the transcript archive"
+triage = "fixed_since"
+reason = "source-traced boundary.rs:58-75 at 9ef2ec3a: redact_strings scrubs Value::String only (baseline 343-r2-5 F2 executed); main 15db3280 adds a Value::Number arm (#353)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A card escapes when a later separated digit group runs into a letter"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Doc comment claims Diners support the code never delivers"
+triage = "fixed_since"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): 'diners 3056 930902 5904' unchanged at 9ef2ec3a (is_card rejects a leading 3 except 34/37); redacted on main 15db3280"

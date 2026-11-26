@@ -3,3 +3,31 @@ case = "remind-me/346-r1"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 3
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A malformed vector element is stored as 0.0 and reported as success"
+triage = "real"
+reason = "executed in baseline 346-r1-1 F3 / 346-r2-1 F1: fake /v1/embeddings server returning [null,null] -> Ok([[0.0,0.0]]) (checked_vector as_f64().unwrap_or(0.0))"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A chunked reply is rejected with a misleading error"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Release note says Ollama requests are unchanged, false for Qwen3"
+triage = "real"
+reason = "traced embedder.rs:113-119 at head: qwen3-embed prefix is new and shared by OllamaEmbedder, so 'Ollama requests ... unchanged' is false (baseline 346-r1-1 F4, 346-r2-1 F2 executed)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Nothing tests the openai branch of resolve_embedder or its cache key"
+triage = "real"
+reason = "traced crates/remind_me_core/tests at head: no test sets BACKEND=openai through resolve_embedder or covers the new config_fingerprint entries (baseline 346-r1-2 F5)"

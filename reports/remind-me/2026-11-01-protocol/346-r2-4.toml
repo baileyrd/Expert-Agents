@@ -3,3 +3,31 @@ case = "remind-me/346-r2"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 4
+
+[[finding]]
+id = "F1"
+severity = "P2"
+title = "A null or non-numeric embedding value is stored as 0.0"
+triage = "real"
+reason = "executed in baseline 346-r1-1 F3 / 346-r2-1 F1: fake /v1/embeddings server returning [null,null] -> Ok([[0.0,0.0]]) (checked_vector as_f64().unwrap_or(0.0))"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "Release notes say Ollama requests are unchanged, but Qwen3 queries get a prefix"
+triage = "real"
+reason = "traced embedder.rs:113-119 at head: qwen3-embed prefix is new and shared by OllamaEmbedder, so 'Ollama requests ... unchanged' is false (baseline 346-r1-1 F4, 346-r2-1 F2 executed)"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Two docs still list only Ollama and ONNX"
+triage = "real"
+reason = "traced README.md:18 and embedder.rs:65 at head still name only Ollama/ONNX, plus the release-note line (baseline 346-r1-4 F4, 346-r1-5 F5)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "No test checks the openai backend env or its cache-key settings"
+triage = "real"
+reason = "traced crates/remind_me_core/tests at head: no test sets BACKEND=openai through resolve_embedder or covers the new config_fingerprint entries (baseline 346-r1-2 F5)"

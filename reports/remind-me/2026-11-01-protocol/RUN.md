@@ -2,8 +2,8 @@
 
 Variant: `experts/remind-me/` at `055f36b` ("protocol-subset failure class for hand-rolled
 parsers"), run as the suite's `baseline` variant on branch `claude/project-thread-k8h7wa`.
-25 runs (5 cases × 5), judged; **not graded**. The graded-run TOMLs are unfilled skeletons for
-the requester. Each report's header carries the `prompt_sha` it ran under.
+25 runs (5 cases × 5), judged. Graded since, in [../2026-11-01-protocol.md](../2026-11-01-protocol.md)
+(archived, not promoted); this file is the capture-time record. Each report's header carries the `prompt_sha` it ran under.
 
 Runner: Eval-Kit `0d594ab` (`main`), `python3 -m evalkit run --yes --jobs 2`, alongside the
 rusty-tokio fix bench (also `--jobs 2`). Claude Code `2.1.316` on the signed-in login (no API

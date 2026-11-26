@@ -3,3 +3,17 @@ case = "remind-me/343-r2"
 variant = "baseline"
 prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
 run = 5
+
+[[finding]]
+id = "B1"
+severity = "P2"
+title = "A card followed by a group that runs into letters is not redacted"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "B2"
+severity = "P2"
+title = "Release note overstates the card separators"
+triage = "real"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): '4111  1111  1111  1111' and '4111.1111.1111.1111' unchanged at head and on main 15db3280; RELEASE_NOTES on main 15db3280 (line 715) still says 'optionally grouped by spaces or hyphens'"
