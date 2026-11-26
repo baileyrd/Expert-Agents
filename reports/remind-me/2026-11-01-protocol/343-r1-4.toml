@@ -1,0 +1,33 @@
+# Grade 343-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r1"
+variant = "baseline"
+prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "Certain input makes redaction panic, so the write fails"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F2"
+severity = "P0"
+title = "A card number or Google key next to ordinary text is stored unredacted"
+match = "K2"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Kebab-case names that start with sk- are rewritten as LLM keys"
+triage = "fixed_since"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): 'branch sk-add-redaction-for-provider-keys-and-cards done' and 'https://example.com/sk-learn-classification-pipeline-v2-final' -> [REDACTED:llm_api_key] at head; left alone on main 15db3280"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "Tests and docs claim more than the code delivers"
+triage = "fixed_since"
+reason = "traced redact.rs tests at abdd0b76: no glued-prefix or card-plus-digits case; main 15db3280 adds nested_and_repeated_prefixes_redact_without_panicking and cards_next_to_other_numbers_are_still_redacted (baseline 343-r1-4 F3)"

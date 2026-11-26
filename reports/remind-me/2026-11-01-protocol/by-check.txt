@@ -1,0 +1,9 @@
+variant                   runs   pass  triggered
+baseline               25/25      76%          -
+  baseline 343-r1: 5/5 judge: K1: Overlapping prefixed-token matches panic in replace()
+  baseline 343-r1: 5/5 judge: K2: A card number next to other digits escapes redaction
+  baseline 343-r2: 5/5 judge: K1: A later word-adjacent digit group cancels card redaction for the whole run
+  baseline 344-r1: 5/5 judge: K1: The sync outbox carries the new evidence but the old weight
+  baseline 346-r1: 5/5 judge: K1: A malformed index falls back to array position
+  baseline 346-r1: 4/5 judge: K2: Chunked embeddings responses are not decoded
+  baseline 346-r2: 0/5 judge: K1: dechunk accepts a body truncated after the zero-size chunk

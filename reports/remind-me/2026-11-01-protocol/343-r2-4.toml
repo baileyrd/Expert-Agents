@@ -1,0 +1,33 @@
+# Grade 343-r2-4-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/343-r2"
+variant = "baseline"
+prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "The archive keeps a card number that its dialog reports as redacted"
+triage = "fixed_since"
+reason = "source-traced boundary.rs:58-75 at 9ef2ec3a: redact_strings scrubs Value::String only (baseline 343-r2-5 F2 executed); main 15db3280 adds a Value::Number arm (#353)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "K2 still open when the card is followed by a word starting with a digit"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "The Diners 4-6-4 shape can never match"
+triage = "fixed_since"
+reason = "executed: probe-343 (standalone build of redact.rs at abdd0b76, 9ef2ec3a and main 15db3280): 'diners 3056 930902 5904' unchanged at 9ef2ec3a (is_card rejects a leading 3 except 34/37); redacted on main 15db3280"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "The cloud-capture hook no longer uses the server's shapes (ADR-0029 s2)"
+triage = "real"
+reason = "traced rusty_mill .claude/hooks/remind-me-capture.py RULES (libs-2026.10.0 and rusty_mill main): no llm_api_key, stripe, gitlab, npm, pypi, google or card shapes, while ADR-0029 at 9ef2ec3a:56-60 says the hook redacts 'with the server's secret shapes'"

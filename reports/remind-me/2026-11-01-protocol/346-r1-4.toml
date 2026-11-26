@@ -1,0 +1,33 @@
+# Grade 346-r1-4-report.md into [[finding]] tables; see bench/README.md.
+case = "remind-me/346-r1"
+variant = "baseline"
+prompt_sha = "055f36b9a039f4c275080a0ecf8f48289f342132"
+run = 4
+
+[[finding]]
+id = "F1"
+severity = "P1"
+title = "REMIND_ME_OPENAI_EMBED_MODEL unset deletes every stored vector on open"
+triage = "real"
+reason = "executed in baseline 346-r1-1 F1: Database::open with BACKEND=openai and the model unset clears a planted openai vector at head; same trace at 9daba9f8 (resolve_embedder still returns Some)"
+
+[[finding]]
+id = "F2"
+severity = "P2"
+title = "A malformed index is quietly replaced by arrival order"
+match = "K1"
+quality = "caught"
+
+[[finding]]
+id = "F3"
+severity = "P2"
+title = "Release notes are wrong about Ollama and omit the Qwen3 prefix"
+triage = "real"
+reason = "traced embedder.rs:113-119 at head: qwen3-embed prefix is new and shared by OllamaEmbedder, so 'Ollama requests ... unchanged' is false (baseline 346-r1-1 F4, 346-r2-1 F2 executed)"
+
+[[finding]]
+id = "F4"
+severity = "P2"
+title = "No test checks the openai setting or its cache-key entries"
+triage = "real"
+reason = "traced crates/remind_me_core/tests at head: no test sets BACKEND=openai through resolve_embedder or covers the new config_fingerprint entries (baseline 346-r1-2 F5)"
